@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAPASE – Sistema de Gestión de Demandas</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logos">
+      <img src="assets/escudo.png" alt="H. Ayuntamiento Ecatepec de Morelos">
+      <div class="login-divider"></div>
+      <img src="assets/logo_sapase.png" alt="SAPASE">
+    </div>
+    <div class="login-title">
+      <h1>Sistema de Gestión de Demandas</h1>
+      <p>Servicio de Agua Potable, Alcantarillado y Saneamiento</p>
+    </div>
+    <hr class="login-sep">
+    <div class="field-group">
+      <label>Usuario</label>
+      <input type="text" id="username" placeholder="Ingrese su usuario" value="admin">
+    </div>
+    <div class="field-group">
+      <label>Contraseña</label>
+      <input type="password" id="password" placeholder="Ingrese su contraseña" value="sapase2026">
+    </div>
+    <div id="login-error" class="login-error" style="display:none;"></div>
+    <button class="btn-primary" onclick="doLogin()">Iniciar Sesion</button>
+    <p class="login-hint">Demo: admin / sapase2026</p>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" style="display:none;">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logos">
+      <img src="assets/escudo.png" alt="Ecatepec" style="height:36px;">
+      <div class="topbar-sep"></div>
+      <img src="assets/logo_sapase.png" alt="SAPASE" style="height:30px;">
+    </div>
+    <div class="topbar-title">
+      <h2>Sistema de Gestion de Demandas</h2>
+      <p>SAPASE – Ecatepec de Morelos 2025–2027</p>
+    </div>
+    <div class="topbar-user" onclick="openUserProfile()" title="Ver mi perfil">
+      <div class="topbar-avatar" id="user-avatar">A</div>
+      <div>
+        <div class="topbar-uname" id="user-name">Administrador</div>
+        <div class="topbar-rol" id="user-rol-top">Rol</div>
+      </div>
+      <button class="btn-logout" onclick="event.stopPropagation(); doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div id="sidebar-content"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Dashboard</h2>
+          <p>Resumen general del sistema</p>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-total">0</div>
+          <div class="stat-label">Total Demandas</div>
+        </div>
+        <div class="stat-card" style="border-color:var(--gold);">
+          <div class="stat-num" style="color:var(--gold);" id="stat-pendientes">0</div>
+          <div class="stat-label">Pendientes</div>
+        </div>
+        <div class="stat-card" style="border-color:#2E7D32;">
+          <div class="stat-num" style="color:#2E7D32;" id="stat-atendidas">0</div>
+          <div class="stat-label">Atendidas</div>
+        </div>
+        <div class="stat-card" style="border-color:#1565C0;">
+          <div class="stat-num" style="color:#1565C0;">27</div>
+          <div class="stat-label">Areas Activas</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Demandas Recientes</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Area</th><th>Asunto</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="dashboard-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORMULARIO -->
+    <div id="page-formulario" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Nueva Demanda</h2>
+          <p>Complete todos los campos del formulario</p>
+        </div>
+        <div class="btn-row" style="margin:0;">
+          <button class="btn btn-guinda" onclick="saveDemanda()">Guardar</button>
+          <button class="btn btn-outline" onclick="clearForm()">Limpiar</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Datos del Folio</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label>Folio de Demanda</label>
+            <input type="text" id="f-folio" class="readonly-field" readonly>
+          </div>
+          <div class="field-group">
+            <label>Fecha de Captura <span class="field-hint">(se llena automaticamente)</span></label>
+            <input type="text" id="f-fecha" class="readonly-field" readonly>
+          </div>
+          <div class="field-group">
+            <label>Fecha de la Demanda <span class="field-hint">(cuando ocurrio)</span></label>
+            <input type="date" id="f-fecha-demanda">
+          </div>
+          <div class="field-group">
+            <label>Folio de Referencia</label>
+            <input type="text" id="f-ref" placeholder="Ej. REG6/ECA/524/26">
+          </div>
+          <div class="field-group full">
+            <label>Area Responsable</label>
+            <select id="f-area">
+              <option value="">— Seleccione un area —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Datos del Remitente</div>
+        <div class="form-grid">
+          <div class="field-group full">
+            <label>Nombre completo</label>
+            <input type="text" id="f-remitente" placeholder="Nombre completo del solicitante">
+          </div>
+          <div class="field-group full">
+            <label>Asunto</label>
+            <input type="text" id="f-asunto" placeholder="Asunto de la demanda">
+          </div>
+          <div class="field-group">
+            <label>Domicilio</label>
+            <input type="text" id="f-domicilio" placeholder="Calle y numero">
+          </div>
+          <div class="field-group">
+            <label>Colonia</label>
+            <input type="text" id="f-colonia" placeholder="Colonia o Fraccionamiento">
+          </div>
+          <div class="field-group">
+            <label>Telefono Principal</label>
+            <input type="tel" id="f-tel1" placeholder="10 digitos" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          </div>
+          <div class="field-group">
+            <label>Telefono Secundario</label>
+            <input type="tel" id="f-tel2" placeholder="10 digitos (opcional)" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Detalle de la Demanda</div>
+        <div class="form-grid">
+          <div class="field-group full">
+            <label>Descripcion / Demanda</label>
+            <textarea id="f-demanda" rows="3" placeholder="Descripcion detallada de la demanda o queja"></textarea>
+          </div>
+          <div class="field-group full">
+            <label>Observaciones</label>
+            <textarea id="f-observaciones" rows="2" placeholder="Observaciones adicionales"></textarea>
+          </div>
+          <div class="field-group full">
+            <label>Concepto</label>
+            <input type="text" id="f-concepto" placeholder="Concepto o categoria de la demanda">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARCHIVOS -->
+    <div id="page-archivos" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Archivos</h2>
+          <p>Gestion y exportacion de demandas</p>
+        </div>
+        <div class="btn-row" style="margin:0;">
+          <button class="btn btn-green" onclick="exportarTodoExcel()">Exportar Todo a Excel</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Busqueda y Filtros</div>
+        <div class="search-bar">
+          <input class="search-input" id="search-input" placeholder="Buscar por folio, nombre, asunto..." oninput="filterArchivos()">
+          <select id="filter-area" onchange="filterArchivos()">
+            <option value="">Todas las areas</option>
+          </select>
+          <select id="filter-status" onchange="filterArchivos()">
+            <option value="">Todos los estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Atendida">Atendida</option>
+            <option value="En proceso">En proceso</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Listado de Demandas</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Area</th><th>Asunto</th><th>Estado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="archivos-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- AREAS -->
+    <div id="page-areas" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Areas</h2>
+          <p>Gestion por departamento</p>
+        </div>
+        <button class="btn btn-guinda" id="btn-nueva-area" style="display:none;" onclick="openNuevaArea()">Nueva Area</button>
+      </div>
+      <div class="areas-grid" id="areas-grid"></div>
+      <div id="area-detail" style="display:none; margin-top:24px;">
+        <div class="card">
+          <div class="card-title" id="area-detail-title">Demandas del Area</div>
+          <div class="search-bar">
+            <input class="search-input" id="area-search" placeholder="Buscar en esta area..." oninput="filterAreaDetail()">
+            <button class="btn btn-green btn-sm" onclick="exportAreaExcel()">Exportar Excel</button>
+            <button class="btn btn-outline btn-sm" onclick="hideAreaDetail()">Cerrar</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Acciones</th></tr>
+              </thead>
+              <tbody id="area-detail-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USUARIOS -->
+    <div id="page-usuarios" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Usuarios del Sistema</h2>
+          <p>Solo los administradores pueden editar</p>
+        </div>
+        <button class="btn btn-guinda" id="btn-nuevo-usuario" onclick="openAddUser()">Nuevo Usuario</button>
+      </div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre Completo</th>
+              <th>Usuario</th>
+              <th>Contrasena</th>
+              <th>Correo</th>
+              <th>Telefono</th>
+              <th>Cargo</th>
+              <th>Area</th>
+              <th>Rol</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="usuarios-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- =============== MODALES =============== -->
+
+<!-- Modal: Ver Demanda -->
+<div class="modal-overlay" id="modal-ver">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Detalle de Demanda</div>
+      <button class="modal-close" onclick="closeModal('modal-ver')">x</button>
+    </div>
+    <div id="modal-ver-content"></div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn btn-guinda btn-sm" onclick="openExportMenu(currentViewId, this)">Exportar</button>
+      <button class="btn btn-blue btn-sm" onclick="openTransferModal(currentViewId)">Enviar a otra Area</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Editar Demanda -->
+<div class="modal-overlay" id="modal-edit-demanda">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <div class="modal-title">Editar Demanda</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-demanda')">x</button>
+    </div>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Folio</label>
+        <input type="text" id="ed-folio" class="readonly-field" readonly>
+      </div>
+      <div class="field-group">
+        <label>Fecha de Captura</label>
+        <input type="text" id="ed-fecha" class="readonly-field" readonly>
+      </div>
+      <div class="field-group">
+        <label>Fecha de la Demanda</label>
+        <input type="date" id="ed-fecha-demanda">
+      </div>
+      <div class="field-group">
+        <label>Folio Referencia</label>
+        <input type="text" id="ed-ref">
+      </div>
+      <div class="field-group">
+        <label>Area</label>
+        <select id="ed-area"></select>
+      </div>
+      <div class="field-group full">
+        <label>Remitente</label>
+        <input type="text" id="ed-remitente">
+      </div>
+      <div class="field-group full">
+        <label>Asunto</label>
+        <input type="text" id="ed-asunto">
+      </div>
+      <div class="field-group">
+        <label>Domicilio</label>
+        <input type="text" id="ed-domicilio">
+      </div>
+      <div class="field-group">
+        <label>Colonia</label>
+        <input type="text" id="ed-colonia">
+      </div>
+      <div class="field-group">
+        <label>Telefono Principal</label>
+        <input type="tel" id="ed-tel1" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div class="field-group">
+        <label>Telefono Secundario</label>
+        <input type="tel" id="ed-tel2" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div class="field-group full">
+        <label>Descripcion / Demanda</label>
+        <textarea id="ed-demanda" rows="3"></textarea>
+      </div>
+      <div class="field-group full">
+        <label>Observaciones</label>
+        <textarea id="ed-observaciones" rows="2"></textarea>
+      </div>
+      <div class="field-group">
+        <label>Concepto</label>
+        <input type="text" id="ed-concepto">
+      </div>
+      <div class="field-group">
+        <label>Estado</label>
+        <select id="ed-estado">
+          <option value="Pendiente">Pendiente</option>
+          <option value="En proceso">En proceso</option>
+          <option value="Atendida">Atendida</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:18px;">
+      <button class="btn btn-guinda" onclick="saveEditDemanda()">Guardar Cambios</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-demanda')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Transferir -->
+<div class="modal-overlay" id="modal-transfer">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Enviar a otra Area</div>
+      <button class="modal-close" onclick="closeModal('modal-transfer')">x</button>
+    </div>
+    <div class="field-group">
+      <label>Area Destino</label>
+      <select id="transfer-area"></select>
+    </div>
+    <div class="field-group">
+      <label>Comentario</label>
+      <textarea id="transfer-comment" rows="3" placeholder="Escriba un comentario para el area receptora..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-guinda" onclick="confirmTransfer()">Enviar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-transfer')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Perfil -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Mi Perfil</div>
+      <button class="modal-close" onclick="closeModal('modal-profile')">x</button>
+    </div>
+    <div style="text-align:center; margin-bottom:20px;">
+      <div class="profile-avatar-big" id="profile-avatar-big">A</div>
+      <div style="font-size:18px; font-weight:700; color:var(--guinda); margin-top:8px;" id="profile-name">—</div>
+      <div style="font-size:12px; color:var(--gray);" id="profile-cargo">—</div>
+    </div>
+    <div id="profile-fields"></div>
+  </div>
+</div>
+
+<!-- Modal: Editar Usuario (Admin) -->
+<div class="modal-overlay" id="modal-edit-user">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Editar Usuario</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-user')">x</button>
+    </div>
+    <input type="hidden" id="eu-id">
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Nombre Completo</label>
+        <input type="text" id="eu-name">
+      </div>
+      <div class="field-group">
+        <label>Usuario</label>
+        <input type="text" id="eu-user">
+      </div>
+      <div class="field-group">
+        <label>Contrasena</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="password" id="eu-password" style="flex:1;">
+          <button type="button" class="btn-eye" id="eu-pw-toggle" onclick="toggleModalPw('eu-password','eu-pw-toggle')">Ver</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Correo Electronico</label>
+        <input type="email" id="eu-correo">
+      </div>
+      <div class="field-group">
+        <label>Telefono</label>
+        <input type="tel" id="eu-telefono" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div class="field-group">
+        <label>Cargo</label>
+        <input type="text" id="eu-cargo">
+      </div>
+      <div class="field-group">
+        <label>Area</label>
+        <select id="eu-area"></select>
+      </div>
+      <div class="field-group">
+        <label>Rol</label>
+        <select id="eu-rol">
+          <option value="Administrador">Administrador</option>
+          <option value="Capturista">Capturista</option>
+          <option value="Consulta">Consulta</option>
+          <option value="TIC">TIC</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Estado</label>
+        <select id="eu-active">
+          <option value="true">Activo</option>
+          <option value="false">Inactivo</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn btn-guinda" onclick="saveEditUser()">Guardar Cambios</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-user')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nuevo Usuario -->
+<div class="modal-overlay" id="modal-new-user">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Nuevo Usuario</div>
+      <button class="modal-close" onclick="closeModal('modal-new-user')">x</button>
+    </div>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Nombre Completo</label>
+        <input type="text" id="nu-name">
+      </div>
+      <div class="field-group">
+        <label>Usuario</label>
+        <input type="text" id="nu-user">
+      </div>
+      <div class="field-group">
+        <label>Contrasena</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <input type="password" id="nu-password" style="flex:1;">
+          <button type="button" class="btn-eye" id="nu-pw-toggle" onclick="toggleModalPw('nu-password','nu-pw-toggle')">Ver</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Correo Electronico</label>
+        <input type="email" id="nu-correo">
+      </div>
+      <div class="field-group">
+        <label>Telefono</label>
+        <input type="tel" id="nu-telefono" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+      </div>
+      <div class="field-group">
+        <label>Cargo</label>
+        <input type="text" id="nu-cargo">
+      </div>
+      <div class="field-group">
+        <label>Area</label>
+        <select id="nu-area"></select>
+      </div>
+      <div class="field-group">
+        <label>Rol</label>
+        <select id="nu-rol">
+          <option value="Administrador">Administrador</option>
+          <option value="Capturista" selected>Capturista</option>
+          <option value="Consulta">Consulta</option>
+          <option value="TIC">TIC</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn btn-guinda" onclick="saveNewUser()">Crear Usuario</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-new-user')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal: Nueva Area -->
+<div class="modal-overlay" id="modal-nueva-area">
+  <div class="modal" style="width:460px;">
+    <div class="modal-header">
+      <div class="modal-title">Nueva Area</div>
+      <button class="modal-close" onclick="closeModal('modal-nueva-area')">x</button>
+    </div>
+    <div class="field-group">
+      <label>Nombre del Area</label>
+      <input type="text" id="na-nombre" placeholder="Escribe el nombre del area en mayusculas"
+             onkeydown="if(event.key==='Enter') saveNuevaArea()">
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-guinda" onclick="saveNuevaArea()">Agregar Area</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-nueva-area')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/api.js"></script>
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/demandas.js"></script>
+<script src="js/usuarios.js"></script>
+<script src="js/exportar.js"></script>
+</body>
+</html>
