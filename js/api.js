@@ -4,7 +4,8 @@
    Reemplaza las llamadas a localStorage
    ================================================ */
 
-const API_BASE = 'http://localhost:3001/api';
+// Ruta relativa: funciona desde cualquier IP/puerto porque usa el mismo origen que la pagina
+const API_BASE = '/api';
 
 // ---- Token en memoria (no localStorage por seguridad) ----
 let _token = null;

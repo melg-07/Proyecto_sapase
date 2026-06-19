@@ -127,7 +127,7 @@ function filterAreaDetail() {
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
-          <button class="btn btn-guinda btn-sm" onclick="openExportMenu('${d.id}', this)">Exportar</button>
+          <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF('${d.id}')">Imprimir</button>
           <button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>

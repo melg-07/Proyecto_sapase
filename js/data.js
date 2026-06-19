@@ -89,9 +89,8 @@ function getAreaId(nombre) {
    HELPERS GENERALES
    ============================================================ */
 function generarFolio() {
-  const now = new Date();
-  const num = String(demandas.length + 1).padStart(6, '0');
-  return 'SAPASE-' + now.getFullYear() + '-' + num;
+  const num = String(demandas.length + 1).padStart(5, '0');
+  return 'F-' + num;
 }
 
 function fechaHoy() {

@@ -113,28 +113,24 @@
           <h2>Nueva Demanda</h2>
           <p>Complete todos los campos del formulario</p>
         </div>
-        <div class="btn-row" style="margin:0;">
-          <button class="btn btn-guinda" onclick="saveDemanda()">Guardar</button>
-          <button class="btn btn-outline" onclick="clearForm()">Limpiar</button>
-        </div>
       </div>
       <div class="card">
         <div class="card-title">Datos del Folio</div>
         <div class="form-grid">
           <div class="field-group">
-            <label>Folio de Demanda</label>
+            <label>Folio de Captura</label>
             <input type="text" id="f-folio" class="readonly-field" readonly>
           </div>
           <div class="field-group">
-            <label>Fecha de Captura <span class="field-hint">(se llena automaticamente)</span></label>
+            <label>Fecha de Captura <span class="field-hint"></span></label>
             <input type="text" id="f-fecha" class="readonly-field" readonly>
           </div>
           <div class="field-group">
-            <label>Fecha de la Demanda <span class="field-hint">(cuando ocurrio)</span></label>
+            <label>Fecha de la Demanda <span class="field-hint"></span></label>
             <input type="date" id="f-fecha-demanda">
           </div>
           <div class="field-group">
-            <label>Folio de Referencia</label>
+            <label>Folio de Demanda</label>
             <input type="text" id="f-ref" placeholder="Ej. REG6/ECA/524/26">
           </div>
           <div class="field-group full">
@@ -178,7 +174,7 @@
         <div class="card-title">Detalle de la Demanda</div>
         <div class="form-grid">
           <div class="field-group full">
-            <label>Descripcion / Demanda</label>
+            <label>Demanda</label>
             <textarea id="f-demanda" rows="3" placeholder="Descripcion detallada de la demanda o queja"></textarea>
           </div>
           <div class="field-group full">
@@ -190,6 +186,10 @@
             <input type="text" id="f-concepto" placeholder="Concepto o categoria de la demanda">
           </div>
         </div>
+      </div>
+      <div class="btn-row" style="justify-content:flex-end; margin-top:8px;">
+        <button class="btn btn-outline" onclick="clearForm()">Limpiar</button>
+        <button class="btn btn-guinda" onclick="saveDemanda()">Guardar Demanda</button>
       </div>
     </div>
 
@@ -306,7 +306,7 @@
     </div>
     <div id="modal-ver-content"></div>
     <div class="btn-row" style="margin-top:20px;">
-      <button class="btn btn-guinda btn-sm" onclick="openExportMenu(currentViewId, this)">Exportar</button>
+      <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF(currentViewId)">Imprimir</button>
       <button class="btn btn-blue btn-sm" onclick="openTransferModal(currentViewId)">Enviar a otra Area</button>
     </div>
   </div>
