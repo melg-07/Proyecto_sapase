@@ -1,20 +1,13 @@
-/* ================================================
-   SAPASE – Cliente API
-   Conecta el frontend con el backend Node/Express
-   Reemplaza las llamadas a localStorage
-   ================================================ */
-
-// Ruta relativa: funciona desde cualquier IP/puerto porque usa el mismo origen que la pagina
+// URL relativa: funciona desde cualquier IP porque usa el mismo origen que la pagina
 const API_BASE = '/api';
 
-// ---- Token en memoria (no localStorage por seguridad) ----
+// Token en memoria
 let _token = null;
 
 function setToken(t)  { _token = t; }
 function getToken()   { return _token; }
 function clearToken() { _token = null; }
 
-/* ---- Fetch con JWT automatico ---- */
 async function apiFetch(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (_token) headers['Authorization'] = 'Bearer ' + _token;
@@ -27,7 +20,6 @@ async function apiFetch(endpoint, options = {}) {
   const data = await res.json();
 
   if (!res.ok) {
-    // Si el token expiro, forzar logout
     if (res.status === 401) {
       clearToken();
       doLogout();
@@ -38,9 +30,8 @@ async function apiFetch(endpoint, options = {}) {
   return data;
 }
 
-/* ============================================================
-   AUTH
-   ============================================================ */
+// Auth
+
 async function apiLogin(usuario, password) {
   return apiFetch('/auth/login', {
     method: 'POST',
@@ -53,9 +44,8 @@ async function apiLogout() {
   clearToken();
 }
 
-/* ============================================================
-   AREAS
-   ============================================================ */
+// Areas
+
 async function apiGetAreas() {
   const res = await apiFetch('/areas');
   return res.data;
@@ -74,9 +64,8 @@ async function apiToggleArea(id) {
   return res;
 }
 
-/* ============================================================
-   USUARIOS
-   ============================================================ */
+// Usuarios
+
 async function apiGetUsuarios() {
   const res = await apiFetch('/usuarios');
   return res.data;
@@ -102,9 +91,8 @@ async function apiMiPerfil() {
   return res.data;
 }
 
-/* ============================================================
-   DEMANDAS
-   ============================================================ */
+// Demandas
+
 async function apiGetDemandas(filtros = {}) {
   const params = new URLSearchParams();
   if (filtros.area)   params.set('area',   filtros.area);

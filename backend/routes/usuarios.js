@@ -1,10 +1,3 @@
-// ============================================================
-//  SAPASE – Rutas de Usuarios
-//  GET    /api/usuarios        – listar (admin)
-//  POST   /api/usuarios        – crear (admin)
-//  PUT    /api/usuarios/:id    – editar (admin)
-//  GET    /api/usuarios/me     – perfil propio
-// ============================================================
 const router = require('express').Router();
 const bcrypt = require('bcrypt');
 const db     = require('../db');
@@ -12,7 +5,6 @@ const { authMiddleware, soloAdmin } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
-// ---------- MI PERFIL ----------
 router.get('/me', async (req, res) => {
   try {
     const [rows] = await db.execute(
@@ -30,11 +22,10 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// ---------- LISTAR (admin) ----------
 router.get('/', soloAdmin, async (req, res) => {
   try {
     const [rows] = await db.execute(
-      `SELECT u.id, u.nombre, u.usuario, u.correo, u.telefono, u.cargo, u.rol, u.activo,
+      `SELECT u.id, u.nombre, u.usuario, u.password_texto, u.correo, u.telefono, u.cargo, u.rol, u.activo,
               a.id AS area_id, a.nombre AS area
        FROM usuarios u
        LEFT JOIN areas a ON u.area_id = a.id
@@ -46,7 +37,6 @@ router.get('/', soloAdmin, async (req, res) => {
   }
 });
 
-// ---------- CREAR (admin) ----------
 router.post('/', soloAdmin, async (req, res) => {
   try {
     const { nombre, usuario, password, area_id, correo, telefono, cargo, rol } = req.body;
@@ -55,9 +45,9 @@ router.post('/', soloAdmin, async (req, res) => {
     }
     const hash = await bcrypt.hash(password, 10);
     const [result] = await db.execute(
-      `INSERT INTO usuarios (nombre, usuario, password_hash, area_id, correo, telefono, cargo, rol)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nombre, usuario, hash, area_id || null, correo || null, telefono || null, cargo || null, rol || 'Capturista']
+      `INSERT INTO usuarios (nombre, usuario, password_hash, password_texto, area_id, correo, telefono, cargo, rol)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [nombre, usuario, hash, password, area_id || null, correo || null, telefono || null, cargo || null, rol || 'Capturista']
     );
     res.json({ ok: true, data: { id: result.insertId } });
   } catch (err) {
@@ -68,7 +58,6 @@ router.post('/', soloAdmin, async (req, res) => {
   }
 });
 
-// ---------- EDITAR (admin) ----------
 router.put('/:id', soloAdmin, async (req, res) => {
   try {
     const { nombre, usuario, password, area_id, correo, telefono, cargo, rol, activo } = req.body;
@@ -83,10 +72,12 @@ router.put('/:id', soloAdmin, async (req, res) => {
     if (rol       !== undefined) { fields.push('rol = ?');           vals.push(rol); }
     if (activo    !== undefined) { fields.push('activo = ?');        vals.push(activo ? 1 : 0); }
     if (area_id   !== undefined) { fields.push('area_id = ?');       vals.push(area_id || null); }
-    if (password  )              { 
+    if (password) {
       const hash = await bcrypt.hash(password, 10);
       fields.push('password_hash = ?');
       vals.push(hash);
+      fields.push('password_texto = ?');
+      vals.push(password);
     }
 
     if (!fields.length) return res.status(400).json({ ok: false, error: 'Sin campos para actualizar' });

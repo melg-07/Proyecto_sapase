@@ -1,8 +1,4 @@
-/* ================================================
-   SAPASE – Autenticacion y navegacion
-   ================================================ */
-
-/* ---------- Login ---------- */
+// Login
 async function doLogin() {
   const u     = document.getElementById('username').value.trim();
   const p     = document.getElementById('password').value.trim();
@@ -31,7 +27,6 @@ async function doLogin() {
     document.getElementById('user-avatar').textContent    = getInitials(currentUser.name);
     document.getElementById('user-rol-top').textContent   = currentUser.rol;
 
-    // Cargar areas y demandas desde la API
     const [areas, rawDemandas] = await Promise.all([
       apiGetAreas(),
       apiGetDemandas(),
@@ -48,15 +43,15 @@ async function doLogin() {
     showPage(startPage);
 
   } catch (err) {
-    errEl.textContent    = err.message || 'Usuario o contrasena incorrectos.';
-    errEl.style.display  = 'block';
+    errEl.textContent   = err.message || 'Usuario o contrasena incorrectos.';
+    errEl.style.display = 'block';
   }
 }
 
-/* ---------- Logout ---------- */
+// Logout
 function doLogout() {
   if (getToken()) {
-    apiLogout(); // fire-and-forget: invalida la sesion en el servidor
+    apiLogout(); // invalida la sesion en el servidor
   }
   currentUser      = null;
   demandas         = [];
@@ -70,7 +65,7 @@ function doLogout() {
   document.getElementById('login-error').style.display  = 'none';
 }
 
-/* ---------- Sidebar ---------- */
+// Sidebar
 function renderSidebar(activePage) {
   const isAdmin = currentUser && currentUser.rol === 'Administrador';
   let html = '';
@@ -102,7 +97,7 @@ function navItem(page, label, active) {
   return `<div class="nav-item${cls}" onclick="showPage('${page}')"><span class="nav-dot"></span>${label}</div>`;
 }
 
-/* ---------- Navegacion ---------- */
+// Navegacion
 function showPage(name) {
   const isAdmin = currentUser && currentUser.rol === 'Administrador';
   if (!isAdmin && !['formulario', 'archivos'].includes(name)) name = 'formulario';
@@ -126,7 +121,7 @@ function showPage(name) {
   if (name === 'usuarios')  { renderUsuarios(); }
 }
 
-/* ---------- Perfil ---------- */
+// Perfil
 function openUserProfile() {
   if (!currentUser) return;
   const u = currentUser;

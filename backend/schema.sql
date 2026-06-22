@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   nombre        VARCHAR(200) NOT NULL,
   usuario       VARCHAR(100) NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,        -- bcrypt hash
+  password_hash VARCHAR(255) NOT NULL,
+  password_texto VARCHAR(255),
   area_id       INT UNSIGNED,
   correo        VARCHAR(200),
   telefono      VARCHAR(20),
@@ -160,6 +161,9 @@ INSERT IGNORE INTO areas (nombre) VALUES
   ('COORDINACION DE OPERACION'),
   ('DEPARTAMENTO DE ELECTROMECANICO'),
   ('DIRECCION DE CONSTRUCCION Y OPERACION HIDRAULICA');
+
+-- Migracion: agrega columna si ya existe la tabla sin ella
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_texto VARCHAR(255) AFTER password_hash;
 
 -- Usuario admin inicial
 -- Contraseña: sapase2026  →  hash generado con bcrypt (rounds=10)

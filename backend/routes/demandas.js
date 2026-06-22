@@ -1,22 +1,13 @@
-// ============================================================
-//  SAPASE – Rutas de Demandas
-//  GET    /api/demandas             – listar
-//  GET    /api/demandas/:id         – detalle
-//  POST   /api/demandas             – crear
-//  PUT    /api/demandas/:id         – editar (solo campos enviados)
-//  DELETE /api/demandas/:id         – eliminar (admin)
-//  POST   /api/demandas/:id/transferir – transferir a otra area
-// ============================================================
 const router = require('express').Router();
 const db     = require('../db');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
-/* ---- Sanitizador: undefined / '' -> null para MySQL ---- */
+// undefined / '' → null para MySQL
 const s = v => (v === undefined || v === '') ? null : v;
 
-/* ---- Convierte fecha dd/mm/yyyy o yyyy-mm-dd a yyyy-mm-dd para MySQL ---- */
+// Acepta dd/mm/yyyy y yyyy-mm-dd
 function parseFecha(str) {
   if (!str) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
@@ -25,14 +16,13 @@ function parseFecha(str) {
   return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
 }
 
-/* ---- Siguiente folio automatico ---- */
 async function siguienteFolio() {
   const [rows] = await db.execute("SELECT COUNT(*) AS total FROM demandas");
   const num = String(rows[0].total + 1).padStart(5, '0');
   return `F-${num}`;
 }
 
-// ---------- LISTAR ----------
+// Listar
 router.get('/', async (req, res) => {
   try {
     const { area, estado, q } = req.query;
@@ -55,7 +45,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ---------- DETALLE ----------
+// Detalle
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
@@ -79,7 +69,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ---------- CREAR ----------
+// Crear
 router.post('/', async (req, res) => {
   try {
     const {
@@ -127,14 +117,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ---------- EDITAR (solo actualiza los campos presentes en el body) ----------
+// Editar (solo actualiza los campos presentes en el body)
 router.put('/:id', async (req, res) => {
   try {
     const body   = req.body;
     const fields = [];
     const vals   = [];
 
-    // Mapa: clave recibida del frontend -> columna en la tabla
     const mapping = {
       ref:           'folio_ref',
       remitente:     'remitente',
@@ -181,7 +170,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// ---------- ELIMINAR (solo admin) ----------
+// Eliminar
 router.delete('/:id', soloAdmin, async (req, res) => {
   try {
     const [result] = await db.execute('DELETE FROM demandas WHERE id = ?', [req.params.id]);
@@ -192,7 +181,7 @@ router.delete('/:id', soloAdmin, async (req, res) => {
   }
 });
 
-// ---------- TRANSFERIR ----------
+// Transferir
 router.post('/:id/transferir', async (req, res) => {
   try {
     const area_destino_id = req.body.area_destino_id;

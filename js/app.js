@@ -1,19 +1,13 @@
-/* ================================================
-   SAPASE – Dashboard, Areas, Stats
-   ================================================ */
+window.onload = function () {};
 
-window.onload = function () {
-  // Login es el punto de entrada, no hacemos nada aqui
-};
-
-/* ---------- Stats ---------- */
+// Stats
 function updateStats() {
   document.getElementById('stat-total').textContent      = demandas.length;
   document.getElementById('stat-pendientes').textContent = demandas.filter(d => d.estado === 'Pendiente').length;
   document.getElementById('stat-atendidas').textContent  = demandas.filter(d => d.estado === 'Atendida').length;
 }
 
-/* ---------- Dashboard ---------- */
+// Dashboard
 function renderDashboard() {
   const tbody = document.getElementById('dashboard-table');
   const list  = demandas.slice(0, 10);
@@ -29,9 +23,7 @@ function renderDashboard() {
   `).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--gray); padding:20px;">Sin demandas registradas</td></tr>';
 }
 
-/* ============================================================
-   AREAS
-   ============================================================ */
+// Areas
 function renderAreasGrid() {
   const grid    = document.getElementById('areas-grid');
   const isAdmin = currentUser && currentUser.rol === 'Administrador';
@@ -95,7 +87,7 @@ async function saveNuevaArea() {
   }
 }
 
-/* ---------- Detalle de area ---------- */
+// Detalle de area
 function showAreaDetail(area) {
   selectedArea = area;
   document.getElementById('area-detail').style.display = 'block';

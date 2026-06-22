@@ -1,23 +1,15 @@
-/* ================================================
-   SAPASE – Estado global y helpers
-   (sin localStorage – toda persistencia va a la API)
-   ================================================ */
+let _areasCache    = [];
+let _usersCache    = [];
 
-// ---- Caches en memoria (se llenan después del login) ----
-let _areasCache   = [];   // [{ id, nombre, activa }]
-let _usersCache   = [];   // usuarios normalizados (para modal de edición)
-
-// ---- Estado de sesión y UI ----
-let demandas       = [];
-let currentUser    = null;
-let currentViewId  = null;
-let transferId     = null;
-let selectedArea   = null;
+let demandas         = [];
+let currentUser      = null;
+let currentViewId    = null;
+let transferId       = null;
+let selectedArea     = null;
 let filteredDemandas = [];
 
-/* ============================================================
-   NORMALIZADORES  (API → formato que espera el frontend)
-   ============================================================ */
+// Normalizadores
+
 function normalizeArea(a) {
   return { id: a.id, nombre: a.nombre, activa: !!a.activa };
 }
@@ -34,7 +26,7 @@ function normalizeUsuario(u) {
     area_id:  u.area_id   || null,
     rol:      u.rol,
     active:   !!u.activo,
-    password: '',
+    password: u.password_texto || '',
   };
 }
 
@@ -75,7 +67,6 @@ function normalizeDemanda(d) {
   };
 }
 
-/* ---- Helpers de búsqueda en caches ---- */
 function getAreasActivas() {
   return _areasCache.filter(a => a.activa).map(a => a.nombre);
 }
@@ -85,9 +76,8 @@ function getAreaId(nombre) {
   return a ? a.id : null;
 }
 
-/* ============================================================
-   HELPERS GENERALES
-   ============================================================ */
+// Helpers
+
 function generarFolio() {
   const num = String(demandas.length + 1).padStart(5, '0');
   return 'F-' + num;
@@ -119,9 +109,8 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-/* ============================================================
-   SELECTS DE AREA
-   ============================================================ */
+// Selects de area
+
 function populateAreaSelect(selId, addEmpty) {
   const sel = document.getElementById(selId);
   if (!sel) return;

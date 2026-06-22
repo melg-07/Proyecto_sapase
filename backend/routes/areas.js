@@ -1,18 +1,9 @@
-// ============================================================
-//  SAPASE – Rutas de Areas
-//  GET    /api/areas           – listar todas
-//  POST   /api/areas           – crear nueva (admin)
-//  PUT    /api/areas/:id       – editar nombre (admin)
-//  PATCH  /api/areas/:id/toggle – activar/desactivar (admin)
-// ============================================================
 const router = require('express').Router();
 const db     = require('../db');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
 
-// Todas las rutas requieren token
 router.use(authMiddleware);
 
-// ---------- LISTAR ----------
 router.get('/', async (req, res) => {
   try {
     const [rows] = await db.execute(
@@ -24,7 +15,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ---------- CREAR ----------
 router.post('/', soloAdmin, async (req, res) => {
   try {
     const { nombre } = req.body;
@@ -45,7 +35,6 @@ router.post('/', soloAdmin, async (req, res) => {
   }
 });
 
-// ---------- EDITAR NOMBRE ----------
 router.put('/:id', soloAdmin, async (req, res) => {
   try {
     const { nombre } = req.body;
@@ -62,7 +51,6 @@ router.put('/:id', soloAdmin, async (req, res) => {
   }
 });
 
-// ---------- TOGGLE ACTIVA ----------
 router.patch('/:id/toggle', soloAdmin, async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT activa FROM areas WHERE id = ?', [req.params.id]);

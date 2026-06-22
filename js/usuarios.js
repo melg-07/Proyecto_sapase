@@ -1,7 +1,3 @@
-/* ================================================
-   SAPASE – Gestion de Usuarios
-   ================================================ */
-
 async function renderUsuarios() {
   const tbody   = document.getElementById('usuarios-table');
   const isAdmin = currentUser && currentUser.rol === 'Administrador';
@@ -47,7 +43,6 @@ function _renderUsuariosTable(list) {
   }
 }
 
-/* ---------- Toggle password ---------- */
 function toggleModalPw(inputId, btnId) {
   const input = document.getElementById(inputId);
   const btn   = document.getElementById(btnId);
@@ -63,7 +58,6 @@ function toggleModalPw(inputId, btnId) {
   }
 }
 
-/* ---------- Abrir modal Editar ---------- */
 function openEditUser(id) {
   if (!currentUser || currentUser.rol !== 'Administrador') {
     showToast('Solo los administradores pueden editar usuarios', 'error');
@@ -75,7 +69,7 @@ function openEditUser(id) {
   document.getElementById('eu-id').value       = u.id;
   document.getElementById('eu-name').value     = u.name;
   document.getElementById('eu-user').value     = u.user;
-  document.getElementById('eu-password').value = '';
+  document.getElementById('eu-password').value = u.password;
   document.getElementById('eu-correo').value   = u.correo   || '';
   document.getElementById('eu-telefono').value = u.telefono || '';
   document.getElementById('eu-cargo').value    = u.cargo    || '';
@@ -94,7 +88,6 @@ function openEditUser(id) {
   document.getElementById('modal-edit-user').classList.add('open');
 }
 
-/* ---------- Guardar edicion usuario ---------- */
 async function saveEditUser() {
   const id      = parseInt(document.getElementById('eu-id').value);
   const newName = document.getElementById('eu-name').value.trim();
@@ -124,7 +117,7 @@ async function saveEditUser() {
   try {
     await apiEditarUsuario(id, payload);
 
-    // Actualizar sesion activa si es el propio usuario
+    // Si el usuario editado es el que esta logueado, actualiza la sesion activa
     if (currentUser && currentUser.id === id) {
       currentUser.name     = payload.nombre;
       currentUser.user     = payload.usuario;
@@ -147,7 +140,6 @@ async function saveEditUser() {
   }
 }
 
-/* ---------- Abrir modal Nuevo usuario ---------- */
 function openAddUser() {
   if (!currentUser || currentUser.rol !== 'Administrador') {
     showToast('Solo los administradores pueden crear usuarios', 'error');
@@ -169,7 +161,6 @@ function openAddUser() {
   document.getElementById('modal-new-user').classList.add('open');
 }
 
-/* ---------- Guardar nuevo usuario ---------- */
 async function saveNewUser() {
   const name = document.getElementById('nu-name').value.trim();
   const user = document.getElementById('nu-user').value.trim();

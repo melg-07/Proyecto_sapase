@@ -1,7 +1,4 @@
-// ============================================================
-//  SAPASE – Conexion a MySQL (pool de conexiones)
-// ============================================================
-const mysql  = require('mysql2/promise');
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
 const pool = mysql.createPool({
@@ -14,18 +11,12 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
-  timezone:           '-06:00',   // Hora Ciudad de Mexico
+  timezone:           '-06:00', // Ciudad de Mexico
 });
 
-// Probar conexion al iniciar
+// Prueba de conexion al arrancar (no detiene el proceso si falla)
 pool.getConnection()
-  .then(conn => {
-    console.log('✔  MySQL conectado correctamente');
-    conn.release();
-  })
-  .catch(err => {
-    console.error('✖  Error al conectar MySQL:', err.message);
-    process.exit(1);
-  });
+  .then(conn => { console.log('✔  MySQL conectado'); conn.release(); })
+  .catch(err  => { console.error('✖  MySQL:', err.message); });
 
 module.exports = pool;

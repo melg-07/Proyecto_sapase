@@ -1,6 +1,3 @@
-// ============================================================
-//  SAPASE – Middleware de autenticacion JWT
-// ============================================================
 const jwt = require('jsonwebtoken');
 
 function authMiddleware(req, res, next) {
@@ -13,7 +10,7 @@ function authMiddleware(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload;   // { id, usuario, rol, nombre }
+    req.user = payload; // { id, usuario, rol, nombre }
     next();
   } catch (err) {
     return res.status(401).json({ ok: false, error: 'Token invalido o expirado' });

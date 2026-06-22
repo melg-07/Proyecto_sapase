@@ -1,15 +1,10 @@
-// ============================================================
-//  SAPASE – Rutas de autenticacion
-//  POST /api/auth/login
-//  POST /api/auth/logout  (requiere token)
-// ============================================================
 const router  = require('express').Router();
 const bcrypt  = require('bcrypt');
 const jwt     = require('jsonwebtoken');
 const db      = require('../db');
 const { authMiddleware } = require('../middleware/auth');
 
-// ---------- LOGIN ----------
+// Login
 router.post('/login', async (req, res) => {
   try {
     const { usuario, password } = req.body;
@@ -44,7 +39,6 @@ router.post('/login', async (req, res) => {
       { expiresIn: process.env.JWT_EXPIRES || '8h' }
     );
 
-    // Guardar sesion
     const expira = new Date(Date.now() + 8 * 60 * 60 * 1000);
     await db.execute(
       'INSERT INTO sesiones (usuario_id, token, ip, expira_en) VALUES (?, ?, ?, ?)',
@@ -73,7 +67,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ---------- LOGOUT ----------
+// Logout
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
     const token = req.headers['authorization'].slice(7);
