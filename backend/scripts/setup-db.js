@@ -1,6 +1,5 @@
 // ============================================================
 //  SAPASE – Script de configuracion inicial de BD
-//  Crea el usuario admin con password hasheado
 //  Uso: node scripts/setup-db.js
 // ============================================================
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });

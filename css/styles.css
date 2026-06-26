@@ -74,7 +74,15 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background:var(--cream); colo
   background:var(--white); border-right:1px solid var(--cream-dark);
   overflow-y:auto; z-index:50; padding:16px 0;
   box-shadow:2px 0 8px rgba(0,0,0,.04);
+  transition:transform .25s ease;
 }
+
+/* Sidebar backdrop (mobile) */
+.sidebar-backdrop {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.45); z-index:149;
+}
+.sidebar-backdrop.open { display:block; }
 .nav-section { padding:8px 16px 4px; font-size:10px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:1.2px; margin-top:8px; }
 .nav-item {
   display:flex; align-items:center; gap:10px; padding:11px 20px;
@@ -214,13 +222,89 @@ tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
 .toast.error   { background:#C62828; }
 .toast.info    { background:#1565C0; }
 
-/* ============ RESPONSIVE ============ */
+/* ============ HAMBURGER BUTTON ============ */
+.btn-hamburger {
+  display:none; flex-direction:column; justify-content:center;
+  align-items:center; gap:5px; background:transparent; border:none;
+  cursor:pointer; padding:8px; border-radius:6px; flex-shrink:0;
+}
+.btn-hamburger span {
+  display:block; width:22px; height:2px;
+  background:var(--white); border-radius:2px; transition:all .25s;
+}
+.btn-hamburger:hover { background:rgba(255,255,255,.12); }
+
+/* ============ RESPONSIVE – TABLET (≤900px) ============ */
+@media (max-width:900px) {
+  .topbar-title h2 { font-size:13px; }
+  .topbar-title p  { display:none; }
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+}
+
+/* ============ RESPONSIVE – MOBILE (≤768px) ============ */
 @media (max-width:768px) {
-  .sidebar { display:none; }
-  .main { margin-left:0; padding:16px; }
-  .stats-row { grid-template-columns:1fr 1fr; }
+  /* Hamburger visible */
+  .btn-hamburger { display:flex; }
+
+  /* Topbar compacto */
+  .topbar { padding:0 12px; gap:10px; }
+  .topbar-title { display:none; }
+  .topbar-uname,
+  .topbar-rol   { display:none; }
+  .topbar-sep   { display:none; }
+  .topbar-logos img:first-child { height:28px !important; }
+  .topbar-logos img:last-child  { height:24px !important; }
+
+  /* Sidebar como drawer lateral */
+  .sidebar {
+    transform:translateX(-100%);
+    z-index:150;
+    display:block !important;
+  }
+  .sidebar.open { transform:translateX(0); }
+
+  /* Main ocupa todo el ancho */
+  .main { margin-left:0; padding:14px; }
+
+  /* Stats 2 columnas */
+  .stats-row { grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-card { padding:14px; }
+  .stat-num  { font-size:22px; }
+
+  /* Formulario 1 columna */
   .form-grid { grid-template-columns:1fr; }
   .form-grid .full { grid-column:1; }
+
+  /* Section header en columna */
+  .section-header { flex-direction:column; align-items:flex-start; gap:8px; }
+  .section-header .btn-row { margin:0; }
+
+  /* Search bar en columna */
+  .search-bar { flex-direction:column; }
+  .search-input { min-width:100%; width:100%; }
+  .search-bar select { width:100%; }
+
+  /* Modales full-width */
+  .modal { width:96vw !important; padding:20px 16px; }
+
+  /* Tabla accionable */
+  .table-wrap { -webkit-overflow-scrolling:touch; }
+
+  /* Card menos padding */
+  .card { padding:16px; }
+
+  /* Botones de accion apilables */
+  .btn-row.stack-mobile { flex-direction:column; }
+  .btn-row.stack-mobile .btn { width:100%; justify-content:center; }
+}
+
+/* ============ RESPONSIVE – PHONE PEQUENO (≤480px) ============ */
+@media (max-width:480px) {
+  .stats-row { grid-template-columns:1fr; }
+  .topbar { padding:0 10px; gap:8px; }
+  .btn-logout { padding:5px 10px; font-size:11px; }
+  .section-title h2 { font-size:18px; }
+  .toast { right:12px; bottom:12px; left:12px; max-width:none; text-align:center; }
 }
 
 /* ============ EXPORT DROPDOWN ============ */

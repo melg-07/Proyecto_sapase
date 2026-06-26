@@ -2,7 +2,7 @@
 node_modules/
 backend/node_modules/
 
-# Variables de entorno (NUNCA subir al repositorio)
+# Variables de entorno 
 .env
 backend/.env
 

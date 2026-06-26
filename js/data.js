@@ -8,6 +8,11 @@ let transferId       = null;
 let selectedArea     = null;
 let filteredDemandas = [];
 
+let _pendingEstadoId   = null;
+let _pendingEstadoVal  = null;
+let _pendingEstadoSel  = null;
+let _pendingEstadoFile = null;
+
 // Normalizadores
 
 function normalizeArea(a) {
@@ -42,6 +47,20 @@ function normalizeHistorial(h) {
   }));
 }
 
+function normalizeHistorialEstados(h) {
+  if (!h) return [];
+  return h.map(item => ({
+    fecha:         item.creado_en
+      ? new Date(item.creado_en).toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' })
+      : '',
+    estadoAnterior: item.estado_anterior || '',
+    estadoNuevo:   item.estado_nuevo    || '',
+    archivoNombre: item.archivo_nombre  || '',
+    archivoRuta:   item.archivo_ruta    || '',
+    cambiadoPor:   item.cambiado_por    || '',
+  }));
+}
+
 function normalizeDemanda(d) {
   return {
     id:            d.id,
@@ -61,7 +80,8 @@ function normalizeDemanda(d) {
     observaciones: d.observaciones || '',
     concepto:      d.concepto      || '',
     estado:        d.estado        || 'Pendiente',
-    historial:     normalizeHistorial(d.historial),
+    historial:        normalizeHistorial(d.historial),
+    historialEstados: normalizeHistorialEstados(d.historial_estados),
     creadoPor:     d.creado_por    || d.creadoPor || '',
     fechaCreacion: d.creado_en     || d.fechaCreacion || '',
   };

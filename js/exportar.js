@@ -23,7 +23,7 @@ function exportToExcel(list, nombre) {
     'Colonia':          d.colonia       || '',
     'Tel. Principal':   d.tel1          || '',
     'Tel. Secundario':  d.tel2          || '',
-    'Descripcion':      d.demanda       || '',
+    'Demanda':          d.demanda       || '',
     'Observaciones':    d.observaciones || '',
     'Concepto':         d.concepto      || '',
     'Estado':           d.estado,
@@ -74,13 +74,6 @@ function exportSinglePDF(id) {
   /* rowTop = borde superior de la fila actual */
   let rowTop = 28;
 
-  /*
-   * field(label, value, x, x2)
-   *   x  — borde izquierdo del campo (donde empieza la etiqueta)
-   *   x2 — borde derecho del recuadro (nunca debe superar PW - MR)
-   *
-   *   El texto se centra verticalmente dentro del recuadro de altura RH.
-   */
   function field(label, value, x, x2) {
     /* baseline centrada: top + RH/2 + mitad aprox. de cap-height (7.5pt ≈ 1.3mm) */
     const textY = rowTop + RH / 2 + 1.3;
@@ -100,7 +93,7 @@ function exportSinglePDF(id) {
     doc.setLineWidth(0.2);
     doc.rect(boxX, rowTop, boxW, RH);
 
-    /* Valor en normal, con padding interior y texto centrado verticalmente */
+    /* Valor en normal, con padding interior y texto centrado */
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(FS);
     doc.setTextColor(40, 40, 40);
@@ -109,12 +102,7 @@ function exportSinglePDF(id) {
 
   function nextRow() { rowTop += RH + VGAP; }
 
-  /* ================================================================
-     FILA 1 — Fecha | Folio | No. Oficio
-     Anchos totales (label + box): 65 | 52 | resto
-     Verificacion: 65 + HGAP + 52 + HGAP + resto = CW
-     resto = 195.9 - 65 - 5 - 52 - 5 = 68.9 mm
-     ================================================================ */
+  
   const f1_fecha  = ML + 65;            // x2 de Fecha    = 75
   const f1_folio  = f1_fecha  + HGAP + 52; // x2 de Folio    = 132
   const f1_oficio = PW - MR;            // x2 de No.Oficio = 205.9
@@ -155,35 +143,32 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 6 — Asunto (ancho completo)
+     FILA 6 — Demanda (mismo tamaño que Nombre)
      ================================================================ */
-  field('Asunto', d.asunto || '', ML, PW - MR);
+  field('Demanda', d.demanda || '', ML, ML + 130);
   nextRow();
 
   /* ================================================================
-     BLOQUE DESCRIPCION — caja alta, etiqueta a la izquierda
-     El recuadro SIEMPRE termina en PW - MR (nunca se sale)
+     FILA 7 — Asunto (ancho completo, altura doble para texto largo)
      ================================================================ */
-  const descTextY  = rowTop + RH / 2 + 1.3;
+  const asuntoH     = 14;
+  const asuntoTextY = rowTop + asuntoH / 2 + 1.3;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(FS);
   doc.setTextColor(40, 40, 40);
-  doc.text('Descripcion:', ML, descTextY);
-
-  const descLabelW = doc.getTextWidth('Descripcion:') + 1.5;
-  const descBoxX   = ML + descLabelW;
-  const descBoxW   = PW - MR - descBoxX; // espacio restante hasta margen derecho
-  const descBoxH   = 42;
-
+  doc.text('Asunto:', ML, asuntoTextY);
+  const asuntoLabelW = doc.getTextWidth('Asunto:') + 1.5;
+  const asuntoBoxX   = ML + asuntoLabelW;
+  const asuntoBoxW   = PW - MR - asuntoBoxX;
   doc.setDrawColor(100, 100, 100);
   doc.setLineWidth(0.2);
-  doc.rect(descBoxX, rowTop, descBoxW, descBoxH);
-
+  doc.rect(asuntoBoxX, rowTop, asuntoBoxW, asuntoH);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(FS);
   doc.setTextColor(40, 40, 40);
-  const descLines = doc.splitTextToSize(d.demanda || '', descBoxW - 4);
-  doc.text(descLines, descBoxX + 2, descTextY, { maxWidth: descBoxW - 4 });
+  const asuntoLines = doc.splitTextToSize(d.asunto || '', asuntoBoxW - 4);
+  doc.text(asuntoLines, asuntoBoxX + 2, rowTop + 4, { maxWidth: asuntoBoxW - 4 });
+  rowTop += asuntoH + VGAP;
 
   window.open(doc.output('bloburl'), '_blank');
   showToast('PDF listo para imprimir', 'success');

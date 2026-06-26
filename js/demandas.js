@@ -2,6 +2,8 @@
    SAPASE – Gestion de Demandas (CRUD)
    ================================================ */
 
+let _editFromArea = false;
+
 /* ---------- Formulario nuevo ---------- */
 function initForm() {
   document.getElementById('f-folio').value = generarFolio();
@@ -107,14 +109,7 @@ function renderArchivosTable(list) {
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
-      <td>
-        <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
-                onchange="changeEstado('${d.id}', this.value)">
-          <option ${d.estado==='Pendiente'  ?'selected':''}>Pendiente</option>
-          <option ${d.estado==='En proceso' ?'selected':''}>En proceso</option>
-          <option ${d.estado==='Atendida'   ?'selected':''}>Atendida</option>
-        </select>
-      </td>
+      <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
@@ -125,17 +120,6 @@ function renderArchivosTable(list) {
       </td>
     </tr>
   `).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
-}
-
-async function changeEstado(id, estado) {
-  try {
-    await apiEditarDemanda(id, { estado });
-    const d = demandas.find(x => x.id === id);
-    if (d) d.estado = estado;
-    updateStats();
-  } catch (err) {
-    showToast(err.message || 'Error al cambiar estado', 'error');
-  }
 }
 
 /* ---------- Ver detalle ---------- */
@@ -164,16 +148,17 @@ function _renderViewModal(d) {
       ${field2('Referencia',        d.ref || '—')}
       ${field2('Area',              d.area)}
       ${field2col('Remitente',      d.remitente)}
-      ${field2col('Asunto',         d.asunto)}
+      ${field2col('Descripcion',    d.asunto)}
       ${field2('Domicilio',         d.domicilio || '—')}
       ${field2('Colonia',           d.colonia   || '—')}
       ${field2('Tel. Principal',    d.tel1 || '—')}
       ${field2('Tel. Secundario',   d.tel2 || '—')}
-      ${field2col('Descripcion',    `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
+      ${field2col('Demanda',         `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
       ${d.observaciones ? field2col('Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
+      ${d.historialEstados && d.historialEstados.length ? historialEstadosHTML(d.historialEstados) : ''}
     </div>
   `;
   document.getElementById('modal-ver').classList.add('open');
@@ -193,6 +178,32 @@ function field2col(label, val) {
   </div>`;
 }
 
+function historialEstadosHTML(historial) {
+  const items = historial.map(h => {
+    const archivoLink = h.archivoRuta
+      ? `<a href="/uploads/${h.archivoRuta}" target="_blank"
+            style="color:var(--guinda); font-size:11px; display:inline-flex; align-items:center; gap:3px; margin-top:4px;">
+           &#128206; ${h.archivoNombre}
+         </a>`
+      : '';
+    return `
+      <div style="background:var(--cream); padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <strong>${h.fecha}</strong>
+          <span class="badge ${badgeClass(h.estadoAnterior)}" style="font-size:10px;">${h.estadoAnterior || '—'}</span>
+          <span style="color:var(--gray);">→</span>
+          <span class="badge ${badgeClass(h.estadoNuevo)}" style="font-size:10px;">${h.estadoNuevo}</span>
+          ${h.cambiadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${h.cambiadoPor}</span>` : ''}
+        </div>
+        ${archivoLink ? `<div>${archivoLink}</div>` : ''}
+      </div>`;
+  }).join('');
+  return `<div style="grid-column:1/-1;">
+    <div style="font-size:10px; font-weight:700; color:var(--guinda); text-transform:uppercase; margin-bottom:6px;">Historial de Cambios de Estado</div>
+    ${items}
+  </div>`;
+}
+
 function historialHTML(historial) {
   const items = historial.map(h =>
     `<div style="background:var(--cream); padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
@@ -207,10 +218,15 @@ function historialHTML(historial) {
 }
 
 /* ---------- Editar demanda ---------- */
-function openEditDemanda(id) {
+function openEditDemanda(id, fromArea = false) {
   const d = demandas.find(x => x.id === id);
   if (!d) return;
-  currentViewId = id;
+  currentViewId  = id;
+  _editFromArea  = fromArea;
+
+  // El campo estado solo es editable desde la seccion de Areas
+  const estadoGroup = document.getElementById('ed-estado-group');
+  if (estadoGroup) estadoGroup.style.display = fromArea ? '' : 'none';
 
   document.getElementById('ed-folio').value         = d.folio;
   document.getElementById('ed-fecha').value         = d.fecha;
@@ -254,8 +270,8 @@ async function saveEditDemanda() {
     demanda:       document.getElementById('ed-demanda').value.trim(),
     observaciones: document.getElementById('ed-observaciones').value.trim(),
     concepto:      document.getElementById('ed-concepto').value.trim(),
-    estado:        document.getElementById('ed-estado').value,
     fecha_demanda: document.getElementById('ed-fecha-demanda').value,
+    ...(_editFromArea ? { estado: document.getElementById('ed-estado').value } : {}),
   };
 
   try {

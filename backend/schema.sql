@@ -162,6 +162,22 @@ INSERT IGNORE INTO areas (nombre) VALUES
   ('DEPARTAMENTO DE ELECTROMECANICO'),
   ('DIRECCION DE CONSTRUCCION Y OPERACION HIDRAULICA');
 
+-- ------------------------------------------------------------
+-- HISTORIAL DE CAMBIOS DE ESTADO
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS historial_estados (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  demanda_id      VARCHAR(20)  NOT NULL,
+  estado_anterior VARCHAR(50),
+  estado_nuevo    ENUM('Pendiente','En proceso','Atendida') NOT NULL,
+  archivo_nombre  VARCHAR(255),
+  archivo_ruta    VARCHAR(500),
+  cambiado_por    INT UNSIGNED,
+  creado_en       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (demanda_id)   REFERENCES demandas(id)  ON DELETE CASCADE,
+  FOREIGN KEY (cambiado_por) REFERENCES usuarios(id)  ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- Migracion: agrega columna si ya existe la tabla sin ella
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_texto VARCHAR(255) AFTER password_hash;
 

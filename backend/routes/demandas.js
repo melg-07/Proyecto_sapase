@@ -1,6 +1,31 @@
 const router = require('express').Router();
 const db     = require('../db');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
+const multer = require('multer');
+const path   = require('path');
+const fs     = require('fs');
+
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename:    (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/\.(jpg|jpeg|png|gif|webp|pdf|doc|docx|xls|xlsx)$/i.test(path.extname(file.originalname))) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido'));
+    }
+  },
+});
 
 router.use(authMiddleware);
 
@@ -63,7 +88,17 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ ok: true, data: { ...rows[0], historial: hist } });
+    const [histEst] = await db.execute(
+      `SELECT he.creado_en, he.estado_anterior, he.estado_nuevo,
+              he.archivo_nombre, he.archivo_ruta, u.nombre AS cambiado_por
+       FROM historial_estados he
+       LEFT JOIN usuarios u ON he.cambiado_por = u.id
+       WHERE he.demanda_id = ?
+       ORDER BY he.creado_en ASC`,
+      [req.params.id]
+    );
+
+    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -117,7 +152,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Editar (solo actualiza los campos presentes en el body)
+// Editar 
 router.put('/:id', async (req, res) => {
   try {
     const body   = req.body;
@@ -177,6 +212,47 @@ router.delete('/:id', soloAdmin, async (req, res) => {
     if (result.affectedRows === 0) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     res.json({ ok: true });
   } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Cambiar estado con archivo obligatorio (En proceso / Atendida)
+router.post('/:id/cambiar-estado', (req, res, next) => {
+  upload.single('archivo')(req, res, (err) => {
+    if (err) return res.status(400).json({ ok: false, error: err.message });
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const { estado } = req.body;
+
+    if (!['En proceso', 'Atendida'].includes(estado)) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(400).json({ ok: false, error: 'Estado no válido para este endpoint' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'Se requiere un archivo adjunto' });
+    }
+
+    const [dem] = await db.execute('SELECT estado FROM demandas WHERE id = ?', [req.params.id]);
+    if (!dem.length) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    await db.execute('UPDATE demandas SET estado = ? WHERE id = ?', [estado, req.params.id]);
+
+    await db.execute(
+      `INSERT INTO historial_estados
+         (demanda_id, estado_anterior, estado_nuevo, archivo_nombre, archivo_ruta, cambiado_por)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [req.params.id, dem[0].estado, estado, req.file.originalname, req.file.filename, req.user.id]
+    );
+
+    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
+    res.json({ ok: true, data: rows[0] });
+  } catch (err) {
+    if (req.file) { try { fs.unlinkSync(req.file.path); } catch (_) {} }
     res.status(500).json({ ok: false, error: err.message });
   }
 });

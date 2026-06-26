@@ -107,6 +107,7 @@ function showPage(name) {
   if (pg) pg.classList.add('active');
 
   renderSidebar(name);
+  if (window.innerWidth <= 768) closeSidebar();
 
   if (name === 'formulario') initForm();
 

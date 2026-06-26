@@ -17,7 +17,12 @@ async function apiFetch(endpoint, options = {}) {
     headers: { ...headers, ...(options.headers || {}) },
   });
 
-  const data = await res.json();
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    throw new Error(`Error del servidor (${res.status})`);
+  }
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -133,4 +138,27 @@ async function apiTransferirDemanda(id, area_destino_id, comentario) {
     method: 'POST',
     body: JSON.stringify({ area_destino_id, comentario }),
   });
+}
+
+async function apiCambiarEstado(id, estado, archivo) {
+  const fd = new FormData();
+  fd.append('estado', estado);
+  fd.append('archivo', archivo);
+
+  const res = await fetch(API_BASE + '/demandas/' + id + '/cambiar-estado', {
+    method:  'POST',
+    headers: { 'Authorization': 'Bearer ' + getToken() },
+    body:    fd,
+  });
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    throw new Error(`Error del servidor (${res.status})`);
+  }
+  if (!res.ok) {
+    if (res.status === 401) { clearToken(); doLogout(); }
+    throw new Error(data.error || 'Error en la solicitud');
+  }
+  return data.data;
 }
