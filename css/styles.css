@@ -215,9 +215,9 @@ tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
   position:fixed; bottom:24px; right:24px; background:var(--guinda); color:var(--white);
   padding:13px 20px; border-radius:8px; font-size:13px; font-weight:600;
   z-index:1000; opacity:0; transform:translateY(10px); transition:all .3s;
-  box-shadow:var(--shadow-md); max-width:340px;
+  box-shadow:var(--shadow-md); max-width:340px; pointer-events:none;
 }
-.toast.show { opacity:1; transform:translateY(0); }
+.toast.show { opacity:1; transform:translateY(0); pointer-events:auto; }
 .toast.success { background:#2E7D32; }
 .toast.error   { background:#C62828; }
 .toast.info    { background:#1565C0; }

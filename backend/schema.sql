@@ -178,6 +178,19 @@ CREATE TABLE IF NOT EXISTS historial_estados (
   FOREIGN KEY (cambiado_por) REFERENCES usuarios(id)  ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- ------------------------------------------------------------
+-- HISTORIAL DE EDICIONES
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS historial_ediciones (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  demanda_id      VARCHAR(20)  NOT NULL,
+  editado_por     INT UNSIGNED,
+  campos_editados TEXT,
+  editado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (demanda_id)  REFERENCES demandas(id)  ON DELETE CASCADE,
+  FOREIGN KEY (editado_por) REFERENCES usuarios(id)  ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- Migracion: agrega columna si ya existe la tabla sin ella
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_texto VARCHAR(255) AFTER password_hash;
 

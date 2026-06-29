@@ -98,7 +98,16 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst } });
+    const [histEdit] = await db.execute(
+      `SELECT he.editado_en, u.nombre AS editado_por, he.campos_editados
+       FROM historial_ediciones he
+       LEFT JOIN usuarios u ON he.editado_por = u.id
+       WHERE he.demanda_id = ?
+       ORDER BY he.editado_en ASC`,
+      [req.params.id]
+    );
+
+    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst, historial_ediciones: histEdit } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -152,10 +161,16 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Editar 
+// Editar
 router.put('/:id', async (req, res) => {
   try {
     const body   = req.body;
+
+    // Leer valores actuales para detectar cambios
+    const [current] = await db.execute('SELECT * FROM demandas WHERE id = ?', [req.params.id]);
+    if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    const before = current[0];
+
     const fields = [];
     const vals   = [];
 
@@ -199,6 +214,53 @@ router.put('/:id', async (req, res) => {
 
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    // Registrar qué campos cambiaron
+    const labelMap = {
+      folio_ref:      'Folio Referencia',
+      remitente:      'Remitente',
+      asunto:         'Asunto',
+      domicilio:      'Domicilio',
+      colonia:        'Colonia',
+      tel_principal:  'Tel. Principal',
+      tel_secundario: 'Tel. Secundario',
+      descripcion:    'Demanda',
+      observaciones:  'Observaciones',
+      concepto:       'Concepto',
+      estado:         'Estado',
+      area_id:        'Area',
+    };
+    const bodyToCol = {
+      ref: 'folio_ref', remitente: 'remitente', asunto: 'asunto',
+      domicilio: 'domicilio', colonia: 'colonia', tel1: 'tel_principal',
+      tel2: 'tel_secundario', demanda: 'descripcion', observaciones: 'observaciones',
+      concepto: 'concepto', estado: 'estado', area_id: 'area_id',
+    };
+
+    const changes = {};
+    for (const [bodyKey, col] of Object.entries(bodyToCol)) {
+      if (!(bodyKey in body)) continue;
+      let newVal;
+      if (bodyKey === 'area_id') {
+        newVal = body[bodyKey] != null && body[bodyKey] !== '' ? Number(body[bodyKey]) : null;
+      } else if (bodyKey === 'fecha_demanda') {
+        newVal = parseFecha(s(body[bodyKey]));
+      } else {
+        newVal = s(body[bodyKey]);
+      }
+      const oldVal = before[col] ?? null;
+      if (String(oldVal ?? '') !== String(newVal ?? '')) {
+        changes[labelMap[col] || col] = { antes: oldVal ?? '', despues: newVal ?? '' };
+      }
+    }
+
+    if (Object.keys(changes).length > 0) {
+      await db.execute(
+        `INSERT INTO historial_ediciones (demanda_id, editado_por, campos_editados) VALUES (?, ?, ?)`,
+        [req.params.id, req.user.id, JSON.stringify(changes)]
+      );
+    }
+
     res.json({ ok: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

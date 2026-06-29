@@ -73,7 +73,7 @@ function renderSidebar(activePage) {
   if (isAdmin) {
     html += navSection('Principal');
     html += navItem('dashboard',  'Dashboard',    activePage);
-    html += navItem('formulario', 'Nueva Demanda', activePage);
+    html += navItem('formulario', 'Nueva Peticion', activePage);
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
     html += navItem('areas',    'Areas',    activePage);
@@ -81,7 +81,7 @@ function renderSidebar(activePage) {
     html += navItem('usuarios', 'Usuarios', activePage);
   } else {
     html += navSection('Gestion');
-    html += navItem('formulario', 'Nueva Demanda', activePage);
+    html += navItem('formulario', 'Nueva Peticion', activePage);
     html += navItem('archivos',   'Archivos',      activePage);
   }
 

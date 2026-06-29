@@ -61,6 +61,19 @@ function normalizeHistorialEstados(h) {
   }));
 }
 
+function normalizeHistorialEdiciones(h) {
+  if (!h) return [];
+  return h.map(item => ({
+    fecha: item.editado_en
+      ? new Date(item.editado_en).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : '',
+    editadoPor: item.editado_por || '',
+    campos: (() => {
+      try { return JSON.parse(item.campos_editados || '{}'); } catch (_) { return {}; }
+    })(),
+  }));
+}
+
 function normalizeDemanda(d) {
   return {
     id:            d.id,
@@ -80,8 +93,9 @@ function normalizeDemanda(d) {
     observaciones: d.observaciones || '',
     concepto:      d.concepto      || '',
     estado:        d.estado        || 'Pendiente',
-    historial:        normalizeHistorial(d.historial),
-    historialEstados: normalizeHistorialEstados(d.historial_estados),
+    historial:         normalizeHistorial(d.historial),
+    historialEstados:  normalizeHistorialEstados(d.historial_estados),
+    historialEdiciones: normalizeHistorialEdiciones(d.historial_ediciones),
     creadoPor:     d.creado_por    || d.creadoPor || '',
     fechaCreacion: d.creado_en     || d.fechaCreacion || '',
   };

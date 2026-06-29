@@ -37,7 +37,7 @@ async function saveDemanda() {
   const remitente= document.getElementById('f-remitente').value.trim();
   const asunto   = document.getElementById('f-asunto').value.trim();
 
-  if (!remitente || !area_id || !asunto) {
+  if (!remitente || !area_id || !asunto ) {
     showToast('Complete los campos obligatorios: Remitente, Area y Asunto', 'error');
     return;
   }
@@ -159,6 +159,7 @@ function _renderViewModal(d) {
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
       ${d.historialEstados && d.historialEstados.length ? historialEstadosHTML(d.historialEstados) : ''}
+      ${d.historialEdiciones && d.historialEdiciones.length ? historialEdicionesHTML(d.historialEdiciones) : ''}
     </div>
   `;
   document.getElementById('modal-ver').classList.add('open');
@@ -200,6 +201,31 @@ function historialEstadosHTML(historial) {
   }).join('');
   return `<div style="grid-column:1/-1;">
     <div style="font-size:10px; font-weight:700; color:var(--guinda); text-transform:uppercase; margin-bottom:6px;">Historial de Cambios de Estado</div>
+    ${items}
+  </div>`;
+}
+
+function historialEdicionesHTML(historial) {
+  const items = historial.map(h => {
+    const cambios = Object.entries(h.campos).map(([campo, vals]) =>
+      `<div style="margin-top:4px; padding-left:8px; border-left:2px solid var(--guinda); font-size:11px;">
+        <span style="font-weight:600;">${campo}:</span>
+        <span style="color:#999; text-decoration:line-through; margin:0 5px;">${vals.antes || '—'}</span>
+        <span style="color:var(--gray);">→</span>
+        <span style="margin-left:5px;">${vals.despues || '—'}</span>
+      </div>`
+    ).join('');
+    return `
+      <div style="background:var(--cream); padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <strong>${h.fecha}</strong>
+          ${h.editadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${h.editadoPor}</span>` : ''}
+        </div>
+        ${cambios}
+      </div>`;
+  }).join('');
+  return `<div style="grid-column:1/-1;">
+    <div style="font-size:10px; font-weight:700; color:var(--guinda); text-transform:uppercase; margin-bottom:6px;">Historial de Ediciones</div>
     ${items}
   </div>`;
 }
