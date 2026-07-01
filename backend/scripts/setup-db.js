@@ -10,7 +10,7 @@ async function setup() {
   try {
     console.log('Configurando base de datos...\n');
 
-    // 1. Generar hash para password "sapase2026"
+    // 1. Generar hash para password 
     const password = 'sapase2026';
     const hash     = await bcrypt.hash(password, 10);
     console.log('Hash generado para "sapase2026":', hash);

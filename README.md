@@ -1,6 +1,6 @@
 # SAPASE
 
-Sistema de gestion de demandas ciudadanas para SAPASE Ecatepec.
+Sistema de gestion de peticiones ciudadanas para SAPASE Ecatepec.
 
 ## Tecnologias
 
@@ -51,11 +51,3 @@ npm run dev
 ```
 
 La aplicacion queda disponible en `http://localhost:3001`.
-
-## Despliegue en Render
-
-1. Crea un servicio MySQL externo (Railway, PlanetScale, Aiven).
-2. Importa `backend/schema.sql` en esa base de datos.
-3. Conecta el repositorio en Render como Web Service.
-4. Configura las variables de entorno en el dashboard de Render.
-5. Build: `npm install` — Start: `npm start`.

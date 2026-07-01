@@ -97,7 +97,7 @@ function navItem(page, label, active) {
   return `<div class="nav-item${cls}" onclick="showPage('${page}')"><span class="nav-dot"></span>${label}</div>`;
 }
 
-// Navegacion
+// Navegación
 function showPage(name) {
   const isAdmin = currentUser && currentUser.rol === 'Administrador';
   if (!isAdmin && !['formulario', 'archivos'].includes(name)) name = 'formulario';

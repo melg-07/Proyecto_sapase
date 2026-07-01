@@ -96,7 +96,7 @@ async function apiMiPerfil() {
   return res.data;
 }
 
-// Demandas
+// Peticiones
 
 async function apiGetDemandas(filtros = {}) {
   const params = new URLSearchParams();

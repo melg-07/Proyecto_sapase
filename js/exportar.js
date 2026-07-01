@@ -113,7 +113,7 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 2 — Fecha de la Demanda (solo si existe, ~48% del ancho)
+     FILA 2 — Fecha de la Demanda 
      ================================================================ */
   if (d.fechaDemanda) {
     field('Fecha de la Demanda', d.fechaDemanda, ML, ML + 95);
@@ -121,14 +121,13 @@ function exportSinglePDF(id) {
   }
 
   /* ================================================================
-     FILA 3 — Nombre (~66% del ancho para no ocupar toda la hoja)
+     FILA 3 — Nombre 
      ================================================================ */
   field('Nombre', d.remitente, ML, ML + 130);
   nextRow();
 
   /* ================================================================
-     FILA 4 — Domicilio (60%) | Colonia (resto)
-     Cada campo con su propio recuadro, separados por HGAP
+     FILA 4 — Domicilio 
      ================================================================ */
   const f4_dom = ML + 117;             // x2 de Domicilio = 127
   field('Domicilio', d.domicilio || '', ML,             f4_dom);
@@ -136,22 +135,22 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 5 — Telefono (~46% del ancho)
+     FILA 5 — Telefono 
      ================================================================ */
   const telStr = [d.tel1, d.tel2].filter(Boolean).join('  /  ');
   field('Telefono', telStr, ML, ML + 90);
   nextRow();
 
   /* ================================================================
-     FILA 6 — Demanda (mismo tamaño que Nombre)
+     FILA 6 — Demanda 
      ================================================================ */
   field('Demanda', d.demanda || '', ML, ML + 130);
   nextRow();
 
   /* ================================================================
-     FILA 7 — Asunto (ancho completo, altura doble para texto largo)
+     FILA 7 — Asunto 
      ================================================================ */
-  const asuntoH     = 14;
+  const asuntoH     = 26;
   const asuntoTextY = rowTop + asuntoH / 2 + 1.3;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(FS);

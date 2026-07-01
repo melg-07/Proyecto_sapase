@@ -1,5 +1,5 @@
 /* ================================================
-   SAPASE – Gestion de Demandas (CRUD)
+   SAPASE – Gestion de Peticiones (CRUD)
    ================================================ */
 
 let _editFromArea = false;
@@ -30,7 +30,7 @@ function formatDateInput(val) {
   return `${d}/${m}/${y}`;
 }
 
-/* ---------- Guardar nueva demanda ---------- */
+/* ---------- Guardar nueva petición ---------- */
 async function saveDemanda() {
   const area     = document.getElementById('f-area').value;
   const area_id  = getAreaId(area);
@@ -243,7 +243,7 @@ function historialHTML(historial) {
   </div>`;
 }
 
-/* ---------- Editar demanda ---------- */
+/* ---------- Editar petición ---------- */
 function openEditDemanda(id, fromArea = false) {
   const d = demandas.find(x => x.id === id);
   if (!d) return;
@@ -316,7 +316,7 @@ async function saveEditDemanda() {
   }
 }
 
-/* ---------- Eliminar demanda ---------- */
+/* ---------- Eliminar petición ---------- */
 async function deleteDemanda(id) {
   if (!confirm('Eliminar esta demanda? Esta accion no se puede deshacer.')) return;
   try {
