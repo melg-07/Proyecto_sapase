@@ -74,9 +74,10 @@ function exportSinglePDF(id) {
   /* rowTop = borde superior de la fila actual */
   let rowTop = 28;
 
-  function field(label, value, x, x2) {
-    /* baseline centrada: top + RH/2 + mitad aprox. de cap-height (7.5pt ≈ 1.3mm) */
-    const textY = rowTop + RH / 2 + 1.3;
+  function field(label, value, x, x2, h) {
+    h = (h != null) ? h : RH;
+    /* baseline: centrada para filas normales, alineada arriba para filas altas */
+    const textY = rowTop + (h === RH ? h / 2 + 1.3 : 3.5);
 
     /* Etiqueta en negrita */
     doc.setFont('helvetica', 'bold');
@@ -91,13 +92,14 @@ function exportSinglePDF(id) {
     const boxW = x2 - boxX;
     doc.setDrawColor(100, 100, 100);
     doc.setLineWidth(0.2);
-    doc.rect(boxX, rowTop, boxW, RH);
+    doc.rect(boxX, rowTop, boxW, h);
 
-    /* Valor en normal, con padding interior y texto centrado */
+    /* Valor en normal, con padding interior y soporte de wrapping */
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(FS);
     doc.setTextColor(40, 40, 40);
-    doc.text(String(value || ''), boxX + 2, textY, { maxWidth: boxW - 4 });
+    const lines = doc.splitTextToSize(String(value || ''), boxW - 4);
+    doc.text(lines, boxX + 2, textY, { maxWidth: boxW - 4 });
   }
 
   function nextRow() { rowTop += RH + VGAP; }
@@ -127,12 +129,13 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 4 — Domicilio 
+     FILA 4 — Domicilio + Colonia (alto doble para que quepan 2 renglones)
      ================================================================ */
-  const f4_dom = ML + 117;             // x2 de Domicilio = 127
-  field('Domicilio', d.domicilio || '', ML,             f4_dom);
-  field('Colonia',   d.colonia   || '', f4_dom + HGAP,  PW - MR);
-  nextRow();
+  const f4_dom = ML + 117;
+  const RH2 = RH * 2;
+  field('Domicilio', d.domicilio || '', ML,           f4_dom, RH2);
+  field('Colonia',   d.colonia   || '', f4_dom + HGAP, PW - MR, RH2);
+  rowTop += RH2 + VGAP;
 
   /* ================================================================
      FILA 5 — Telefono 
@@ -148,25 +151,31 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 7 — Asunto 
+     FILA 7 — Asunto (texto centrado verticalmente si es corto)
      ================================================================ */
-  const asuntoH     = 26;
-  const asuntoTextY = rowTop + asuntoH / 2 + 1.3;
+  const asuntoH = 26;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(FS);
-  doc.setTextColor(40, 40, 40);
-  doc.text('Asunto:', ML, asuntoTextY);
   const asuntoLabelW = doc.getTextWidth('Asunto:') + 1.5;
   const asuntoBoxX   = ML + asuntoLabelW;
   const asuntoBoxW   = PW - MR - asuntoBoxX;
+
+  const asuntoLines  = doc.splitTextToSize(d.asunto || '', asuntoBoxW - 4);
+  const lineH        = FS * 0.352 * 1.15;                          // ~3 mm por renglón
+  const totalTextH   = (asuntoLines.length - 1) * lineH;
+  const asuntoTextY  = rowTop + (asuntoH + 1.3) / 2 - totalTextH / 2;
+
+  doc.setTextColor(40, 40, 40);
+  doc.text('Asunto:', ML, asuntoTextY);
+
   doc.setDrawColor(100, 100, 100);
   doc.setLineWidth(0.2);
   doc.rect(asuntoBoxX, rowTop, asuntoBoxW, asuntoH);
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(FS);
   doc.setTextColor(40, 40, 40);
-  const asuntoLines = doc.splitTextToSize(d.asunto || '', asuntoBoxW - 4);
-  doc.text(asuntoLines, asuntoBoxX + 2, rowTop + 4, { maxWidth: asuntoBoxW - 4 });
+  doc.text(asuntoLines, asuntoBoxX + 2, asuntoTextY, { maxWidth: asuntoBoxW - 4 });
   rowTop += asuntoH + VGAP;
 
   window.open(doc.output('bloburl'), '_blank');
