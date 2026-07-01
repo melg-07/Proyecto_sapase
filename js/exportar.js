@@ -132,7 +132,7 @@ function exportSinglePDF(id) {
      FILA 4 — Domicilio + Colonia (alto doble para que quepan 2 renglones)
      ================================================================ */
   const f4_dom = ML + 117;
-  const RH2 = RH * 2;
+  const RH2 = 14;
   field('Domicilio', d.domicilio || '', ML,           f4_dom, RH2);
   field('Colonia',   d.colonia   || '', f4_dom + HGAP, PW - MR, RH2);
   rowTop += RH2 + VGAP;
