@@ -63,6 +63,7 @@ function _updateAreaInfoPanel(areaNombre) {
 
   document.getElementById('area-info-num').textContent  = `AREA ${String(idx + 1).padStart(2, '0')}`;
   document.getElementById('area-info-name').textContent = a.nombre;
+  document.getElementById('area-info-jefe').textContent = a.jefe_area ? `Jefe de Area: ${a.jefe_area}` : 'Jefe de Area: —';
   document.getElementById('area-info-badge').innerHTML  = a.activa
     ? '<span class="badge badge-green">Activa</span>'
     : '<span class="badge badge-red">Inactiva</span>';
@@ -89,8 +90,42 @@ function _updateAreaInfoPanel(areaNombre) {
       </div>
     </div>`;
   document.getElementById('area-info-toggle').innerHTML  = isAdmin
-    ? `<button class="btn btn-outline btn-sm area-toggle-btn" onclick="toggleAreaEstado(${a.id})">${a.activa ? 'Desactivar' : 'Activar'}</button>`
+    ? `<button class="btn btn-outline btn-sm" onclick="openEditArea(${a.id})">Editar</button>
+       <button class="btn btn-outline btn-sm area-toggle-btn" onclick="toggleAreaEstado(${a.id})">${a.activa ? 'Desactivar' : 'Activar'}</button>`
     : '';
+}
+
+function openEditArea(id) {
+  const a = _areasCache.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('ea-id').value     = a.id;
+  document.getElementById('ea-nombre').value = a.nombre;
+  document.getElementById('ea-jefe').value   = a.jefe_area || '';
+  document.getElementById('modal-editar-area').classList.add('open');
+}
+
+async function saveEditArea() {
+  const id     = document.getElementById('ea-id').value;
+  const nombre = document.getElementById('ea-nombre').value.trim().toUpperCase();
+  const jefe   = document.getElementById('ea-jefe').value.trim();
+  if (!nombre) { showToast('Escribe el nombre del area', 'error'); return; }
+  if (_areasCache.find(a => a.nombre === nombre && String(a.id) !== String(id))) {
+    showToast('Ya existe un area con ese nombre', 'error');
+    return;
+  }
+
+  try {
+    await apiEditarArea(id, nombre, jefe);
+    const a = _areasCache.find(x => String(x.id) === String(id));
+    if (a) { a.nombre = nombre; a.jefe_area = jefe; }
+    renderAreasGrid();
+    populateAllSelects();
+    if (selectedArea && a) { selectedArea = nombre; showAreaDetail(nombre); }
+    closeModal('modal-editar-area');
+    showToast('Area actualizada: ' + nombre, 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al actualizar area', 'error');
+  }
 }
 
 function onAreaDropdownChange(nombre) {

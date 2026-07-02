@@ -261,10 +261,11 @@
           <div>
             <div class="area-num" id="area-info-num">AREA 01</div>
             <div class="area-name" id="area-info-name" style="font-size:15px; margin-top:2px;">—</div>
+            <div id="area-info-jefe" style="font-size:12px; color:var(--gray); margin-top:2px;"></div>
           </div>
           <div id="area-info-badge"></div>
           <div id="area-info-count" style="font-size:13px; color:var(--gray);"></div>
-          <div id="area-info-toggle" style="margin-left:auto;"></div>
+          <div id="area-info-toggle" style="margin-left:auto; display:flex; gap:8px;"></div>
         </div>
       </div>
       <div id="area-detail" style="display:none; margin-top:0;">
@@ -591,6 +592,29 @@
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-guinda" onclick="saveNuevaArea()">Agregar Area</button>
       <button class="btn btn-outline" onclick="closeModal('modal-nueva-area')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Editar Area -->
+<div class="modal-overlay" id="modal-editar-area">
+  <div class="modal" style="width:460px;">
+    <div class="modal-header">
+      <div class="modal-title">Editar Area</div>
+      <button class="modal-close" onclick="closeModal('modal-editar-area')">x</button>
+    </div>
+    <input type="hidden" id="ea-id">
+    <div class="field-group">
+      <label>Nombre del Area</label>
+      <input type="text" id="ea-nombre" placeholder="Escribe el nombre del area en mayusculas">
+    </div>
+    <div class="field-group">
+      <label>Jefe de Area</label>
+      <input type="text" id="ea-jefe" placeholder="Nombre del jefe de area">
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-guinda" onclick="saveEditArea()">Guardar Cambios</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-editar-area')">Cancelar</button>
     </div>
   </div>
 </div>

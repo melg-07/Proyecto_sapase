@@ -56,10 +56,18 @@ async function apiGetAreas() {
   return res.data;
 }
 
-async function apiCrearArea(nombre) {
+async function apiCrearArea(nombre, jefe_area) {
   const res = await apiFetch('/areas', {
     method: 'POST',
-    body: JSON.stringify({ nombre }),
+    body: JSON.stringify({ nombre, jefe_area }),
+  });
+  return res.data;
+}
+
+async function apiEditarArea(id, nombre, jefe_area) {
+  const res = await apiFetch('/areas/' + id, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre, jefe_area }),
   });
   return res.data;
 }

@@ -14,12 +14,16 @@ USE sapase_db;
 -- AREAS
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS areas (
-  id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  nombre    VARCHAR(300) NOT NULL,
-  activa    TINYINT(1)   NOT NULL DEFAULT 1,
-  creado_en DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre     VARCHAR(300) NOT NULL,
+  jefe_area  VARCHAR(200) NULL,
+  activa     TINYINT(1)   NOT NULL DEFAULT 1,
+  creado_en  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_area_nombre (nombre)
 ) ENGINE=InnoDB;
+
+-- Si la base de datos ya existia de una instalacion previa, ejecutar manualmente:
+-- ALTER TABLE areas ADD COLUMN jefe_area VARCHAR(200) NULL AFTER nombre;
 
 -- ------------------------------------------------------------
 -- USUARIOS

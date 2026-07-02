@@ -16,7 +16,7 @@ let _pendingEstadoFile = null;
 // Normalizadores
 
 function normalizeArea(a) {
-  return { id: a.id, nombre: a.nombre, activa: !!a.activa };
+  return { id: a.id, nombre: a.nombre, jefe_area: a.jefe_area || '', activa: !!a.activa };
 }
 
 function normalizeUsuario(u) {
