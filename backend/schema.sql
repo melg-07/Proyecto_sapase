@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_texto VARCHAR(255),
   area_id       INT UNSIGNED,
   correo        VARCHAR(200),
-  telefono      VARCHAR(20),
+  telefono      VARCHAR(30),
   cargo         VARCHAR(150),
   rol           ENUM('Administrador','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista',
   activo        TINYINT(1) NOT NULL DEFAULT 1,
@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS demandas (
   asunto           VARCHAR(500) NOT NULL,
   domicilio        VARCHAR(300),
   colonia          VARCHAR(200),
-  tel_principal    VARCHAR(20),
-  tel_secundario   VARCHAR(20),
+  tel_principal    VARCHAR(30),
+  tel_secundario   VARCHAR(30),
   descripcion      TEXT,
   observaciones    TEXT,
   concepto         VARCHAR(200),
@@ -193,6 +193,11 @@ CREATE TABLE IF NOT EXISTS historial_ediciones (
 
 -- Migracion: agrega columna si ya existe la tabla sin ella
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_texto VARCHAR(255) AFTER password_hash;
+
+-- Migracion: amplia telefonos para admitir simbolos, letras y extension (EXT)
+ALTER TABLE usuarios  MODIFY COLUMN telefono      VARCHAR(30);
+ALTER TABLE demandas  MODIFY COLUMN tel_principal  VARCHAR(30);
+ALTER TABLE demandas  MODIFY COLUMN tel_secundario VARCHAR(30);
 
 -- Usuario admin inicial
 -- Contraseña: sapase2026  →  hash generado con bcrypt (rounds=10)
