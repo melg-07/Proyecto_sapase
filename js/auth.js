@@ -39,7 +39,9 @@ async function doLogin() {
     renderDashboard();
     renderAreasGrid();
 
-    const startPage = (currentUser.rol === 'Administrador') ? 'dashboard' : 'formulario';
+    const startPage = currentUser.rol === 'Administrador' ? 'dashboard'
+                     : currentUser.rol === 'Consulta'      ? 'archivos'
+                     : 'formulario';
     showPage(startPage);
 
   } catch (err) {
@@ -67,7 +69,8 @@ function doLogout() {
 
 // Sidebar
 function renderSidebar(activePage) {
-  const isAdmin = currentUser && currentUser.rol === 'Administrador';
+  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
+  const isConsulta = currentUser && currentUser.rol === 'Consulta';
   let html = '';
 
   if (isAdmin) {
@@ -79,6 +82,9 @@ function renderSidebar(activePage) {
     html += navItem('areas',    'Areas',    activePage);
     html += navSection('Sistema');
     html += navItem('usuarios', 'Usuarios', activePage);
+  } else if (isConsulta) {
+    html += navSection('Gestion');
+    html += navItem('archivos', 'Archivos', activePage);
   } else {
     html += navSection('Gestion');
     html += navItem('formulario', 'Nueva Peticion', activePage);
@@ -99,8 +105,14 @@ function navItem(page, label, active) {
 
 // Navegación
 function showPage(name) {
-  const isAdmin = currentUser && currentUser.rol === 'Administrador';
-  if (!isAdmin && !['formulario', 'archivos'].includes(name)) name = 'formulario';
+  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
+  const isConsulta = currentUser && currentUser.rol === 'Consulta';
+
+  if (isConsulta) {
+    if (name !== 'archivos') name = 'archivos';
+  } else if (!isAdmin && !['formulario', 'archivos'].includes(name)) {
+    name = 'formulario';
+  }
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);

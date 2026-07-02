@@ -24,4 +24,11 @@ function soloAdmin(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, soloAdmin };
+function noConsulta(req, res, next) {
+  if (req.user?.rol === 'Consulta') {
+    return res.status(403).json({ ok: false, error: 'El usuario de consulta solo puede ver e imprimir' });
+  }
+  next();
+}
+
+module.exports = { authMiddleware, soloAdmin, noConsulta };

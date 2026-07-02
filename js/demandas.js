@@ -100,8 +100,9 @@ function filterArchivos() {
 }
 
 function renderArchivosTable(list) {
-  const tbody   = document.getElementById('archivos-table');
-  const isAdmin = currentUser && currentUser.rol === 'Administrador';
+  const tbody      = document.getElementById('archivos-table');
+  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
+  const isConsulta = currentUser && currentUser.rol === 'Consulta';
   tbody.innerHTML = list.map(d => `
     <tr>
       <td><code style="font-size:11px; color:var(--guinda);">${d.folio}</code></td>
@@ -114,7 +115,7 @@ function renderArchivosTable(list) {
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
           <button class="btn btn-guinda btn-sm"  onclick="exportSinglePDF('${d.id}')">Imprimir</button>
-          <button class="btn btn-blue btn-sm"    onclick="openEditDemanda('${d.id}')">Editar</button>
+          ${isConsulta ? '' : `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>`}
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>
       </td>
@@ -162,6 +163,13 @@ function _renderViewModal(d) {
       ${d.historialEdiciones && d.historialEdiciones.length ? historialEdicionesHTML(d.historialEdiciones) : ''}
     </div>
   `;
+
+  const btnTransferir = document.getElementById('btn-transferir-demanda');
+  if (btnTransferir) {
+    const isConsulta = currentUser && currentUser.rol === 'Consulta';
+    btnTransferir.style.display = isConsulta ? 'none' : '';
+  }
+
   document.getElementById('modal-ver').classList.add('open');
 }
 
@@ -245,6 +253,10 @@ function historialHTML(historial) {
 
 /* ---------- Editar petición ---------- */
 function openEditDemanda(id, fromArea = false) {
+  if (!currentUser || currentUser.rol === 'Consulta') {
+    showToast('El usuario de consulta solo puede ver e imprimir', 'error');
+    return;
+  }
   const d = demandas.find(x => x.id === id);
   if (!d) return;
   currentViewId  = id;
@@ -334,6 +346,10 @@ async function deleteDemanda(id) {
 
 /* ---------- Transferir ---------- */
 function openTransferModal(id) {
+  if (!currentUser || currentUser.rol === 'Consulta') {
+    showToast('El usuario de consulta solo puede ver e imprimir', 'error');
+    return;
+  }
   transferId = id;
   closeModal('modal-ver');
   document.getElementById('transfer-comment').value = '';

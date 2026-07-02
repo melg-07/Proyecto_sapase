@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db     = require('../db');
-const { authMiddleware, soloAdmin } = require('../middleware/auth');
+const { authMiddleware, soloAdmin, noConsulta } = require('../middleware/auth');
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
@@ -114,7 +114,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Crear
-router.post('/', async (req, res) => {
+router.post('/', noConsulta, async (req, res) => {
   try {
     const {
       ref, area_id, remitente, asunto,
@@ -162,7 +162,7 @@ router.post('/', async (req, res) => {
 });
 
 // Editar
-router.put('/:id', async (req, res) => {
+router.put('/:id', noConsulta, async (req, res) => {
   try {
     const body   = req.body;
 
@@ -279,7 +279,7 @@ router.delete('/:id', soloAdmin, async (req, res) => {
 });
 
 // Cambiar estado con archivo obligatorio (En proceso / Atendida)
-router.post('/:id/cambiar-estado', (req, res, next) => {
+router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
   upload.single('archivo')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, error: err.message });
     next();
@@ -320,7 +320,7 @@ router.post('/:id/cambiar-estado', (req, res, next) => {
 });
 
 // Transferir
-router.post('/:id/transferir', async (req, res) => {
+router.post('/:id/transferir', noConsulta, async (req, res) => {
   try {
     const area_destino_id = req.body.area_destino_id;
     const comentario      = s(req.body.comentario);
