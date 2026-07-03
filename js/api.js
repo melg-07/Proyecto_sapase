@@ -1,12 +1,12 @@
 // URL relativa: funciona desde cualquier IP porque usa el mismo origen que la pagina
 const API_BASE = '/api';
 
-// Token en memoria
-let _token = null;
+// Token persistido en localStorage para sobrevivir a un refresh de pagina
+let _token = localStorage.getItem('sapase_token');
 
-function setToken(t)  { _token = t; }
+function setToken(t)  { _token = t; localStorage.setItem('sapase_token', t); }
 function getToken()   { return _token; }
-function clearToken() { _token = null; }
+function clearToken() { _token = null; localStorage.removeItem('sapase_token'); }
 
 async function apiFetch(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };

@@ -1,4 +1,6 @@
-window.onload = function () {};
+window.onload = function () {
+  restoreSession();
+};
 
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
@@ -252,6 +254,7 @@ async function changeEstadoArea(id, estado, selectEl) {
     if (selectEl) selectEl.dataset.prev = estado;
     updateStats();
     renderDashboard();
+    if (selectedArea) _updateAreaInfoPanel(selectedArea);
   } catch (err) {
     showToast(err.message || 'Error al cambiar estado', 'error');
     if (selectEl && selectEl.dataset.prev) selectEl.value = selectEl.dataset.prev;
@@ -306,6 +309,7 @@ async function confirmCambioEstado() {
     filterAreaDetail();
     updateStats();
     renderDashboard();
+    if (selectedArea) _updateAreaInfoPanel(selectedArea);
     showToast(`Estado cambiado a: ${_pendingEstadoVal}`, 'success');
     _clearEstadoFile();
     closeModal('modal-cambio-estado');

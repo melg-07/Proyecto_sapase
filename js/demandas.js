@@ -318,7 +318,7 @@ async function saveEditDemanda() {
     const idx     = demandas.findIndex(x => x.id === currentViewId);
     if (idx >= 0) demandas[idx] = norm;
     filterArchivos();
-    if (selectedArea) filterAreaDetail();
+    if (selectedArea) { filterAreaDetail(); _updateAreaInfoPanel(selectedArea); }
     updateStats();
     renderDashboard();
     closeModal('modal-edit-demanda');
@@ -335,7 +335,7 @@ async function deleteDemanda(id) {
     await apiEliminarDemanda(id);
     demandas = demandas.filter(x => x.id !== id);
     filterArchivos();
-    if (selectedArea) filterAreaDetail();
+    if (selectedArea) { filterAreaDetail(); _updateAreaInfoPanel(selectedArea); }
     updateStats();
     renderDashboard();
     showToast('Demanda eliminada', 'info');
@@ -377,6 +377,7 @@ async function confirmTransfer() {
     }
     filterArchivos();
     renderAreasGrid();
+    if (selectedArea) filterAreaDetail();
     updateStats();
     showToast('Demanda enviada a: ' + areaName, 'success');
     closeModal('modal-transfer');

@@ -1,3 +1,44 @@
+function buildCurrentUser(u) {
+  return {
+    id:       u.id,
+    name:     u.nombre,
+    user:     u.usuario,
+    rol:      u.rol,
+    area:     u.area     || '',
+    correo:   u.correo   || '',
+    telefono: u.telefono || '',
+    cargo:    u.cargo    || '',
+    active:   !!u.activo,
+  };
+}
+
+// Arranca la app ya con currentUser resuelto (login o restauracion de sesion)
+async function bootApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display          = 'block';
+  document.getElementById('user-name').textContent      = currentUser.name.split(' ')[0];
+  document.getElementById('user-avatar').textContent    = getInitials(currentUser.name);
+  document.getElementById('user-rol-top').textContent   = currentUser.rol;
+
+  const [areas, rawDemandas] = await Promise.all([
+    apiGetAreas(),
+    apiGetDemandas(),
+  ]);
+  _areasCache = areas.map(normalizeArea);
+  demandas    = rawDemandas.map(normalizeDemanda);
+
+  populateAllSelects();
+  updateStats();
+  renderDashboard();
+  renderAreasGrid();
+
+  const defaultPage = currentUser.rol === 'Administrador' ? 'dashboard'
+                     : currentUser.rol === 'Consulta'      ? 'archivos'
+                     : 'formulario';
+  const savedPage = localStorage.getItem('sapase_page');
+  showPage(savedPage || defaultPage);
+}
+
 // Login
 async function doLogin() {
   const u     = document.getElementById('username').value.trim();
@@ -8,45 +49,23 @@ async function doLogin() {
   try {
     const resp = await apiLogin(u, p);
     setToken(resp.token);
-
-    currentUser = {
-      id:       resp.user.id,
-      name:     resp.user.nombre,
-      user:     resp.user.usuario,
-      rol:      resp.user.rol,
-      area:     resp.user.area     || '',
-      correo:   resp.user.correo   || '',
-      telefono: resp.user.telefono || '',
-      cargo:    resp.user.cargo    || '',
-      active:   resp.user.activo,
-    };
-
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display          = 'block';
-    document.getElementById('user-name').textContent      = currentUser.name.split(' ')[0];
-    document.getElementById('user-avatar').textContent    = getInitials(currentUser.name);
-    document.getElementById('user-rol-top').textContent   = currentUser.rol;
-
-    const [areas, rawDemandas] = await Promise.all([
-      apiGetAreas(),
-      apiGetDemandas(),
-    ]);
-    _areasCache = areas.map(normalizeArea);
-    demandas    = rawDemandas.map(normalizeDemanda);
-
-    populateAllSelects();
-    updateStats();
-    renderDashboard();
-    renderAreasGrid();
-
-    const startPage = currentUser.rol === 'Administrador' ? 'dashboard'
-                     : currentUser.rol === 'Consulta'      ? 'archivos'
-                     : 'formulario';
-    showPage(startPage);
-
+    currentUser = buildCurrentUser(resp.user);
+    await bootApp();
   } catch (err) {
     errEl.textContent   = err.message || 'Usuario o contrasena incorrectos.';
     errEl.style.display = 'block';
+  }
+}
+
+// Restaura la sesion al recargar la pagina, si hay un token guardado y valido
+async function restoreSession() {
+  if (!getToken()) return;
+  try {
+    const u = await apiMiPerfil();
+    currentUser = buildCurrentUser(u);
+    await bootApp();
+  } catch (err) {
+    clearToken();
   }
 }
 
@@ -60,6 +79,7 @@ function doLogout() {
   _areasCache      = [];
   _usersCache      = [];
   filteredDemandas = [];
+  localStorage.removeItem('sapase_page');
 
   document.getElementById('app').style.display          = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -113,6 +133,8 @@ function showPage(name) {
   } else if (!isAdmin && !['formulario', 'archivos'].includes(name)) {
     name = 'formulario';
   }
+
+  localStorage.setItem('sapase_page', name);
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
