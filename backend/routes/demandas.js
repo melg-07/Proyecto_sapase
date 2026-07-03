@@ -42,8 +42,10 @@ function parseFecha(str) {
 }
 
 async function siguienteFolio() {
-  const [rows] = await db.execute("SELECT COUNT(*) AS total FROM demandas");
-  const num = String(rows[0].total + 1).padStart(5, '0');
+  const [rows] = await db.execute(
+    "SELECT MAX(CAST(SUBSTRING(folio, 3) AS UNSIGNED)) AS maxNum FROM demandas WHERE folio LIKE 'F-%'"
+  );
+  const num = String((rows[0].maxNum || 0) + 1).padStart(5, '0');
   return `F-${num}`;
 }
 

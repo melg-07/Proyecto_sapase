@@ -113,7 +113,11 @@ function getAreaId(nombre) {
 // Helpers
 
 function generarFolio() {
-  const num = String(demandas.length + 1).padStart(5, '0');
+  const maxNum = demandas.reduce((max, d) => {
+    const n = parseInt(String(d.folio || '').replace(/^F-/, ''), 10);
+    return Number.isFinite(n) && n > max ? n : max;
+  }, 0);
+  const num = String(maxNum + 1).padStart(5, '0');
   return 'F-' + num;
 }
 
