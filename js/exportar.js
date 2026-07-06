@@ -104,6 +104,35 @@ function exportSinglePDF(id) {
 
   function nextRow() { rowTop += RH + VGAP; }
 
+  /* Igual que field(), pero centra verticalmente el bloque de texto
+     completo (como en Asunto): si el valor ocupa varias lineas, sube
+     hacia el renglon de arriba para quedar centrado en el recuadro. */
+  function fieldCentered(label, value, x, x2, h) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(FS);
+    doc.setTextColor(40, 40, 40);
+    const labelTxt = label ? label + ':' : '';
+    const labelW   = label ? doc.getTextWidth(labelTxt) + 1.5 : 0;
+    const boxX     = x + labelW;
+    const boxW     = x2 - boxX;
+
+    const lines       = doc.splitTextToSize(String(value || ''), boxW - 4);
+    const lineH        = FS * 0.352 * 1.15;
+    const totalTextH   = (lines.length - 1) * lineH;
+    const textY         = rowTop + (h + 1.3) / 2 - totalTextH / 2;
+
+    if (label) doc.text(labelTxt, x, textY);
+
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.2);
+    doc.rect(boxX, rowTop, boxW, h);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(FS);
+    doc.setTextColor(40, 40, 40);
+    doc.text(lines, boxX + 2, textY, { maxWidth: boxW - 4 });
+  }
+
   
   const f1_fecha  = ML + 65;            // x2 de Fecha    = 75
   const f1_folio  = f1_fecha  + HGAP + 52; // x2 de Folio    = 132
@@ -129,12 +158,12 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 4 — 
+     FILA 4 — Domicilio y Colonia
      ================================================================ */
   const f4_dom = ML + 117;
   const RH2 = 10;
-  field('Domicilio', d.domicilio || '', ML,           f4_dom, RH2);
-  field('Colonia',   d.colonia   || '', f4_dom + HGAP, PW - MR, RH2);
+  fieldCentered('Domicilio', d.domicilio || '', ML,           f4_dom, RH2);
+  fieldCentered('Colonia',   d.colonia   || '', f4_dom + HGAP, PW - MR, RH2);
   rowTop += RH2 + VGAP;
 
   /* ================================================================
@@ -151,7 +180,7 @@ function exportSinglePDF(id) {
   nextRow();
 
   /* ================================================================
-     FILA 7 — Asunto (texto centrado verticalmente si es corto)
+     FILA 7 — Asunto 
      ================================================================ */
   const asuntoH = 26;
   doc.setFont('helvetica', 'bold');
