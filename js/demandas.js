@@ -36,9 +36,12 @@ async function saveDemanda() {
   const area_id  = getAreaId(area);
   const remitente= document.getElementById('f-remitente').value.trim();
   const asunto   = document.getElementById('f-asunto').value.trim();
+  const domicilio= document.getElementById('f-domicilio').value.trim();
+  const colonia  = document.getElementById('f-colonia').value.trim();
+  const tel1     = document.getElementById('f-tel1').value.trim();
 
-  if (!remitente || !area_id || !asunto ) {
-    showToast('Complete los campos obligatorios: Remitente, Area y Asunto', 'error');
+  if (!remitente || !area_id || !asunto || !domicilio || !colonia || !tel1) {
+    showToast('Rellene los campos obligatorios', 'error');
     return;
   }
 
@@ -47,9 +50,9 @@ async function saveDemanda() {
     area_id,
     remitente,
     asunto,
-    domicilio:     document.getElementById('f-domicilio').value.trim(),
-    colonia:       document.getElementById('f-colonia').value.trim(),
-    tel1:          document.getElementById('f-tel1').value.trim(),
+    domicilio,
+    colonia,
+    tel1,
     tel2:          document.getElementById('f-tel2').value.trim(),
     demanda:       document.getElementById('f-demanda').value.trim(),
     observaciones: document.getElementById('f-observaciones').value.trim(),
