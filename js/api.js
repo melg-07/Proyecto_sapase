@@ -148,6 +148,37 @@ async function apiTransferirDemanda(id, area_destino_id, comentario) {
   });
 }
 
+// Configuracion / Logos
+
+async function apiGetLogos() {
+  const res  = await fetch(API_BASE + '/config/logos');
+  const data = await res.json();
+  if (!res.ok || !data.ok) throw new Error(data.error || 'Error al obtener los logos');
+  return data.data;
+}
+
+async function apiSubirLogo(key, file) {
+  const fd = new FormData();
+  fd.append('logo', file);
+
+  const res = await fetch(API_BASE + '/config/logos/' + key, {
+    method:  'POST',
+    headers: { 'Authorization': 'Bearer ' + getToken() },
+    body:    fd,
+  });
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    throw new Error(`Error del servidor (${res.status})`);
+  }
+  if (!res.ok) {
+    if (res.status === 401) { clearToken(); doLogout(); }
+    throw new Error(data.error || 'Error al subir el logo');
+  }
+  return data.data;
+}
+
 async function apiCambiarEstado(id, estado, archivo) {
   const fd = new FormData();
   fd.append('estado', estado);

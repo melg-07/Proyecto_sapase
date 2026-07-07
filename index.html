@@ -12,9 +12,9 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logos">
-      <img src="assets/escudo.png" alt="H. Ayuntamiento Ecatepec de Morelos">
+      <img id="login-escudo" src="assets/escudo.png" alt="H. Ayuntamiento Ecatepec de Morelos">
       <div class="login-divider"></div>
-      <img src="assets/logo_sapase.png" alt="SAPASE">
+      <img id="login-logo-sapase" src="assets/logo_sapase.png" alt="SAPASE">
     </div>
     <div class="login-title">
       <h1>Sistema de Gestión de Peticiones</h1>
@@ -43,9 +43,9 @@
       <span></span><span></span><span></span>
     </button>
     <div class="topbar-logos">
-      <img src="assets/escudo.png" alt="Ecatepec" style="height:36px;">
+      <img id="topbar-escudo" src="assets/escudo.png" alt="Ecatepec" style="height:36px;">
       <div class="topbar-sep"></div>
-      <img src="assets/logo_sapase.png" alt="SAPASE" style="height:30px;">
+      <img id="topbar-logo-sapase" src="assets/logo_sapase.png" alt="SAPASE" style="height:30px;">
     </div>
     <div class="topbar-title">
       <h2>Sistema de Gestion de Peticiones</h2>
@@ -315,6 +315,36 @@
           </thead>
           <tbody id="usuarios-table"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- CONFIGURACION -->
+    <div id="page-configuracion" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Configuracion</h2>
+          <p>Logotipos del sistema</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Escudo de Ecatepec</div>
+        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+          <img id="config-preview-escudo" src="assets/escudo.png" alt="Escudo" style="height:70px; background:#f5f5f5; border-radius:8px; padding:8px;">
+          <div>
+            <input type="file" id="config-file-escudo" accept="image/*" style="display:none;" onchange="handleLogoFileSelect('escudo', this.files[0])">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('config-file-escudo').click()">Cambiar Imagen</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Logo SAPASE</div>
+        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+          <img id="config-preview-logo" src="assets/logo_sapase.png" alt="Logo SAPASE" style="height:70px; background:#f5f5f5; border-radius:8px; padding:8px;">
+          <div>
+            <input type="file" id="config-file-logo" accept="image/*" style="display:none;" onchange="handleLogoFileSelect('logo_sapase', this.files[0])">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('config-file-logo').click()">Cambiar Imagen</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -668,6 +698,7 @@
 <script src="js/app.js"></script>
 <script src="js/demandas.js"></script>
 <script src="js/usuarios.js"></script>
+<script src="js/configuracion.js"></script>
 <script src="js/exportar.js"></script>
 </body>
 </html>

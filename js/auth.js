@@ -101,7 +101,8 @@ function renderSidebar(activePage) {
     html += navItem('archivos', 'Archivos', activePage);
     html += navItem('areas',    'Areas',    activePage);
     html += navSection('Sistema');
-    html += navItem('usuarios', 'Usuarios', activePage);
+    html += navItem('usuarios',      'Usuarios',      activePage);
+    html += navItem('configuracion', 'Configuracion', activePage);
   } else if (isConsulta) {
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
@@ -154,6 +155,7 @@ function showPage(name) {
   if (name === 'areas')     { renderAreasGrid(); hideAreaDetail(); }
   if (name === 'dashboard') { updateStats(); renderDashboard(); }
   if (name === 'usuarios')  { renderUsuarios(); }
+  if (name === 'configuracion') { renderConfiguracion(); }
 }
 
 // Perfil
