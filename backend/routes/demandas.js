@@ -52,12 +52,13 @@ async function siguienteFolio() {
 // Listar
 router.get('/', async (req, res) => {
   try {
-    const { area, estado, q } = req.query;
+    const { area, estado, prioridad, q } = req.query;
     let sql    = 'SELECT * FROM v_demandas WHERE 1=1';
     const params = [];
 
-    if (area)   { sql += ' AND area = ?';  params.push(area); }
-    if (estado) { sql += ' AND estado = ?'; params.push(estado); }
+    if (area)      { sql += ' AND area = ?';      params.push(area); }
+    if (estado)    { sql += ' AND estado = ?';    params.push(estado); }
+    if (prioridad) { sql += ' AND prioridad = ?'; params.push(prioridad); }
     if (q) {
       sql += ' AND (folio LIKE ? OR remitente LIKE ? OR asunto LIKE ?)';
       const like = `%${q}%`;
@@ -168,6 +169,11 @@ router.put('/:id', noConsulta, async (req, res) => {
   try {
     const body   = req.body;
 
+    // Estado y prioridad son de uso exclusivo del Administrador
+    if (('estado' in body || 'prioridad' in body) && req.user.rol !== 'Administrador') {
+      return res.status(403).json({ ok: false, error: 'Solo un administrador puede modificar el estado o la prioridad' });
+    }
+
     // Leer valores actuales para detectar cambios
     const [current] = await db.execute('SELECT * FROM demandas WHERE id = ?', [req.params.id]);
     if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -188,6 +194,7 @@ router.put('/:id', noConsulta, async (req, res) => {
       observaciones: 'observaciones',
       concepto:      'concepto',
       estado:        'estado',
+      prioridad:     'prioridad',
     };
 
     for (const [key, col] of Object.entries(mapping)) {
@@ -230,13 +237,14 @@ router.put('/:id', noConsulta, async (req, res) => {
       observaciones:  'Observaciones',
       concepto:       'Concepto',
       estado:         'Estado',
+      prioridad:      'Prioridad',
       area_id:        'Area',
     };
     const bodyToCol = {
       ref: 'folio_ref', remitente: 'remitente', asunto: 'asunto',
       domicilio: 'domicilio', colonia: 'colonia', tel1: 'tel_principal',
       tel2: 'tel_secundario', demanda: 'descripcion', observaciones: 'observaciones',
-      concepto: 'concepto', estado: 'estado', area_id: 'area_id',
+      concepto: 'concepto', estado: 'estado', prioridad: 'prioridad', area_id: 'area_id',
     };
 
     const changes = {};
@@ -322,7 +330,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
 });
 
 // Transferir
-router.post('/:id/transferir', noConsulta, async (req, res) => {
+router.post('/:id/transferir', soloAdmin, async (req, res) => {
   try {
     const area_destino_id = req.body.area_destino_id;
     const comentario      = s(req.body.comentario);

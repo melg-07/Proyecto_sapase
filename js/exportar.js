@@ -27,6 +27,7 @@ function exportToExcel(list, nombre) {
     'Observaciones':    d.observaciones || '',
     'Concepto':         d.concepto      || '',
     'Estado':           d.estado,
+    'Prioridad':        d.prioridad,
     'Capturado por':    d.creadoPor     || '',
   }));
 
@@ -34,7 +35,7 @@ function exportToExcel(list, nombre) {
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [
     {wch:24},{wch:14},{wch:14},{wch:22},{wch:40},{wch:32},{wch:36},
-    {wch:26},{wch:22},{wch:14},{wch:14},{wch:60},{wch:40},{wch:22},{wch:12},{wch:22}
+    {wch:26},{wch:22},{wch:14},{wch:14},{wch:60},{wch:40},{wch:22},{wch:12},{wch:12},{wch:22}
   ];
   XLSX.utils.book_append_sheet(wb, ws, 'Demandas');
   const fecha = new Date().toISOString().slice(0, 10);

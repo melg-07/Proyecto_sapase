@@ -93,6 +93,7 @@ function normalizeDemanda(d) {
     observaciones: d.observaciones || '',
     concepto:      d.concepto      || '',
     estado:        d.estado        || 'Pendiente',
+    prioridad:     d.prioridad     || 'Media',
     historial:         normalizeHistorial(d.historial),
     historialEstados:  normalizeHistorialEstados(d.historial_estados),
     historialEdiciones: normalizeHistorialEdiciones(d.historial_ediciones),
@@ -132,6 +133,12 @@ function getInitials(name) {
 function badgeClass(estado) {
   if (estado === 'Atendida')   return 'badge-green';
   if (estado === 'En proceso') return 'badge-blue';
+  return 'badge-gold';
+}
+
+function prioridadBadgeClass(prioridad) {
+  if (prioridad === 'Alta') return 'badge-red';
+  if (prioridad === 'Baja') return 'badge-green';
   return 'badge-gold';
 }
 

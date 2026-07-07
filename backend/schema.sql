@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS demandas (
   observaciones    TEXT,
   concepto         VARCHAR(200),
   estado           ENUM('Pendiente','En proceso','Atendida') NOT NULL DEFAULT 'Pendiente',
+  prioridad        ENUM('Alta','Media','Baja') NOT NULL DEFAULT 'Media',
   creado_por       INT UNSIGNED,
   creado_en        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   actualizado_en   DATETIME ON UPDATE CURRENT_TIMESTAMP,
@@ -126,6 +127,7 @@ SELECT
   d.observaciones,
   d.concepto,
   d.estado,
+  d.prioridad,
   u.usuario          AS creado_por,
   d.creado_en
 FROM demandas d
@@ -196,12 +198,31 @@ CREATE TABLE IF NOT EXISTS historial_ediciones (
 ) ENGINE=InnoDB;
 
 -- Migracion: agrega columna si ya existe la tabla sin ella
-ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS password_texto VARCHAR(255) AFTER password_hash;
+-- (usa information_schema en vez de "ADD COLUMN IF NOT EXISTS" porque esa
+--  clausula solo existe desde MySQL 8.0.29; asi es compatible con versiones anteriores)
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'password_texto'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE usuarios ADD COLUMN password_texto VARCHAR(255) AFTER password_hash',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Migracion: amplia telefonos para admitir simbolos, letras y extension (EXT)
 ALTER TABLE usuarios  MODIFY COLUMN telefono      VARCHAR(30);
 ALTER TABLE demandas  MODIFY COLUMN tel_principal  VARCHAR(30);
 ALTER TABLE demandas  MODIFY COLUMN tel_secundario VARCHAR(30);
+
+-- Migracion: agrega columna de prioridad si la tabla ya existia sin ella
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'prioridad'
+);
+SET @sql = IF(@col_exists = 0,
+  "ALTER TABLE demandas ADD COLUMN prioridad ENUM('Alta','Media','Baja') NOT NULL DEFAULT 'Media' AFTER estado",
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Usuario admin inicial
 -- Contraseña: sapase2026  →  hash generado con bcrypt (rounds=10)

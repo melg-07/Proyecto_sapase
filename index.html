@@ -222,6 +222,12 @@
             <option value="Atendida">Atendida</option>
             <option value="En proceso">En proceso</option>
           </select>
+          <select id="filter-prioridad" onchange="filterArchivos()">
+            <option value="">Todas las prioridades</option>
+            <option value="Alta">Alta</option>
+            <option value="Media">Media</option>
+            <option value="Baja">Baja</option>
+          </select>
         </div>
       </div>
       <div class="card">
@@ -229,7 +235,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Area</th><th>Asunto</th><th>Estado</th><th>Acciones</th></tr>
+              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Area</th><th>Asunto</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr>
             </thead>
             <tbody id="archivos-table"></tbody>
           </table>
@@ -279,7 +285,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Acciones</th></tr>
+                <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr>
               </thead>
               <tbody id="area-detail-table"></tbody>
             </table>
@@ -438,6 +444,14 @@
           <option value="Pendiente">Pendiente</option>
           <option value="En proceso">En proceso</option>
           <option value="Atendida">Atendida</option>
+        </select>
+      </div>
+      <div class="field-group" id="ed-prioridad-group">
+        <label>Prioridad</label>
+        <select id="ed-prioridad">
+          <option value="Alta">Alta</option>
+          <option value="Media">Media</option>
+          <option value="Baja">Baja</option>
         </select>
       </div>
     </div>

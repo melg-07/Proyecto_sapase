@@ -221,16 +221,17 @@ function filterAreaDetail() {
           <option ${d.estado==='Atendida'   ?'selected':''}>Atendida</option>
         </select>
       </td>
+      <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
           <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF('${d.id}')">Imprimir</button>
-          <button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}', true)">Editar</button>
+          <button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>
       </td>
     </tr>
-  `).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--gray); padding:20px;">Sin demandas en esta area</td></tr>';
+  `).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--gray); padding:20px;">Sin demandas en esta area</td></tr>';
 }
 
 function exportAreaExcel() {

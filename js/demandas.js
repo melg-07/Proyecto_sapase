@@ -2,8 +2,6 @@
    SAPASE – Gestion de Peticiones (CRUD)
    ================================================ */
 
-let _editFromArea = false;
-
 /* ---------- Formulario nuevo ---------- */
 function initForm() {
   document.getElementById('f-folio').value = generarFolio();
@@ -89,14 +87,16 @@ function filterArchivos() {
   const q  = (document.getElementById('search-input')?.value  || '').toLowerCase();
   const fa = document.getElementById('filter-area')?.value    || '';
   const fs = document.getElementById('filter-status')?.value  || '';
+  const fp = document.getElementById('filter-prioridad')?.value || '';
 
   filteredDemandas = demandas.filter(d => {
     const matchQ = !q || d.folio.toLowerCase().includes(q) ||
                    d.remitente.toLowerCase().includes(q)   ||
                    d.asunto.toLowerCase().includes(q);
-    const matchA = !fa || d.area   === fa;
-    const matchS = !fs || d.estado === fs;
-    return matchQ && matchA && matchS;
+    const matchA = !fa || d.area      === fa;
+    const matchS = !fs || d.estado    === fs;
+    const matchP = !fp || d.prioridad === fp;
+    return matchQ && matchA && matchS && matchP;
   });
 
   renderArchivosTable(filteredDemandas);
@@ -114,6 +114,7 @@ function renderArchivosTable(list) {
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
       <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
+      <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
@@ -123,7 +124,7 @@ function renderArchivosTable(list) {
         </div>
       </td>
     </tr>
-  `).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
+  `).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
 }
 
 /* ---------- Ver detalle ---------- */
@@ -161,6 +162,7 @@ function _renderViewModal(d) {
       ${d.observaciones ? field2col('Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
+      ${field2('Prioridad', `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
       ${d.historialEstados && d.historialEstados.length ? historialEstadosHTML(d.historialEstados) : ''}
       ${d.historialEdiciones && d.historialEdiciones.length ? historialEdicionesHTML(d.historialEdiciones) : ''}
@@ -169,8 +171,8 @@ function _renderViewModal(d) {
 
   const btnTransferir = document.getElementById('btn-transferir-demanda');
   if (btnTransferir) {
-    const isConsulta = currentUser && currentUser.rol === 'Consulta';
-    btnTransferir.style.display = isConsulta ? 'none' : '';
+    const isAdmin = currentUser && currentUser.rol === 'Administrador';
+    btnTransferir.style.display = isAdmin ? '' : 'none';
   }
 
   document.getElementById('modal-ver').classList.add('open');
@@ -255,7 +257,7 @@ function historialHTML(historial) {
 }
 
 /* ---------- Editar petición ---------- */
-function openEditDemanda(id, fromArea = false) {
+function openEditDemanda(id) {
   if (!currentUser || currentUser.rol === 'Consulta') {
     showToast('El usuario de consulta solo puede ver e imprimir', 'error');
     return;
@@ -263,11 +265,13 @@ function openEditDemanda(id, fromArea = false) {
   const d = demandas.find(x => x.id === id);
   if (!d) return;
   currentViewId  = id;
-  _editFromArea  = fromArea;
 
-  // El campo estado solo es editable desde la seccion de Areas
-  const estadoGroup = document.getElementById('ed-estado-group');
-  if (estadoGroup) estadoGroup.style.display = fromArea ? '' : 'none';
+  // Estado y prioridad solo los puede modificar el Administrador
+  const isAdmin      = currentUser.rol === 'Administrador';
+  const estadoGroup   = document.getElementById('ed-estado-group');
+  const prioridadGroup = document.getElementById('ed-prioridad-group');
+  if (estadoGroup)    estadoGroup.style.display    = isAdmin ? '' : 'none';
+  if (prioridadGroup) prioridadGroup.style.display = isAdmin ? '' : 'none';
 
   document.getElementById('ed-folio').value         = d.folio;
   document.getElementById('ed-fecha').value         = d.fecha;
@@ -290,6 +294,7 @@ function openEditDemanda(id, fromArea = false) {
   document.getElementById('ed-observaciones').value = d.observaciones|| '';
   document.getElementById('ed-concepto').value      = d.concepto     || '';
   document.getElementById('ed-estado').value        = d.estado       || 'Pendiente';
+  document.getElementById('ed-prioridad').value     = d.prioridad    || 'Media';
 
   document.getElementById('ed-area').value = d.area || '';
   document.getElementById('modal-edit-demanda').classList.add('open');
@@ -298,6 +303,7 @@ function openEditDemanda(id, fromArea = false) {
 async function saveEditDemanda() {
   const areaName = document.getElementById('ed-area').value;
   const area_id  = getAreaId(areaName);
+  const isAdmin  = currentUser && currentUser.rol === 'Administrador';
 
   const payload = {
     ref:           document.getElementById('ed-ref').value.trim(),
@@ -312,7 +318,10 @@ async function saveEditDemanda() {
     observaciones: document.getElementById('ed-observaciones').value.trim(),
     concepto:      document.getElementById('ed-concepto').value.trim(),
     fecha_demanda: document.getElementById('ed-fecha-demanda').value,
-    ...(_editFromArea ? { estado: document.getElementById('ed-estado').value } : {}),
+    ...(isAdmin ? {
+      estado:    document.getElementById('ed-estado').value,
+      prioridad: document.getElementById('ed-prioridad').value,
+    } : {}),
   };
 
   try {
