@@ -19,7 +19,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (/\.(jpg|jpeg|png|gif|webp|pdf|doc|docx|xls|xlsx)$/i.test(path.extname(file.originalname))) {
+    if (/\.(jpg|jpeg|png|gif|webp|tif|tiff|pdf|doc|docx|xls|xlsx)$/i.test(path.extname(file.originalname))) {
       cb(null, true);
     } else {
       cb(new Error('Tipo de archivo no permitido'));

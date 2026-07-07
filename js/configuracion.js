@@ -1,6 +1,10 @@
+// Metadata de los logos vigentes, disponible globalmente (p.ej. para el PDF)
+let currentLogosMeta = null;
+
 // Aplica los logos actuales (login, topbar y vista previa de configuracion)
 function applyLogos(meta) {
   if (!meta) return;
+  currentLogosMeta = meta;
   const v = meta.version || 0;
   const escudoUrl = `assets/${meta.escudo}?v=${v}`;
   const logoUrl   = `assets/${meta.logo_sapase}?v=${v}`;
@@ -31,7 +35,11 @@ function renderConfiguracion() {
 
 async function handleLogoFileSelect(key, file) {
   if (!file) return;
-  if (!file.type.startsWith('image/')) {
+  // Algunos navegadores no asignan un MIME type a los .tif/.tiff (file.type queda vacio),
+  // por eso tambien se valida por extension antes de rechazar el archivo.
+  const isImageType = file.type.startsWith('image/');
+  const isImageExt  = /\.(jpg|jpeg|png|gif|webp|svg|tif|tiff)$/i.test(file.name);
+  if (!isImageType && !isImageExt) {
     showToast('Selecciona un archivo de imagen valido', 'error');
     return;
   }

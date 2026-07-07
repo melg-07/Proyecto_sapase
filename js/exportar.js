@@ -63,8 +63,10 @@ function exportSinglePDF(id) {
   const FS   = 7.5;     // tamano de fuente (pt)
 
   /* ---- Logos ---- */
-  try { doc.addImage('assets/escudo.png',      'PNG', ML,            3, 34, 16); } catch(e) {}
-  try { doc.addImage('assets/logo_sapase.png', 'PNG', PW - MR - 40, 3, 40, 16); } catch(e) {}
+  const escudoFile = (currentLogosMeta && currentLogosMeta.escudo)      || 'escudo.png';
+  const logoFile   = (currentLogosMeta && currentLogosMeta.logo_sapase) || 'logo_sapase.png';
+  try { doc.addImage(`assets/${escudoFile}`, 'PNG', ML,            3, 34, 16); } catch(e) {}
+  try { doc.addImage(`assets/${logoFile}`,   'PNG', PW - MR - 40, 3, 40, 16); } catch(e) {}
 
   /* ---- Linea divisoria ---- */
   doc.setDrawColor(160, 160, 160);

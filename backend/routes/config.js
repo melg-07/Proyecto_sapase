@@ -2,6 +2,7 @@ const router = require('express').Router();
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
+const sharp  = require('sharp');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
 
 const assetsDir = path.join(__dirname, '..', '..', 'assets');
@@ -27,7 +28,7 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(path.extname(file.originalname))) {
+    if (/\.(jpg|jpeg|png|gif|webp|svg|tif|tiff)$/i.test(path.extname(file.originalname))) {
       cb(null, true);
     } else {
       cb(new Error('Formato de imagen no permitido'));
@@ -46,7 +47,7 @@ router.post('/logos/:key', authMiddleware, soloAdmin, (req, res, next) => {
     if (err) return res.status(400).json({ ok: false, error: err.message });
     next();
   });
-}, (req, res) => {
+}, async (req, res) => {
   try {
     const key = req.params.key;
     if (!LOGO_KEYS.includes(key)) {
@@ -56,24 +57,22 @@ router.post('/logos/:key', authMiddleware, soloAdmin, (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Se requiere una imagen' });
     }
 
-    const meta     = readMeta();
-    const ext      = path.extname(req.file.originalname).toLowerCase();
-    const filename = `${key}${ext}`;
+    // Siempre se normaliza a PNG (nombre de archivo fijo) para que el
+    // navegador pueda mostrar cualquier formato de entrada (incluido TIFF,
+    // que los navegadores no pueden renderizar directamente) y para que
+    // las rutas que referencian el logo (login, topbar, PDF) nunca se rompan.
+    const filename = `${key}.png`;
+    const pngBuffer = await sharp(req.file.buffer).png().toBuffer();
+    fs.writeFileSync(path.join(assetsDir, filename), pngBuffer);
 
-    // Si el nuevo archivo tiene otra extension, elimina el anterior
-    if (meta[key] && meta[key] !== filename) {
-      try { fs.unlinkSync(path.join(assetsDir, meta[key])); } catch (_) {}
-    }
-
-    fs.writeFileSync(path.join(assetsDir, filename), req.file.buffer);
-
-    meta[key]  = filename;
-    meta.version = Date.now();
+    const meta    = readMeta();
+    meta[key]     = filename;
+    meta.version  = Date.now();
     writeMeta(meta);
 
     res.json({ ok: true, data: meta });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(400).json({ ok: false, error: 'No se pudo procesar la imagen: ' + err.message });
   }
 });
 

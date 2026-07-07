@@ -331,7 +331,7 @@
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
           <img id="config-preview-escudo" src="assets/escudo.png" alt="Escudo" style="height:70px; background:#f5f5f5; border-radius:8px; padding:8px;">
           <div>
-            <input type="file" id="config-file-escudo" accept="image/*" style="display:none;" onchange="handleLogoFileSelect('escudo', this.files[0])">
+            <input type="file" id="config-file-escudo" accept="image/*,.tif,.tiff" style="display:none;" onchange="handleLogoFileSelect('escudo', this.files[0])">
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('config-file-escudo').click()">Cambiar Imagen</button>
           </div>
         </div>
@@ -341,7 +341,7 @@
         <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
           <img id="config-preview-logo" src="assets/logo_sapase.png" alt="Logo SAPASE" style="height:70px; background:#f5f5f5; border-radius:8px; padding:8px;">
           <div>
-            <input type="file" id="config-file-logo" accept="image/*" style="display:none;" onchange="handleLogoFileSelect('logo_sapase', this.files[0])">
+            <input type="file" id="config-file-logo" accept="image/*,.tif,.tiff" style="display:none;" onchange="handleLogoFileSelect('logo_sapase', this.files[0])">
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('config-file-logo').click()">Cambiar Imagen</button>
           </div>
         </div>
@@ -670,7 +670,7 @@
       <div style="font-size:11px; color:#bbb; margin-top:4px;">Imagenes, PDF, Word, Excel &mdash; max. 10 MB</div>
     </div>
     <input type="file" id="cambio-estado-file" style="display:none;"
-           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+           accept="image/*,.tif,.tiff,.pdf,.doc,.docx,.xls,.xlsx"
            onchange="handleEstadoFile(this.files[0])">
     <div id="cambio-estado-preview"
          style="display:none; margin-top:12px; padding:10px 14px; background:var(--cream); border-radius:6px; font-size:12px; align-items:center; gap:8px;">
