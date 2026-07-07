@@ -221,7 +221,15 @@ function filterAreaDetail() {
           <option ${d.estado==='Atendida'   ?'selected':''}>Atendida</option>
         </select>
       </td>
-      <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
+      <td>
+        <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
+                onfocus="this.dataset.prev=this.value"
+                onchange="changePrioridadArea('${d.id}', this.value, this)">
+          <option ${d.prioridad==='Alta'  ?'selected':''}>Alta</option>
+          <option ${d.prioridad==='Media' ?'selected':''}>Media</option>
+          <option ${d.prioridad==='Baja'  ?'selected':''}>Baja</option>
+        </select>
+      </td>
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
@@ -231,12 +239,25 @@ function filterAreaDetail() {
         </div>
       </td>
     </tr>
-  `).join('') || '<tr><td colspan="7" style="text-align:center; color:var(--gray); padding:20px;">Sin demandas en esta area</td></tr>';
+  `).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin demandas en esta area</td></tr>';
 }
 
 function exportAreaExcel() {
   const list = demandas.filter(d => d.area === selectedArea);
   exportToExcel(list, selectedArea);
+}
+
+async function changePrioridadArea(id, prioridad, selectEl) {
+  try {
+    await apiEditarDemanda(id, { prioridad });
+    const d = demandas.find(x => x.id === id);
+    if (d) { d.prioridad = prioridad; }
+    if (selectEl) selectEl.dataset.prev = prioridad;
+    filterArchivos();
+  } catch (err) {
+    showToast(err.message || 'Error al cambiar prioridad', 'error');
+    if (selectEl && selectEl.dataset.prev) selectEl.value = selectEl.dataset.prev;
+  }
 }
 
 async function changeEstadoArea(id, estado, selectEl) {
