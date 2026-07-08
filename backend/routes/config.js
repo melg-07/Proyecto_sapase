@@ -36,7 +36,7 @@ const upload = multer({
   },
 });
 
-// Publico: la pantalla de login tambien necesita mostrar los logos
+
 router.get('/logos', (req, res) => {
   res.json({ ok: true, data: readMeta() });
 });
@@ -57,10 +57,7 @@ router.post('/logos/:key', authMiddleware, soloAdmin, (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Se requiere una imagen' });
     }
 
-    // Siempre se normaliza a PNG (nombre de archivo fijo) para que el
-    // navegador pueda mostrar cualquier formato de entrada (incluido TIFF,
-    // que los navegadores no pueden renderizar directamente) y para que
-    // las rutas que referencian el logo (login, topbar, PDF) nunca se rompan.
+    
     const filename = `${key}.png`;
     const pngBuffer = await sharp(req.file.buffer).png().toBuffer();
     fs.writeFileSync(path.join(assetsDir, filename), pngBuffer);

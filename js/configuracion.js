@@ -1,7 +1,7 @@
 // Metadata de los logos vigentes, disponible globalmente (p.ej. para el PDF)
 let currentLogosMeta = null;
 
-// Aplica los logos actuales (login, topbar y vista previa de configuracion)
+// Aplica los logos (login, topbar y vista previa de configuracion)
 function applyLogos(meta) {
   if (!meta) return;
   currentLogosMeta = meta;
@@ -35,8 +35,7 @@ function renderConfiguracion() {
 
 async function handleLogoFileSelect(key, file) {
   if (!file) return;
-  // Algunos navegadores no asignan un MIME type a los .tif/.tiff (file.type queda vacio),
-  // por eso tambien se valida por extension antes de rechazar el archivo.
+
   const isImageType = file.type.startsWith('image/');
   const isImageExt  = /\.(jpg|jpeg|png|gif|webp|svg|tif|tiff)$/i.test(file.name);
   if (!isImageType && !isImageExt) {

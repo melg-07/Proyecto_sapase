@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db     = require('../db');
-const { authMiddleware, soloAdmin } = require('../middleware/auth');
+const { authMiddleware, adminOSubadmin } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', soloAdmin, async (req, res) => {
+router.post('/', adminOSubadmin, async (req, res) => {
   try {
     const { nombre, jefe_area } = req.body;
     if (!nombre?.trim()) {
@@ -36,7 +36,7 @@ router.post('/', soloAdmin, async (req, res) => {
   }
 });
 
-router.put('/:id', soloAdmin, async (req, res) => {
+router.put('/:id', adminOSubadmin, async (req, res) => {
   try {
     const { nombre, jefe_area } = req.body;
     if (!nombre?.trim()) {
@@ -53,7 +53,7 @@ router.put('/:id', soloAdmin, async (req, res) => {
   }
 });
 
-router.patch('/:id/toggle', soloAdmin, async (req, res) => {
+router.patch('/:id/toggle', adminOSubadmin, async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT activa FROM areas WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Area no encontrada' });

@@ -12,7 +12,6 @@ function buildCurrentUser(u) {
   };
 }
 
-// Arranca la app ya con currentUser resuelto (login o restauracion de sesion)
 async function bootApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display          = 'block';
@@ -32,8 +31,8 @@ async function bootApp() {
   renderDashboard();
   renderAreasGrid();
 
-  const defaultPage = currentUser.rol === 'Administrador' ? 'dashboard'
-                     : currentUser.rol === 'Consulta'      ? 'archivos'
+  const defaultPage = isAdminLevel(currentUser.rol)   ? 'dashboard'
+                     : currentUser.rol === 'Consulta' ? 'archivos'
                      : 'formulario';
   const savedPage = localStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
@@ -89,20 +88,23 @@ function doLogout() {
 
 // Sidebar
 function renderSidebar(activePage) {
-  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
-  const isConsulta = currentUser && currentUser.rol === 'Consulta';
+  const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
+  const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
+  const isConsulta  = currentUser && currentUser.rol === 'Consulta';
   let html = '';
 
-  if (isAdmin) {
+  if (isAdminLvl) {
     html += navSection('Principal');
     html += navItem('dashboard',  'Dashboard',    activePage);
     html += navItem('formulario', 'Nueva Peticion', activePage);
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
     html += navItem('areas',    'Areas',    activePage);
-    html += navSection('Sistema');
-    html += navItem('usuarios',      'Usuarios',      activePage);
-    html += navItem('configuracion', 'Configuracion', activePage);
+    if (isFullAdmin) {
+      html += navSection('Sistema');
+      html += navItem('usuarios',      'Usuarios',      activePage);
+      html += navItem('configuracion', 'Configuracion', activePage);
+    }
   } else if (isConsulta) {
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
@@ -126,12 +128,15 @@ function navItem(page, label, active) {
 
 // Navegación
 function showPage(name) {
-  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
-  const isConsulta = currentUser && currentUser.rol === 'Consulta';
+  const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
+  const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
+  const isConsulta  = currentUser && currentUser.rol === 'Consulta';
 
   if (isConsulta) {
     if (name !== 'archivos') name = 'archivos';
-  } else if (!isAdmin && !['formulario', 'archivos'].includes(name)) {
+  } else if (isAdminLvl) {
+    if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
+  } else if (!['formulario', 'archivos'].includes(name)) {
     name = 'formulario';
   }
 
@@ -148,7 +153,7 @@ function showPage(name) {
 
   const btnNuevaArea = document.getElementById('btn-nueva-area');
   if (btnNuevaArea) {
-    btnNuevaArea.style.display = (name === 'areas' && isAdmin) ? 'inline-flex' : 'none';
+    btnNuevaArea.style.display = (name === 'areas' && isAdminLvl) ? 'inline-flex' : 'none';
   }
 
   if (name === 'archivos')  { renderArchivos(); }

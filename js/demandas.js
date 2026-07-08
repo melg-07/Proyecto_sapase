@@ -104,7 +104,7 @@ function filterArchivos() {
 
 function renderArchivosTable(list) {
   const tbody      = document.getElementById('archivos-table');
-  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
+  const isAdmin    = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta = currentUser && currentUser.rol === 'Consulta';
   tbody.innerHTML = list.map(d => `
     <tr>
@@ -171,7 +171,7 @@ function _renderViewModal(d) {
 
   const btnTransferir = document.getElementById('btn-transferir-demanda');
   if (btnTransferir) {
-    const isAdmin = currentUser && currentUser.rol === 'Administrador';
+    const isAdmin = currentUser && isAdminLevel(currentUser.rol);
     btnTransferir.style.display = isAdmin ? '' : 'none';
   }
 
@@ -266,8 +266,8 @@ function openEditDemanda(id) {
   if (!d) return;
   currentViewId  = id;
 
-  // Estado y prioridad solo los puede modificar el Administrador
-  const isAdmin      = currentUser.rol === 'Administrador';
+  // Estado y prioridad solo los puede modificar Administrador/Subadmin
+  const isAdmin      = isAdminLevel(currentUser.rol);
   const estadoGroup   = document.getElementById('ed-estado-group');
   const prioridadGroup = document.getElementById('ed-prioridad-group');
   if (estadoGroup)    estadoGroup.style.display    = isAdmin ? '' : 'none';
@@ -303,7 +303,7 @@ function openEditDemanda(id) {
 async function saveEditDemanda() {
   const areaName = document.getElementById('ed-area').value;
   const area_id  = getAreaId(areaName);
-  const isAdmin  = currentUser && currentUser.rol === 'Administrador';
+  const isAdmin  = currentUser && isAdminLevel(currentUser.rol);
 
   const payload = {
     ref:           document.getElementById('ed-ref').value.trim(),

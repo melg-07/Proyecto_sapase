@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db     = require('../db');
-const { authMiddleware, soloAdmin, noConsulta } = require('../middleware/auth');
+const { authMiddleware, adminOSubadmin, noConsulta } = require('../middleware/auth');
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
@@ -169,8 +169,8 @@ router.put('/:id', noConsulta, async (req, res) => {
   try {
     const body   = req.body;
 
-    // Estado y prioridad son de uso exclusivo del Administrador
-    if (('estado' in body || 'prioridad' in body) && req.user.rol !== 'Administrador') {
+    // Estado y prioridad son de uso exclusivo de Administrador/Subadmin
+    if (('estado' in body || 'prioridad' in body) && req.user.rol !== 'Administrador' && req.user.rol !== 'Subadmin') {
       return res.status(403).json({ ok: false, error: 'Solo un administrador puede modificar el estado o la prioridad' });
     }
 
@@ -278,7 +278,7 @@ router.put('/:id', noConsulta, async (req, res) => {
 });
 
 // Eliminar
-router.delete('/:id', soloAdmin, async (req, res) => {
+router.delete('/:id', adminOSubadmin, async (req, res) => {
   try {
     const [result] = await db.execute('DELETE FROM demandas WHERE id = ?', [req.params.id]);
     if (result.affectedRows === 0) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -330,7 +330,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
 });
 
 // Transferir
-router.post('/:id/transferir', soloAdmin, async (req, res) => {
+router.post('/:id/transferir', adminOSubadmin, async (req, res) => {
   try {
     const area_destino_id = req.body.area_destino_id;
     const comentario      = s(req.body.comentario);

@@ -62,7 +62,7 @@ function _updateAreaInfoPanel(areaNombre) {
   const pendientes = lista.filter(d => d.estado === 'Pendiente').length;
   const enProceso  = lista.filter(d => d.estado === 'En proceso').length;
   const atendidas  = lista.filter(d => d.estado === 'Atendida').length;
-  const isAdmin    = currentUser && currentUser.rol === 'Administrador';
+  const isAdmin    = currentUser && isAdminLevel(currentUser.rol);
 
   document.getElementById('area-info-num').textContent  = `AREA ${String(idx + 1).padStart(2, '0')}`;
   document.getElementById('area-info-name').textContent = a.nombre;
@@ -200,7 +200,7 @@ function hideAreaDetail() {
 
 function filterAreaDetail() {
   const q       = (document.getElementById('area-search')?.value || '').toLowerCase();
-  const isAdmin = currentUser && currentUser.rol === 'Administrador';
+  const isAdmin = currentUser && isAdminLevel(currentUser.rol);
   const list    = demandas.filter(d =>
     d.area === selectedArea &&
     (!q || d.folio.toLowerCase().includes(q) || d.remitente.toLowerCase().includes(q) || d.asunto.toLowerCase().includes(q))

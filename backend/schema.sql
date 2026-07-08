@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS areas (
 
 -- Si la base de datos ya existia de una instalacion previa, ejecutar manualmente:
 -- ALTER TABLE areas ADD COLUMN jefe_area VARCHAR(200) NULL AFTER nombre;
+-- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista';
 
 -- ------------------------------------------------------------
 -- USUARIOS
@@ -38,7 +39,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo        VARCHAR(200),
   telefono      VARCHAR(30),
   cargo         VARCHAR(150),
-  rol           ENUM('Administrador','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista',
+  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista',
   activo        TINYINT(1) NOT NULL DEFAULT 1,
   creado_en     DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_usuario (usuario),

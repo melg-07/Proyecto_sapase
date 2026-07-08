@@ -24,6 +24,14 @@ function soloAdmin(req, res, next) {
   next();
 }
 
+// Administrador o Subadmin: mismos privilegios de gestion, salvo usuarios y configuracion
+function adminOSubadmin(req, res, next) {
+  if (req.user?.rol !== 'Administrador' && req.user?.rol !== 'Subadmin') {
+    return res.status(403).json({ ok: false, error: 'No tienes permisos suficientes' });
+  }
+  next();
+}
+
 function noConsulta(req, res, next) {
   if (req.user?.rol === 'Consulta') {
     return res.status(403).json({ ok: false, error: 'El usuario de consulta solo puede ver e imprimir' });
@@ -31,4 +39,4 @@ function noConsulta(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, soloAdmin, noConsulta };
+module.exports = { authMiddleware, soloAdmin, adminOSubadmin, noConsulta };
