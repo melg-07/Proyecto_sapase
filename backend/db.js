@@ -16,7 +16,22 @@ const pool = mysql.createPool({
 
 // Prueba de conexion al arrancar (no detiene el proceso si falla)
 pool.getConnection()
-  .then(conn => { console.log('✔  MySQL conectado'); conn.release(); })
-  .catch(err  => { console.error('✖  MySQL:', err.message); });
+  .then(async conn => {
+    console.log('✔  MySQL conectado');
+    conn.release();
+    await ensureRolEnumSubadmin();
+  })
+  .catch(err => { console.error('✖  MySQL:', err.message); });
+
+// Asegura que el rol 'Subadmin' exista en el ENUM de usuarios.rol (idempotente)
+async function ensureRolEnumSubadmin() {
+  try {
+    await pool.execute(
+      "ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista'"
+    );
+  } catch (err) {
+    console.error('⚠  No se pudo actualizar el ENUM de rol:', err.message);
+  }
+}
 
 module.exports = pool;
