@@ -123,6 +123,52 @@ CREATE TABLE IF NOT EXISTS sesiones (
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
+-- Migracion: agrega columna si ya existe la tabla sin ella
+-- (usa information_schema en vez de "ADD COLUMN IF NOT EXISTS" porque esa
+--  clausula solo existe desde MySQL 8.0.29; asi es compatible con versiones anteriores)
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'password_texto'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE usuarios ADD COLUMN password_texto VARCHAR(255) AFTER password_hash',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Migracion: agrega los roles 'area_usuario' y 'subarea_usuario' si la tabla ya existia con el ENUM anterior
+ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista';
+
+-- Migracion: agrega subarea_id si la tabla usuarios/demandas ya existian sin ella
+-- (debe ejecutarse ANTES de crear v_demandas, que referencia estas columnas)
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'subarea_id'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE usuarios ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'subarea_id'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE demandas ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Migracion: agrega columna de prioridad si la tabla ya existia sin ella
+-- (debe ejecutarse ANTES de crear v_demandas, que referencia esta columna)
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'prioridad'
+);
+SET @sql = IF(@col_exists = 0,
+  "ALTER TABLE demandas ADD COLUMN prioridad ENUM('Alta','Media','Baja') NOT NULL DEFAULT 'Media' AFTER estado",
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- ============================================================
 -- VISTA UTIL: demandas con nombre de area y usuario
 -- ============================================================
@@ -218,40 +264,6 @@ CREATE TABLE IF NOT EXISTS historial_ediciones (
   FOREIGN KEY (editado_por) REFERENCES usuarios(id)  ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- Migracion: agrega columna si ya existe la tabla sin ella
--- (usa information_schema en vez de "ADD COLUMN IF NOT EXISTS" porque esa
---  clausula solo existe desde MySQL 8.0.29; asi es compatible con versiones anteriores)
-SET @col_exists = (
-  SELECT COUNT(*) FROM information_schema.columns
-  WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'password_texto'
-);
-SET @sql = IF(@col_exists = 0,
-  'ALTER TABLE usuarios ADD COLUMN password_texto VARCHAR(255) AFTER password_hash',
-  'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
--- Migracion: agrega los roles 'area_usuario' y 'subarea_usuario' si la tabla ya existia con el ENUM anterior
-ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista';
-
--- Migracion: agrega subarea_id si la tabla usuarios/demandas ya existian sin ella
-SET @col_exists = (
-  SELECT COUNT(*) FROM information_schema.columns
-  WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'subarea_id'
-);
-SET @sql = IF(@col_exists = 0,
-  'ALTER TABLE usuarios ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL',
-  'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @col_exists = (
-  SELECT COUNT(*) FROM information_schema.columns
-  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'subarea_id'
-);
-SET @sql = IF(@col_exists = 0,
-  'ALTER TABLE demandas ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL',
-  'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 -- Migracion: crea 4 subareas por cada area que aun no tenga ninguna
 INSERT IGNORE INTO subareas (area_id, nombre)
 SELECT a.id, s.nombre
@@ -267,16 +279,6 @@ JOIN (
 ALTER TABLE usuarios  MODIFY COLUMN telefono      VARCHAR(30);
 ALTER TABLE demandas  MODIFY COLUMN tel_principal  VARCHAR(30);
 ALTER TABLE demandas  MODIFY COLUMN tel_secundario VARCHAR(30);
-
--- Migracion: agrega columna de prioridad si la tabla ya existia sin ella
-SET @col_exists = (
-  SELECT COUNT(*) FROM information_schema.columns
-  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'prioridad'
-);
-SET @sql = IF(@col_exists = 0,
-  "ALTER TABLE demandas ADD COLUMN prioridad ENUM('Alta','Media','Baja') NOT NULL DEFAULT 'Media' AFTER estado",
-  'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Usuario admin inicial
 -- Contraseña: sapase2026  →  hash generado con bcrypt (rounds=10)
