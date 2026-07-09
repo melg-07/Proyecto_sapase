@@ -5,6 +5,7 @@ function buildCurrentUser(u) {
     user:     u.usuario,
     rol:      u.rol,
     area:     u.area     || '',
+    area_id:  u.area_id  || null,
     correo:   u.correo   || '',
     telefono: u.telefono || '',
     cargo:    u.cargo    || '',
@@ -91,6 +92,7 @@ function renderSidebar(activePage) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
+  const isAreaUser  = currentUser && isAreaUsuario(currentUser.rol);
   let html = '';
 
   if (isAdminLvl) {
@@ -108,6 +110,11 @@ function renderSidebar(activePage) {
   } else if (isConsulta) {
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
+  } else if (isAreaUser) {
+    html += navSection('Gestion');
+    html += navItem('formulario', 'Nueva Peticion', activePage);
+    html += navItem('archivos',   'Archivos',      activePage);
+    html += navItem('areas',      'Mi Area',       activePage);
   } else {
     html += navSection('Gestion');
     html += navItem('formulario', 'Nueva Peticion', activePage);
@@ -131,11 +138,14 @@ function showPage(name) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
+  const isAreaUser  = currentUser && isAreaUsuario(currentUser.rol);
 
   if (isConsulta) {
     if (name !== 'archivos') name = 'archivos';
   } else if (isAdminLvl) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
+  } else if (isAreaUser) {
+    if (!['formulario', 'archivos', 'areas'].includes(name)) name = 'formulario';
   } else if (!['formulario', 'archivos'].includes(name)) {
     name = 'formulario';
   }
@@ -157,7 +167,10 @@ function showPage(name) {
   }
 
   if (name === 'archivos')  { renderArchivos(); }
-  if (name === 'areas')     { renderAreasGrid(); hideAreaDetail(); }
+  if (name === 'areas') {
+    renderAreasGrid();
+    if (isAreaUser) { showAreaDetail(currentUser.area); } else { hideAreaDetail(); }
+  }
   if (name === 'dashboard') { updateStats(); renderDashboard(); }
   if (name === 'usuarios')  { renderUsuarios(); }
   if (name === 'configuracion') { renderConfiguracion(); }

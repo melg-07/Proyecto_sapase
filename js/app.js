@@ -39,6 +39,9 @@ function renderDashboard() {
 
 // Areas
 function renderAreasGrid() {
+  const wrap = document.getElementById('areas-dropdown-wrap');
+  if (wrap) wrap.style.display = (currentUser && isAreaUsuario(currentUser.rol)) ? 'none' : '';
+
   const sel = document.getElementById('areas-dropdown');
   if (!sel) return;
   const prev = sel.value;

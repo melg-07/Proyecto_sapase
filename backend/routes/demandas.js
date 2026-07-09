@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const db     = require('../db');
-const { authMiddleware, adminOSubadmin, noConsulta } = require('../middleware/auth');
+const { authMiddleware, adminOSubadmin, noConsulta, areaUsuarioGuard, scopeArea } = require('../middleware/auth');
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
@@ -28,6 +28,7 @@ const upload = multer({
 });
 
 router.use(authMiddleware);
+router.use(areaUsuarioGuard);
 
 // undefined / '' → null para MySQL
 const s = v => (v === undefined || v === '') ? null : v;
@@ -56,6 +57,8 @@ router.get('/', async (req, res) => {
     let sql    = 'SELECT * FROM v_demandas WHERE 1=1';
     const params = [];
 
+    const scope = scopeArea(req);
+    if (scope)     { sql += ' AND area_id = ?';   params.push(scope); }
     if (area)      { sql += ' AND area = ?';      params.push(area); }
     if (estado)    { sql += ' AND estado = ?';    params.push(estado); }
     if (prioridad) { sql += ' AND prioridad = ?'; params.push(prioridad); }
@@ -78,6 +81,11 @@ router.get('/:id', async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    const scope = scopeArea(req);
+    if (scope && Number(rows[0].area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
 
     const [hist] = await db.execute(
       `SELECT t.transferido_en, ao.nombre AS area_origen, ad.nombre AS area_destino,
@@ -132,6 +140,11 @@ router.post('/', noConsulta, async (req, res) => {
     const id    = 'D-' + Date.now();
     const folio = await siguienteFolio();
 
+    // Un usuario de area solo puede capturar peticiones para su propia area,
+    // sin importar que area_id venga en el body
+    const scope     = scopeArea(req);
+    const areaIdVal = scope || (area_id != null && area_id !== '' ? Number(area_id) : null);
+
     await db.execute(
       `INSERT INTO demandas
         (id, folio, fecha_captura, fecha_demanda, folio_ref, area_id,
@@ -143,7 +156,7 @@ router.post('/', noConsulta, async (req, res) => {
         folio,
         parseFecha(s(fecha_demanda)),
         s(ref),
-        area_id != null && area_id !== '' ? Number(area_id) : null,
+        areaIdVal,
         String(remitente).trim(),
         String(asunto).trim(),
         s(domicilio),
@@ -179,6 +192,12 @@ router.put('/:id', noConsulta, async (req, res) => {
     if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     const before = current[0];
 
+    // Un usuario de area solo puede editar peticiones de su propia area
+    const scope = scopeArea(req);
+    if (scope && Number(before.area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
     const fields = [];
     const vals   = [];
 
@@ -204,7 +223,7 @@ router.put('/:id', noConsulta, async (req, res) => {
       }
     }
 
-    if ('area_id' in body) {
+    if ('area_id' in body && !scope) {
       fields.push('area_id = ?');
       vals.push(body.area_id != null && body.area_id !== '' ? Number(body.area_id) : null);
     }
@@ -250,6 +269,7 @@ router.put('/:id', noConsulta, async (req, res) => {
     const changes = {};
     for (const [bodyKey, col] of Object.entries(bodyToCol)) {
       if (!(bodyKey in body)) continue;
+      if (bodyKey === 'area_id' && scope) continue; // el area no se modifico (usuario de area)
       let newVal;
       if (bodyKey === 'area_id') {
         newVal = body[bodyKey] != null && body[bodyKey] !== '' ? Number(body[bodyKey]) : null;
@@ -306,8 +326,14 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Se requiere un archivo adjunto' });
     }
 
-    const [dem] = await db.execute('SELECT estado FROM demandas WHERE id = ?', [req.params.id]);
+    const [dem] = await db.execute('SELECT estado, area_id FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    const scope = scopeArea(req);
+    if (scope && Number(dem[0].area_id) !== Number(scope)) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }

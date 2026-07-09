@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS areas (
 
 -- Si la base de datos ya existia de una instalacion previa, ejecutar manualmente:
 -- ALTER TABLE areas ADD COLUMN jefe_area VARCHAR(200) NULL AFTER nombre;
--- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista';
+-- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario') NOT NULL DEFAULT 'Capturista';
 
 -- ------------------------------------------------------------
 -- USUARIOS
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo        VARCHAR(200),
   telefono      VARCHAR(30),
   cargo         VARCHAR(150),
-  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista',
+  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario') NOT NULL DEFAULT 'Capturista',
   activo        TINYINT(1) NOT NULL DEFAULT 1,
   creado_en     DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_usuario (usuario),
@@ -209,6 +209,9 @@ SET @sql = IF(@col_exists = 0,
   'ALTER TABLE usuarios ADD COLUMN password_texto VARCHAR(255) AFTER password_hash',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Migracion: agrega el rol 'area_usuario' si la tabla ya existia con el ENUM anterior
+ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario') NOT NULL DEFAULT 'Capturista';
 
 -- Migracion: amplia telefonos para admitir simbolos, letras y extension (EXT)
 ALTER TABLE usuarios  MODIFY COLUMN telefono      VARCHAR(30);

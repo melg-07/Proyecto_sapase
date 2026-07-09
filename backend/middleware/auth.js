@@ -10,7 +10,7 @@ function authMiddleware(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = payload; // { id, usuario, rol, nombre }
+    req.user = payload; // { id, usuario, rol, nombre, area_id }
     next();
   } catch (err) {
     return res.status(401).json({ ok: false, error: 'Token invalido o expirado' });
@@ -39,4 +39,17 @@ function noConsulta(req, res, next) {
   next();
 }
 
-module.exports = { authMiddleware, soloAdmin, adminOSubadmin, noConsulta };
+// Bloquea a un usuario de area sin area_id asignada (evita que quede sin restriccion por error de datos)
+function areaUsuarioGuard(req, res, next) {
+  if (req.user?.rol === 'area_usuario' && !req.user.area_id) {
+    return res.status(403).json({ ok: false, error: 'Tu usuario no tiene un area asignada. Contacta al administrador.' });
+  }
+  next();
+}
+
+// Devuelve el area_id al que debe restringirse la consulta, o null si el usuario ve todas las areas
+function scopeArea(req) {
+  return req.user?.rol === 'area_usuario' ? req.user.area_id : null;
+}
+
+module.exports = { authMiddleware, soloAdmin, adminOSubadmin, noConsulta, areaUsuarioGuard, scopeArea };

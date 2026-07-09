@@ -3,13 +3,20 @@ const bcrypt = require('bcrypt');
 const db     = require('../db');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
 
+// El rol 'area_usuario' requiere siempre un area asignada
+function validarAreaDeRol(rol, area_id) {
+  return rol === 'area_usuario' && !area_id
+    ? 'El rol "Usuario de Area" requiere un area asignada'
+    : null;
+}
+
 router.use(authMiddleware);
 
 router.get('/me', async (req, res) => {
   try {
     const [rows] = await db.execute(
       `SELECT u.id, u.nombre, u.usuario, u.correo, u.telefono, u.cargo, u.rol, u.activo,
-              a.nombre AS area
+              a.id AS area_id, a.nombre AS area
        FROM usuarios u
        LEFT JOIN areas a ON u.area_id = a.id
        WHERE u.id = ?`,
@@ -43,6 +50,10 @@ router.post('/', soloAdmin, async (req, res) => {
     if (!nombre || !usuario || !password) {
       return res.status(400).json({ ok: false, error: 'Nombre, usuario y password son requeridos' });
     }
+    const errorArea = validarAreaDeRol(rol || 'Capturista', area_id);
+    if (errorArea) {
+      return res.status(400).json({ ok: false, error: errorArea });
+    }
     const hash = await bcrypt.hash(password, 10);
     const [result] = await db.execute(
       `INSERT INTO usuarios (nombre, usuario, password_hash, password_texto, area_id, correo, telefono, cargo, rol)
@@ -61,6 +72,16 @@ router.post('/', soloAdmin, async (req, res) => {
 router.put('/:id', soloAdmin, async (req, res) => {
   try {
     const { nombre, usuario, password, area_id, correo, telefono, cargo, rol, activo } = req.body;
+
+    if (rol !== undefined || area_id !== undefined) {
+      const [current] = await db.execute('SELECT rol, area_id FROM usuarios WHERE id = ?', [req.params.id]);
+      if (!current.length) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+      const rolFinal    = rol     !== undefined ? rol     : current[0].rol;
+      const areaIdFinal = area_id !== undefined ? area_id : current[0].area_id;
+      const errorArea   = validarAreaDeRol(rolFinal, areaIdFinal);
+      if (errorArea) return res.status(400).json({ ok: false, error: errorArea });
+    }
+
     const fields = [];
     const vals   = [];
 

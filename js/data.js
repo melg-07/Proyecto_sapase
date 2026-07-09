@@ -132,6 +132,10 @@ function isAdminLevel(rol) {
   return rol === 'Administrador' || rol === 'Subadmin';
 }
 
+function isAreaUsuario(rol) {
+  return rol === 'area_usuario';
+}
+
 function getInitials(name) {
   return (name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }

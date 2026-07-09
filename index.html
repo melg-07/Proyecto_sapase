@@ -253,7 +253,7 @@
         <button class="btn btn-guinda" id="btn-nueva-area" style="display:none;" onclick="openNuevaArea()">Nueva Area</button>
       </div>
       <!-- Dropdown selector de area -->
-      <div class="card" style="margin-bottom:16px;">
+      <div class="card" id="areas-dropdown-wrap" style="margin-bottom:16px;">
         <div class="field-group" style="margin:0;">
           <label>Seleccionar Area</label>
           <select id="areas-dropdown" onchange="onAreaDropdownChange(this.value)">
@@ -548,6 +548,7 @@
           <option value="Capturista">Capturista</option>
           <option value="Consulta">Consulta</option>
           <option value="TIC">TIC</option>
+          <option value="area_usuario">Usuario de Area</option>
         </select>
       </div>
       <div class="field-group">
@@ -612,6 +613,7 @@
           <option value="Capturista" selected>Capturista</option>
           <option value="Consulta">Consulta</option>
           <option value="TIC">TIC</option>
+          <option value="area_usuario">Usuario de Area</option>
         </select>
       </div>
     </div>

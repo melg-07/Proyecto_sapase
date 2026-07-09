@@ -1,13 +1,18 @@
 const router = require('express').Router();
 const db     = require('../db');
-const { authMiddleware, adminOSubadmin } = require('../middleware/auth');
+const { authMiddleware, adminOSubadmin, areaUsuarioGuard, scopeArea } = require('../middleware/auth');
 
 router.use(authMiddleware);
+router.use(areaUsuarioGuard);
 
 router.get('/', async (req, res) => {
   try {
+    const scope = scopeArea(req);
     const [rows] = await db.execute(
-      'SELECT id, nombre, jefe_area, activa FROM areas ORDER BY id ASC'
+      scope
+        ? 'SELECT id, nombre, jefe_area, activa FROM areas WHERE id = ? ORDER BY id ASC'
+        : 'SELECT id, nombre, jefe_area, activa FROM areas ORDER BY id ASC',
+      scope ? [scope] : []
     );
     res.json({ ok: true, data: rows });
   } catch (err) {

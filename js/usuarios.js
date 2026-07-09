@@ -1,3 +1,7 @@
+function rolLabel(rol) {
+  return rol === 'area_usuario' ? 'Usuario de Area' : rol;
+}
+
 async function renderUsuarios() {
   const tbody   = document.getElementById('usuarios-table');
   const isAdmin = currentUser && currentUser.rol === 'Administrador';
@@ -28,7 +32,7 @@ function _renderUsuariosTable(list) {
       <td>${u.telefono || '—'}</td>
       <td>${u.cargo    || '—'}</td>
       <td><small>${u.area}</small></td>
-      <td><span class="badge badge-blue">${u.rol}</span></td>
+      <td><span class="badge badge-blue">${rolLabel(u.rol)}</span></td>
       <td><span class="badge ${u.active ? 'badge-green' : 'badge-red'}">${u.active ? 'Activo' : 'Inactivo'}</span></td>
       ${isAdmin ? `<td><button class="btn btn-outline btn-sm" onclick="openEditUser(${u.id})">Editar</button></td>` : '<td>—</td>'}
     </tr>
@@ -101,6 +105,12 @@ async function saveEditUser() {
 
   const areaName = document.getElementById('eu-area').value;
   const areaObj  = _areasCache.find(a => a.nombre === areaName);
+  const rol      = document.getElementById('eu-rol').value;
+
+  if (rol === 'area_usuario' && !areaObj) {
+    showToast('El rol "Usuario de Area" requiere un area asignada', 'error');
+    return;
+  }
 
   const payload = {
     nombre:   newName,
@@ -109,7 +119,7 @@ async function saveEditUser() {
     telefono: document.getElementById('eu-telefono').value.trim(),
     cargo:    document.getElementById('eu-cargo').value.trim(),
     area_id:  areaObj ? areaObj.id : null,
-    rol:      document.getElementById('eu-rol').value,
+    rol,
     activo:   document.getElementById('eu-active').value === 'true',
   };
   if (newPw) payload.password = newPw;
@@ -125,6 +135,7 @@ async function saveEditUser() {
       currentUser.telefono = payload.telefono;
       currentUser.cargo    = payload.cargo;
       currentUser.area     = areaName;
+      currentUser.area_id  = payload.area_id;
       currentUser.rol      = payload.rol;
       currentUser.active   = payload.activo;
       document.getElementById('user-name').textContent      = currentUser.name.split(' ')[0];
@@ -173,6 +184,12 @@ async function saveNewUser() {
 
   const areaName = document.getElementById('nu-area').value;
   const areaObj  = _areasCache.find(a => a.nombre === areaName);
+  const rol      = document.getElementById('nu-rol').value;
+
+  if (rol === 'area_usuario' && !areaObj) {
+    showToast('El rol "Usuario de Area" requiere un area asignada', 'error');
+    return;
+  }
 
   const payload = {
     nombre:   name,
@@ -182,7 +199,7 @@ async function saveNewUser() {
     correo:   document.getElementById('nu-correo').value.trim(),
     telefono: document.getElementById('nu-telefono').value.trim(),
     cargo:    document.getElementById('nu-cargo').value.trim(),
-    rol:      document.getElementById('nu-rol').value,
+    rol,
   };
 
   try {
