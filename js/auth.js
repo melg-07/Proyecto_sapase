@@ -32,8 +32,9 @@ async function bootApp() {
   renderDashboard();
   renderAreasGrid();
 
-  const defaultPage = isAdminLevel(currentUser.rol)   ? 'dashboard'
-                     : currentUser.rol === 'Consulta' ? 'archivos'
+  const defaultPage = isAdminLevel(currentUser.rol)          ? 'dashboard'
+                     : currentUser.rol === 'Consulta'        ? 'archivos'
+                     : isAreaUsuario(currentUser.rol)        ? 'archivos'
                      : 'formulario';
   const savedPage = localStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
@@ -112,9 +113,7 @@ function renderSidebar(activePage) {
     html += navItem('archivos', 'Archivos', activePage);
   } else if (isAreaUser) {
     html += navSection('Gestion');
-    html += navItem('formulario', 'Nueva Peticion', activePage);
-    html += navItem('archivos',   'Archivos',      activePage);
-    html += navItem('areas',      'Mi Area',       activePage);
+    html += navItem('archivos', 'Archivos', activePage);
   } else {
     html += navSection('Gestion');
     html += navItem('formulario', 'Nueva Peticion', activePage);
@@ -145,7 +144,7 @@ function showPage(name) {
   } else if (isAdminLvl) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
   } else if (isAreaUser) {
-    if (!['formulario', 'archivos', 'areas'].includes(name)) name = 'formulario';
+    if (name !== 'archivos') name = 'archivos';
   } else if (!['formulario', 'archivos'].includes(name)) {
     name = 'formulario';
   }
@@ -167,10 +166,7 @@ function showPage(name) {
   }
 
   if (name === 'archivos')  { renderArchivos(); }
-  if (name === 'areas') {
-    renderAreasGrid();
-    if (isAreaUser) { showAreaDetail(currentUser.area); } else { hideAreaDetail(); }
-  }
+  if (name === 'areas')     { renderAreasGrid(); hideAreaDetail(); }
   if (name === 'dashboard') { updateStats(); renderDashboard(); }
   if (name === 'usuarios')  { renderUsuarios(); }
   if (name === 'configuracion') { renderConfiguracion(); }

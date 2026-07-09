@@ -39,8 +39,13 @@ function renderDashboard() {
 
 // Areas
 function renderAreasGrid() {
+  const isAreaUser = currentUser && isAreaUsuario(currentUser.rol);
+
   const wrap = document.getElementById('areas-dropdown-wrap');
-  if (wrap) wrap.style.display = (currentUser && isAreaUsuario(currentUser.rol)) ? 'none' : '';
+  if (wrap) wrap.style.display = isAreaUser ? 'none' : '';
+
+  const btnCerrar = document.getElementById('btn-cerrar-area');
+  if (btnCerrar) btnCerrar.style.display = isAreaUser ? 'none' : '';
 
   const sel = document.getElementById('areas-dropdown');
   if (!sel) return;
