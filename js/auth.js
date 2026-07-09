@@ -6,6 +6,8 @@ function buildCurrentUser(u) {
     rol:      u.rol,
     area:     u.area     || '',
     area_id:  u.area_id  || null,
+    subarea:    u.subarea    || '',
+    subarea_id: u.subarea_id || null,
     correo:   u.correo   || '',
     telefono: u.telefono || '',
     cargo:    u.cargo    || '',
@@ -32,9 +34,10 @@ async function bootApp() {
   renderDashboard();
   renderAreasGrid();
 
-  const defaultPage = isAdminLevel(currentUser.rol)          ? 'dashboard'
-                     : currentUser.rol === 'Consulta'        ? 'archivos'
-                     : isAreaUsuario(currentUser.rol)        ? 'archivos'
+  const defaultPage = isAdminLevel(currentUser.rol)                    ? 'dashboard'
+                     : currentUser.rol === 'Consulta'                  ? 'archivos'
+                     : isAreaUsuario(currentUser.rol)                  ? 'archivos'
+                     : isSubareaUsuario(currentUser.rol)                ? 'archivos'
                      : 'formulario';
   const savedPage = localStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
@@ -93,7 +96,7 @@ function renderSidebar(activePage) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser  = currentUser && isAreaUsuario(currentUser.rol);
+  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol));
   let html = '';
 
   if (isAdminLvl) {
@@ -137,7 +140,7 @@ function showPage(name) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser  = currentUser && isAreaUsuario(currentUser.rol);
+  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol));
 
   if (isConsulta) {
     if (name !== 'archivos') name = 'archivos';
@@ -187,6 +190,7 @@ function openUserProfile() {
     ['Telefono', u.telefono || '—'],
     ['Cargo',    u.cargo    || '—'],
     ['Area',     u.area     || '—'],
+    ['Subarea',  u.subarea  || '—'],
     ['Estado',   u.active   ? 'Activo' : 'Inactivo'],
   ];
 

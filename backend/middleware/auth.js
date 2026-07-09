@@ -47,9 +47,25 @@ function areaUsuarioGuard(req, res, next) {
   next();
 }
 
+// Bloquea a un usuario de subarea sin subarea_id asignada
+function subareaUsuarioGuard(req, res, next) {
+  if (req.user?.rol === 'subarea_usuario' && !req.user.subarea_id) {
+    return res.status(403).json({ ok: false, error: 'Tu usuario no tiene una subarea asignada. Contacta al administrador.' });
+  }
+  next();
+}
+
 // Devuelve el area_id al que debe restringirse la consulta, o null si el usuario ve todas las areas
 function scopeArea(req) {
   return req.user?.rol === 'area_usuario' ? req.user.area_id : null;
 }
 
-module.exports = { authMiddleware, soloAdmin, adminOSubadmin, noConsulta, areaUsuarioGuard, scopeArea };
+// Devuelve el subarea_id al que debe restringirse la consulta, o null si no aplica
+function scopeSubarea(req) {
+  return req.user?.rol === 'subarea_usuario' ? req.user.subarea_id : null;
+}
+
+module.exports = {
+  authMiddleware, soloAdmin, adminOSubadmin, noConsulta,
+  areaUsuarioGuard, subareaUsuarioGuard, scopeArea, scopeSubarea,
+};

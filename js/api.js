@@ -77,6 +77,13 @@ async function apiToggleArea(id) {
   return res;
 }
 
+// Subareas
+
+async function apiGetSubareas(area_id) {
+  const res = await apiFetch('/subareas?area_id=' + area_id);
+  return res.data;
+}
+
 // Usuarios
 
 async function apiGetUsuarios() {
@@ -146,6 +153,14 @@ async function apiTransferirDemanda(id, area_destino_id, comentario) {
     method: 'POST',
     body: JSON.stringify({ area_destino_id, comentario }),
   });
+}
+
+async function apiEnviarSubarea(id, subarea_id) {
+  const res = await apiFetch('/demandas/' + id + '/enviar-subarea', {
+    method: 'POST',
+    body: JSON.stringify({ subarea_id }),
+  });
+  return res.data;
 }
 
 // Configuracion / Logos

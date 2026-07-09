@@ -1,6 +1,9 @@
 const router = require('express').Router();
 const db     = require('../db');
-const { authMiddleware, adminOSubadmin, noConsulta, areaUsuarioGuard, scopeArea } = require('../middleware/auth');
+const {
+  authMiddleware, adminOSubadmin, noConsulta,
+  areaUsuarioGuard, subareaUsuarioGuard, scopeArea, scopeSubarea,
+} = require('../middleware/auth');
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
@@ -29,6 +32,7 @@ const upload = multer({
 
 router.use(authMiddleware);
 router.use(areaUsuarioGuard);
+router.use(subareaUsuarioGuard);
 
 // undefined / '' → null para MySQL
 const s = v => (v === undefined || v === '') ? null : v;
@@ -57,8 +61,10 @@ router.get('/', async (req, res) => {
     let sql    = 'SELECT * FROM v_demandas WHERE 1=1';
     const params = [];
 
-    const scope = scopeArea(req);
-    if (scope)     { sql += ' AND area_id = ?';   params.push(scope); }
+    const scope    = scopeArea(req);
+    const subScope = scopeSubarea(req);
+    if (scope)     { sql += ' AND area_id = ?';    params.push(scope); }
+    if (subScope)  { sql += ' AND subarea_id = ?'; params.push(subScope); }
     if (area)      { sql += ' AND area = ?';      params.push(area); }
     if (estado)    { sql += ' AND estado = ?';    params.push(estado); }
     if (prioridad) { sql += ' AND prioridad = ?'; params.push(prioridad); }
@@ -82,8 +88,12 @@ router.get('/:id', async (req, res) => {
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
-    const scope = scopeArea(req);
+    const scope    = scopeArea(req);
+    const subScope = scopeSubarea(req);
     if (scope && Number(rows[0].area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+    if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
@@ -127,6 +137,10 @@ router.get('/:id', async (req, res) => {
 // Crear
 router.post('/', noConsulta, async (req, res) => {
   try {
+    if (req.user.rol === 'subarea_usuario') {
+      return res.status(403).json({ ok: false, error: 'Los usuarios de subarea no pueden crear peticiones' });
+    }
+
     const {
       ref, area_id, remitente, asunto,
       domicilio, colonia, tel1, tel2,
@@ -180,11 +194,23 @@ router.post('/', noConsulta, async (req, res) => {
 // Editar
 router.put('/:id', noConsulta, async (req, res) => {
   try {
-    const body   = req.body;
+    const body = req.body;
 
-    // Estado y prioridad son de uso exclusivo de Administrador/Subadmin
-    if (('estado' in body || 'prioridad' in body) && req.user.rol !== 'Administrador' && req.user.rol !== 'Subadmin') {
-      return res.status(403).json({ ok: false, error: 'Solo un administrador puede modificar el estado o la prioridad' });
+    // Un usuario de subarea solo puede cambiar el estado, nada mas
+    if (req.user.rol === 'subarea_usuario') {
+      const keys = Object.keys(body);
+      if (keys.length !== 1 || keys[0] !== 'estado') {
+        return res.status(403).json({ ok: false, error: 'Los usuarios de subarea solo pueden cambiar el estado' });
+      }
+    }
+
+    // Estado: solo Administrador, Subadmin o el usuario de la subarea a la que fue enviada
+    if ('estado' in body && !['Administrador', 'Subadmin', 'subarea_usuario'].includes(req.user.rol)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar el estado' });
+    }
+    // Prioridad: Administrador, Subadmin o el usuario de area
+    if ('prioridad' in body && !['Administrador', 'Subadmin', 'area_usuario'].includes(req.user.rol)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar la prioridad' });
     }
 
     // Leer valores actuales para detectar cambios
@@ -192,9 +218,14 @@ router.put('/:id', noConsulta, async (req, res) => {
     if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     const before = current[0];
 
-    // Un usuario de area solo puede editar peticiones de su propia area
-    const scope = scopeArea(req);
+    // Un usuario de area solo puede editar peticiones de su propia area;
+    // un usuario de subarea, solo las que fueron enviadas a la suya
+    const scope    = scopeArea(req);
+    const subScope = scopeSubarea(req);
     if (scope && Number(before.area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+    if (subScope && Number(before.subarea_id) !== Number(subScope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
@@ -316,6 +347,11 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
   });
 }, async (req, res) => {
   try {
+    if (req.user.rol === 'area_usuario') {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(403).json({ ok: false, error: 'Los usuarios de area no pueden cambiar el estado, solo la prioridad' });
+    }
+
     const { estado } = req.body;
 
     if (!['En proceso', 'Atendida'].includes(estado)) {
@@ -326,14 +362,19 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Se requiere un archivo adjunto' });
     }
 
-    const [dem] = await db.execute('SELECT estado, area_id FROM demandas WHERE id = ?', [req.params.id]);
+    const [dem] = await db.execute('SELECT estado, area_id, subarea_id FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
-    const scope = scopeArea(req);
+    const scope    = scopeArea(req);
+    const subScope = scopeSubarea(req);
     if (scope && Number(dem[0].area_id) !== Number(scope)) {
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+    if (subScope && Number(dem[0].subarea_id) !== Number(subScope)) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
@@ -375,11 +416,51 @@ router.post('/:id/transferir', adminOSubadmin, async (req, res) => {
     );
 
     await db.execute(
-      "UPDATE demandas SET area_id = ?, estado = 'En proceso' WHERE id = ?",
+      "UPDATE demandas SET area_id = ?, subarea_id = NULL, estado = 'En proceso' WHERE id = ?",
       [Number(area_destino_id), req.params.id]
     );
 
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Enviar a una subarea de la propia area (usuario de area, o Administrador/Subadmin)
+router.post('/:id/enviar-subarea', async (req, res) => {
+  try {
+    if (!['area_usuario', 'Administrador', 'Subadmin'].includes(req.user.rol)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para esta accion' });
+    }
+
+    const { subarea_id } = req.body;
+    if (!subarea_id) {
+      return res.status(400).json({ ok: false, error: 'subarea_id requerido' });
+    }
+
+    const [dem] = await db.execute('SELECT area_id, subarea_id FROM demandas WHERE id = ?', [req.params.id]);
+    if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    const scope = scopeArea(req);
+    if (scope && Number(dem[0].area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    const [sub] = await db.execute('SELECT id, area_id, nombre FROM subareas WHERE id = ?', [subarea_id]);
+    if (!sub.length) return res.status(404).json({ ok: false, error: 'Subarea no encontrada' });
+    if (Number(sub[0].area_id) !== Number(dem[0].area_id)) {
+      return res.status(400).json({ ok: false, error: 'La subarea no pertenece a esta area' });
+    }
+
+    await db.execute('UPDATE demandas SET subarea_id = ? WHERE id = ?', [subarea_id, req.params.id]);
+
+    await db.execute(
+      `INSERT INTO historial_ediciones (demanda_id, editado_por, campos_editados) VALUES (?, ?, ?)`,
+      [req.params.id, req.user.id, JSON.stringify({ Subarea: { antes: dem[0].subarea_id || '', despues: sub[0].nombre } })]
+    );
+
+    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
+    res.json({ ok: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

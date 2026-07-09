@@ -315,6 +315,7 @@
               <th>Telefono</th>
               <th>Cargo</th>
               <th>Area</th>
+              <th>Subarea</th>
               <th>Rol</th>
               <th>Estado</th>
             </tr>
@@ -484,6 +485,24 @@
   </div>
 </div>
 
+<!-- Enviar a Subarea -->
+<div class="modal-overlay" id="modal-enviar-subarea">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Enviar a Subarea</div>
+      <button class="modal-close" onclick="closeModal('modal-enviar-subarea')">x</button>
+    </div>
+    <div class="field-group">
+      <label>Subarea Destino</label>
+      <select id="es-subarea"></select>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-guinda" onclick="confirmEnviarSubarea()">Enviar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-enviar-subarea')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Perfil -->
 <div class="modal-overlay" id="modal-profile">
   <div class="modal" style="width:420px;">
@@ -538,7 +557,13 @@
       </div>
       <div class="field-group">
         <label>Area</label>
-        <select id="eu-area"></select>
+        <select id="eu-area" onchange="onUsuarioAreaChange('eu-area','eu-subarea')"></select>
+      </div>
+      <div class="field-group">
+        <label>Subarea</label>
+        <select id="eu-subarea">
+          <option value="">— Ninguna —</option>
+        </select>
       </div>
       <div class="field-group">
         <label>Rol</label>
@@ -549,6 +574,7 @@
           <option value="Consulta">Consulta</option>
           <option value="TIC">TIC</option>
           <option value="area_usuario">Usuario de Area</option>
+          <option value="subarea_usuario">Usuario de Subarea</option>
         </select>
       </div>
       <div class="field-group">
@@ -603,7 +629,13 @@
       </div>
       <div class="field-group">
         <label>Area</label>
-        <select id="nu-area"></select>
+        <select id="nu-area" onchange="onUsuarioAreaChange('nu-area','nu-subarea')"></select>
+      </div>
+      <div class="field-group">
+        <label>Subarea</label>
+        <select id="nu-subarea">
+          <option value="">— Ninguna —</option>
+        </select>
       </div>
       <div class="field-group">
         <label>Rol</label>
@@ -614,6 +646,7 @@
           <option value="Consulta">Consulta</option>
           <option value="TIC">TIC</option>
           <option value="area_usuario">Usuario de Area</option>
+          <option value="subarea_usuario">Usuario de Subarea</option>
         </select>
       </div>
     </div>

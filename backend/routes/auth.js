@@ -14,9 +14,10 @@ router.post('/login', async (req, res) => {
     }
 
     const [rows] = await db.execute(
-      `SELECT u.*, a.nombre AS area_nombre
+      `SELECT u.*, a.nombre AS area_nombre, sa.nombre AS subarea_nombre
        FROM usuarios u
-       LEFT JOIN areas a ON u.area_id = a.id
+       LEFT JOIN areas a     ON u.area_id    = a.id
+       LEFT JOIN subareas sa ON u.subarea_id = sa.id
        WHERE u.usuario = ? AND u.activo = 1
        LIMIT 1`,
       [usuario]
@@ -34,7 +35,10 @@ router.post('/login', async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, usuario: user.usuario, rol: user.rol, nombre: user.nombre, area_id: user.area_id || null },
+      {
+        id: user.id, usuario: user.usuario, rol: user.rol, nombre: user.nombre,
+        area_id: user.area_id || null, subarea_id: user.subarea_id || null,
+      },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES || '8h' }
     );
@@ -55,6 +59,8 @@ router.post('/login', async (req, res) => {
         rol:       user.rol,
         area_id:   user.area_id || null,
         area:      user.area_nombre || '',
+        subarea_id: user.subarea_id || null,
+        subarea:    user.subarea_nombre || '',
         correo:    user.correo      || '',
         telefono:  user.telefono    || '',
         cargo:     user.cargo       || '',

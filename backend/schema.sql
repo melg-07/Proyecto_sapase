@@ -24,7 +24,20 @@ CREATE TABLE IF NOT EXISTS areas (
 
 -- Si la base de datos ya existia de una instalacion previa, ejecutar manualmente:
 -- ALTER TABLE areas ADD COLUMN jefe_area VARCHAR(200) NULL AFTER nombre;
--- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario') NOT NULL DEFAULT 'Capturista';
+-- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista';
+
+-- ------------------------------------------------------------
+-- SUBAREAS (cada area tiene 4 subareas)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS subareas (
+  id        INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  area_id   INT UNSIGNED NOT NULL,
+  nombre    VARCHAR(200) NOT NULL,
+  activa    TINYINT(1)   NOT NULL DEFAULT 1,
+  creado_en DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_subarea_area_nombre (area_id, nombre),
+  FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
 -- USUARIOS
@@ -36,14 +49,16 @@ CREATE TABLE IF NOT EXISTS usuarios (
   password_hash VARCHAR(255) NOT NULL,
   password_texto VARCHAR(255),
   area_id       INT UNSIGNED,
+  subarea_id    INT UNSIGNED,
   correo        VARCHAR(200),
   telefono      VARCHAR(30),
   cargo         VARCHAR(150),
-  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario') NOT NULL DEFAULT 'Capturista',
+  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista',
   activo        TINYINT(1) NOT NULL DEFAULT 1,
   creado_en     DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_usuario (usuario),
-  FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE SET NULL
+  FOREIGN KEY (area_id)    REFERENCES areas(id)    ON DELETE SET NULL,
+  FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
@@ -56,6 +71,7 @@ CREATE TABLE IF NOT EXISTS demandas (
   fecha_demanda    DATE,
   folio_ref        VARCHAR(100),
   area_id          INT UNSIGNED,
+  subarea_id       INT UNSIGNED,
   remitente        VARCHAR(300) NOT NULL,
   asunto           VARCHAR(500) NOT NULL,
   domicilio        VARCHAR(300),
@@ -72,6 +88,7 @@ CREATE TABLE IF NOT EXISTS demandas (
   actualizado_en   DATETIME ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_folio (folio),
   FOREIGN KEY (area_id)    REFERENCES areas(id)    ON DELETE SET NULL,
+  FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL,
   FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
@@ -118,6 +135,8 @@ SELECT
   d.folio_ref        AS ref,
   a.id               AS area_id,
   a.nombre           AS area,
+  sa.id              AS subarea_id,
+  sa.nombre          AS subarea,
   d.remitente,
   d.asunto,
   d.domicilio,
@@ -132,8 +151,9 @@ SELECT
   u.usuario          AS creado_por,
   d.creado_en
 FROM demandas d
-LEFT JOIN areas    a ON d.area_id    = a.id
-LEFT JOIN usuarios u ON d.creado_por = u.id;
+LEFT JOIN areas    a  ON d.area_id    = a.id
+LEFT JOIN subareas sa ON d.subarea_id = sa.id
+LEFT JOIN usuarios u  ON d.creado_por = u.id;
 
 -- ============================================================
 -- DATOS INICIALES
@@ -210,8 +230,38 @@ SET @sql = IF(@col_exists = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- Migracion: agrega el rol 'area_usuario' si la tabla ya existia con el ENUM anterior
-ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario') NOT NULL DEFAULT 'Capturista';
+-- Migracion: agrega los roles 'area_usuario' y 'subarea_usuario' si la tabla ya existia con el ENUM anterior
+ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista';
+
+-- Migracion: agrega subarea_id si la tabla usuarios/demandas ya existian sin ella
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'usuarios' AND column_name = 'subarea_id'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE usuarios ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'subarea_id'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE demandas ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- Migracion: crea 4 subareas por cada area que aun no tenga ninguna
+INSERT IGNORE INTO subareas (area_id, nombre)
+SELECT a.id, s.nombre
+FROM areas a
+JOIN (
+  SELECT 'Subarea 1' AS nombre UNION ALL
+  SELECT 'Subarea 2' UNION ALL
+  SELECT 'Subarea 3' UNION ALL
+  SELECT 'Subarea 4'
+) s;
 
 -- Migracion: amplia telefonos para admitir simbolos, letras y extension (EXT)
 ALTER TABLE usuarios  MODIFY COLUMN telefono      VARCHAR(30);

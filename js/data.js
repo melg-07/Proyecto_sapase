@@ -29,6 +29,8 @@ function normalizeUsuario(u) {
     cargo:    u.cargo     || '',
     area:     u.area      || '',
     area_id:  u.area_id   || null,
+    subarea:    u.subarea    || '',
+    subarea_id: u.subarea_id || null,
     rol:      u.rol,
     active:   !!u.activo,
     password: u.password_texto || '',
@@ -83,6 +85,8 @@ function normalizeDemanda(d) {
     ref:           d.ref           || '',
     area_id:       d.area_id       || null,
     area:          d.area          || '',
+    subarea_id:    d.subarea_id    || null,
+    subarea:       d.subarea       || '',
     remitente:     d.remitente     || '',
     asunto:        d.asunto        || '',
     domicilio:     d.domicilio     || '',
@@ -134,6 +138,10 @@ function isAdminLevel(rol) {
 
 function isAreaUsuario(rol) {
   return rol === 'area_usuario';
+}
+
+function isSubareaUsuario(rol) {
+  return rol === 'subarea_usuario';
 }
 
 function getInitials(name) {

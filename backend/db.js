@@ -23,11 +23,11 @@ pool.getConnection()
   })
   .catch(err => { console.error('✖  MySQL:', err.message); });
 
-// Asegura que el rol 'Subadmin' exista en el ENUM de usuarios.rol (idempotente)
+// Asegura que el ENUM de usuarios.rol tenga todos los roles vigentes (idempotente)
 async function ensureRolEnumSubadmin() {
   try {
     await pool.execute(
-      "ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC') NOT NULL DEFAULT 'Capturista'"
+      "ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista'"
     );
   } catch (err) {
     console.error('⚠  No se pudo actualizar el ENUM de rol:', err.message);

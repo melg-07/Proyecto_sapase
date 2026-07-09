@@ -103,9 +103,12 @@ function filterArchivos() {
 }
 
 function renderArchivosTable(list) {
-  const tbody      = document.getElementById('archivos-table');
-  const isAdmin    = currentUser && isAdminLevel(currentUser.rol);
-  const isConsulta = currentUser && currentUser.rol === 'Consulta';
+  const tbody        = document.getElementById('archivos-table');
+  const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
+  const isConsulta    = currentUser && currentUser.rol === 'Consulta';
+  const isAreaUser    = currentUser && isAreaUsuario(currentUser.rol);
+  const isSubareaUser = currentUser && isSubareaUsuario(currentUser.rol);
+
   tbody.innerHTML = list.map(d => `
     <tr>
       <td><code style="font-size:11px; color:var(--guinda);">${d.folio}</code></td>
@@ -113,13 +116,21 @@ function renderArchivosTable(list) {
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
-      <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
+      <td>${isSubareaUser ? `
+        <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
+                onfocus="this.dataset.prev=this.value"
+                onchange="changeEstadoArea('${d.id}', this.value, this)">
+          <option ${d.estado==='Pendiente'  ?'selected':''}>Pendiente</option>
+          <option ${d.estado==='En proceso' ?'selected':''}>En proceso</option>
+          <option ${d.estado==='Atendida'   ?'selected':''}>Atendida</option>
+        </select>` : `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`}</td>
       <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
           <button class="btn btn-guinda btn-sm"  onclick="exportSinglePDF('${d.id}')">Imprimir</button>
-          ${isConsulta ? '' : `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>`}
+          ${isAreaUser ? `<button class="btn btn-outline btn-sm" onclick="openEnviarSubarea('${d.id}')">Enviar a Subarea</button>` : ''}
+          ${(isConsulta || isSubareaUser) ? '' : `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>`}
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>
       </td>
@@ -152,6 +163,7 @@ function _renderViewModal(d) {
       ${field2('Fecha de Demanda',  d.fechaDemanda || '—')}
       ${field2('Referencia',        d.ref || '—')}
       ${field2('Area',              d.area)}
+      ${d.subarea ? field2('Subarea', d.subarea) : ''}
       ${field2col('Remitente',      d.remitente)}
       ${field2col('Descripcion',    d.asunto)}
       ${field2('Domicilio',         d.domicilio || '—')}
@@ -262,16 +274,21 @@ function openEditDemanda(id) {
     showToast('El usuario de consulta solo puede ver e imprimir', 'error');
     return;
   }
+  if (isSubareaUsuario(currentUser.rol)) {
+    showToast('Los usuarios de subarea solo pueden cambiar el estado', 'error');
+    return;
+  }
   const d = demandas.find(x => x.id === id);
   if (!d) return;
   currentViewId  = id;
 
-  // Estado y prioridad solo los puede modificar Administrador/Subadmin
+  // Estado: solo Administrador/Subadmin. Prioridad: ademas, el usuario de area
   const isAdmin      = isAdminLevel(currentUser.rol);
+  const isAreaUser   = isAreaUsuario(currentUser.rol);
   const estadoGroup   = document.getElementById('ed-estado-group');
   const prioridadGroup = document.getElementById('ed-prioridad-group');
   if (estadoGroup)    estadoGroup.style.display    = isAdmin ? '' : 'none';
-  if (prioridadGroup) prioridadGroup.style.display = isAdmin ? '' : 'none';
+  if (prioridadGroup) prioridadGroup.style.display = (isAdmin || isAreaUser) ? '' : 'none';
 
   document.getElementById('ed-folio').value         = d.folio;
   document.getElementById('ed-fecha').value         = d.fecha;
@@ -301,9 +318,10 @@ function openEditDemanda(id) {
 }
 
 async function saveEditDemanda() {
-  const areaName = document.getElementById('ed-area').value;
-  const area_id  = getAreaId(areaName);
-  const isAdmin  = currentUser && isAdminLevel(currentUser.rol);
+  const areaName   = document.getElementById('ed-area').value;
+  const area_id    = getAreaId(areaName);
+  const isAdmin    = currentUser && isAdminLevel(currentUser.rol);
+  const isAreaUser = currentUser && isAreaUsuario(currentUser.rol);
 
   const payload = {
     ref:           document.getElementById('ed-ref').value.trim(),
@@ -318,11 +336,9 @@ async function saveEditDemanda() {
     observaciones: document.getElementById('ed-observaciones').value.trim(),
     concepto:      document.getElementById('ed-concepto').value.trim(),
     fecha_demanda: document.getElementById('ed-fecha-demanda').value,
-    ...(isAdmin ? {
-      estado:    document.getElementById('ed-estado').value,
-      prioridad: document.getElementById('ed-prioridad').value,
-    } : {}),
   };
+  if (isAdmin) payload.estado = document.getElementById('ed-estado').value;
+  if (isAdmin || isAreaUser) payload.prioridad = document.getElementById('ed-prioridad').value;
 
   try {
     const updated = await apiEditarDemanda(currentViewId, payload);
@@ -395,5 +411,45 @@ async function confirmTransfer() {
     closeModal('modal-transfer');
   } catch (err) {
     showToast(err.message || 'Error al transferir demanda', 'error');
+  }
+}
+
+/* ---------- Enviar a subarea ---------- */
+let enviarSubareaId = null;
+
+async function openEnviarSubarea(id) {
+  enviarSubareaId = id;
+  const sel = document.getElementById('es-subarea');
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  document.getElementById('modal-enviar-subarea').classList.add('open');
+
+  try {
+    const list = await apiGetSubareas(currentUser.area_id);
+    sel._subareas = list;
+    sel.innerHTML = list.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')
+      || '<option value="">Sin subareas</option>';
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar</option>';
+    showToast(err.message || 'Error al cargar subareas', 'error');
+  }
+}
+
+async function confirmEnviarSubarea() {
+  const sel        = document.getElementById('es-subarea');
+  const subarea_id = sel.value;
+  if (!subarea_id) { showToast('Seleccione una subarea', 'error'); return; }
+
+  const subareaObj = (sel._subareas || []).find(s => String(s.id) === String(subarea_id));
+
+  try {
+    const updated = await apiEnviarSubarea(enviarSubareaId, subarea_id);
+    const norm    = normalizeDemanda(updated);
+    const idx     = demandas.findIndex(x => x.id === enviarSubareaId);
+    if (idx >= 0) demandas[idx] = norm;
+    filterArchivos();
+    closeModal('modal-enviar-subarea');
+    showToast('Enviado a subarea: ' + (subareaObj ? subareaObj.nombre : ''), 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al enviar a subarea', 'error');
   }
 }
