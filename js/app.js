@@ -39,13 +39,19 @@ function renderDashboard() {
 
 // Areas
 function renderAreasGrid() {
-  const isAreaUser = currentUser && (isAreaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
+  const isJefe     = currentUser && isJefeArea(currentUser.rol);
+  const isAreaUser = currentUser && (isAreaUsuario(currentUser.rol) || isJefe);
 
   const wrap = document.getElementById('areas-dropdown-wrap');
   if (wrap) wrap.style.display = isAreaUser ? 'none' : '';
 
   const btnCerrar = document.getElementById('btn-cerrar-area');
   if (btnCerrar) btnCerrar.style.display = isAreaUser ? 'none' : '';
+
+  const title    = document.getElementById('areas-page-title');
+  const subtitle = document.getElementById('areas-page-subtitle');
+  if (title)    title.textContent    = isJefe ? 'Mi Area' : 'Areas';
+  if (subtitle) subtitle.textContent = isJefe ? 'Resumen y peticiones de tu area' : 'Gestion por departamento';
 
   const sel = document.getElementById('areas-dropdown');
   if (!sel) return;
@@ -79,25 +85,22 @@ function _updateAreaInfoPanel(areaNombre) {
     ? '<span class="badge badge-green">Activa</span>'
     : '<span class="badge badge-red">Inactiva</span>';
   document.getElementById('area-info-count').innerHTML  = `
-    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-      <div style="text-align:center;">
-        <div style="font-size:18px; font-weight:700; color:var(--guinda-dark);">${total}</div>
-        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Total</div>
+    <div class="stats-row-mini" style="margin:0;">
+      <div class="stat-card">
+        <div class="stat-num">${total}</div>
+        <div class="stat-label">Total</div>
       </div>
-      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
-      <div style="text-align:center;">
-        <div style="font-size:18px; font-weight:700; color:var(--gold);">${pendientes}</div>
-        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Pendientes</div>
+      <div class="stat-card" style="border-color:var(--gold);">
+        <div class="stat-num" style="color:var(--gold);">${pendientes}</div>
+        <div class="stat-label">Pendientes</div>
       </div>
-      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
-      <div style="text-align:center;">
-        <div style="font-size:18px; font-weight:700; color:#1565C0;">${enProceso}</div>
-        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">En Proceso</div>
+      <div class="stat-card" style="border-color:#1565C0;">
+        <div class="stat-num" style="color:#1565C0;">${enProceso}</div>
+        <div class="stat-label">En Proceso</div>
       </div>
-      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
-      <div style="text-align:center;">
-        <div style="font-size:18px; font-weight:700; color:#2E7D32;">${atendidas}</div>
-        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Atendidas</div>
+      <div class="stat-card" style="border-color:#2E7D32;">
+        <div class="stat-num" style="color:#2E7D32;">${atendidas}</div>
+        <div class="stat-label">Atendidas</div>
       </div>
     </div>`;
   document.getElementById('area-info-toggle').innerHTML  = isAdmin

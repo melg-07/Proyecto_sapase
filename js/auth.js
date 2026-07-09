@@ -38,7 +38,7 @@ async function bootApp() {
                      : currentUser.rol === 'Consulta'                  ? 'archivos'
                      : isAreaUsuario(currentUser.rol)                  ? 'archivos'
                      : isSubareaUsuario(currentUser.rol)                ? 'archivos'
-                     : isJefeArea(currentUser.rol)                     ? 'archivos'
+                     : isJefeArea(currentUser.rol)                     ? 'areas'
                      : 'formulario';
   const savedPage = localStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
@@ -97,7 +97,8 @@ function renderSidebar(activePage) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
+  const isJefe      = currentUser && isJefeArea(currentUser.rol);
+  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefe);
   let html = '';
 
   if (isAdminLvl) {
@@ -114,6 +115,10 @@ function renderSidebar(activePage) {
     }
   } else if (isConsulta) {
     html += navSection('Gestion');
+    html += navItem('archivos', 'Archivos', activePage);
+  } else if (isJefe) {
+    html += navSection('Gestion');
+    html += navItem('areas',    'Mi Area', activePage);
     html += navItem('archivos', 'Archivos', activePage);
   } else if (isAreaUser) {
     html += navSection('Gestion');
@@ -141,12 +146,15 @@ function showPage(name) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
+  const isJefe      = currentUser && isJefeArea(currentUser.rol);
+  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefe);
 
   if (isConsulta) {
     if (name !== 'archivos') name = 'archivos';
   } else if (isAdminLvl) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
+  } else if (isJefe) {
+    if (!['areas', 'archivos'].includes(name)) name = 'areas';
   } else if (isAreaUser) {
     if (name !== 'archivos') name = 'archivos';
   } else if (!['formulario', 'archivos'].includes(name)) {
@@ -170,7 +178,11 @@ function showPage(name) {
   }
 
   if (name === 'archivos')  { renderArchivos(); }
-  if (name === 'areas')     { renderAreasGrid(); hideAreaDetail(); }
+  if (name === 'areas')     {
+    renderAreasGrid();
+    if (isJefe && currentUser.area) showAreaDetail(currentUser.area);
+    else hideAreaDetail();
+  }
   if (name === 'dashboard') { updateStats(); renderDashboard(); }
   if (name === 'usuarios')  { renderUsuarios(); }
   if (name === 'configuracion') { renderConfiguracion(); }
