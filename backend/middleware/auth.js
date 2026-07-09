@@ -39,9 +39,9 @@ function noConsulta(req, res, next) {
   next();
 }
 
-// Bloquea a un usuario de area sin area_id asignada (evita que quede sin restriccion por error de datos)
+// Bloquea a un usuario de area o jefe de area sin area_id asignada (evita que quede sin restriccion por error de datos)
 function areaUsuarioGuard(req, res, next) {
-  if (req.user?.rol === 'area_usuario' && !req.user.area_id) {
+  if ((req.user?.rol === 'area_usuario' || req.user?.rol === 'jefe_area') && !req.user.area_id) {
     return res.status(403).json({ ok: false, error: 'Tu usuario no tiene un area asignada. Contacta al administrador.' });
   }
   next();
@@ -57,7 +57,7 @@ function subareaUsuarioGuard(req, res, next) {
 
 // Devuelve el area_id al que debe restringirse la consulta, o null si el usuario ve todas las areas
 function scopeArea(req) {
-  return req.user?.rol === 'area_usuario' ? req.user.area_id : null;
+  return (req.user?.rol === 'area_usuario' || req.user?.rol === 'jefe_area') ? req.user.area_id : null;
 }
 
 // Devuelve el subarea_id al que debe restringirse la consulta, o null si no aplica

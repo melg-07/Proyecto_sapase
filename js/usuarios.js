@@ -1,6 +1,7 @@
 function rolLabel(rol) {
   if (rol === 'area_usuario')    return 'Usuario de Area';
   if (rol === 'subarea_usuario') return 'Usuario de Subarea';
+  if (rol === 'jefe_area')       return 'Jefe de Area';
   return rol;
 }
 
@@ -151,6 +152,10 @@ async function saveEditUser() {
     showToast('El rol "Usuario de Area" requiere un area asignada', 'error');
     return;
   }
+  if (rol === 'jefe_area' && !areaObj) {
+    showToast('El rol "Jefe de Area" requiere un area asignada', 'error');
+    return;
+  }
   if (rol === 'subarea_usuario' && !subarea_id) {
     showToast('El rol "Usuario de Subarea" requiere una subarea asignada', 'error');
     return;
@@ -237,6 +242,10 @@ async function saveNewUser() {
 
   if (rol === 'area_usuario' && !areaObj) {
     showToast('El rol "Usuario de Area" requiere un area asignada', 'error');
+    return;
+  }
+  if (rol === 'jefe_area' && !areaObj) {
+    showToast('El rol "Jefe de Area" requiere un area asignada', 'error');
     return;
   }
   if (rol === 'subarea_usuario' && !subarea_id) {

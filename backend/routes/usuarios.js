@@ -3,10 +3,13 @@ const bcrypt = require('bcrypt');
 const db     = require('../db');
 const { authMiddleware, soloAdmin } = require('../middleware/auth');
 
-// El rol 'area_usuario' requiere siempre un area asignada, y 'subarea_usuario' una subarea
+// Los roles 'area_usuario' y 'jefe_area' requieren siempre un area asignada, y 'subarea_usuario' una subarea
 function validarAreaDeRol(rol, area_id, subarea_id) {
   if (rol === 'area_usuario' && !area_id) {
     return 'El rol "Usuario de Area" requiere un area asignada';
+  }
+  if (rol === 'jefe_area' && !area_id) {
+    return 'El rol "Jefe de Area" requiere un area asignada';
   }
   if (rol === 'subarea_usuario' && !subarea_id) {
     return 'El rol "Usuario de Subarea" requiere una subarea asignada';

@@ -39,7 +39,7 @@ function renderDashboard() {
 
 // Areas
 function renderAreasGrid() {
-  const isAreaUser = currentUser && isAreaUsuario(currentUser.rol);
+  const isAreaUser = currentUser && (isAreaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
 
   const wrap = document.getElementById('areas-dropdown-wrap');
   if (wrap) wrap.style.display = isAreaUser ? 'none' : '';

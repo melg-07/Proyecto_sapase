@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS areas (
 
 -- Si la base de datos ya existia de una instalacion previa, ejecutar manualmente:
 -- ALTER TABLE areas ADD COLUMN jefe_area VARCHAR(200) NULL AFTER nombre;
--- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista';
+-- ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario','jefe_area') NOT NULL DEFAULT 'Capturista';
 
 -- ------------------------------------------------------------
 -- SUBAREAS (cada area tiene 4 subareas)
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   correo        VARCHAR(200),
   telefono      VARCHAR(30),
   cargo         VARCHAR(150),
-  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista',
+  rol           ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario','jefe_area') NOT NULL DEFAULT 'Capturista',
   activo        TINYINT(1) NOT NULL DEFAULT 1,
   creado_en     DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uk_usuario (usuario),
@@ -135,8 +135,8 @@ SET @sql = IF(@col_exists = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- Migracion: agrega los roles 'area_usuario' y 'subarea_usuario' si la tabla ya existia con el ENUM anterior
-ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista';
+-- Migracion: agrega los roles 'area_usuario', 'subarea_usuario' y 'jefe_area' si la tabla ya existia con el ENUM anterior
+ALTER TABLE usuarios MODIFY COLUMN rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario','jefe_area') NOT NULL DEFAULT 'Capturista';
 
 -- Migracion: agrega subarea_id si la tabla usuarios/demandas ya existian sin ella
 -- (debe ejecutarse ANTES de crear v_demandas, que referencia estas columnas)

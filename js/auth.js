@@ -38,6 +38,7 @@ async function bootApp() {
                      : currentUser.rol === 'Consulta'                  ? 'archivos'
                      : isAreaUsuario(currentUser.rol)                  ? 'archivos'
                      : isSubareaUsuario(currentUser.rol)                ? 'archivos'
+                     : isJefeArea(currentUser.rol)                     ? 'archivos'
                      : 'formulario';
   const savedPage = localStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
@@ -96,7 +97,7 @@ function renderSidebar(activePage) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol));
+  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
   let html = '';
 
   if (isAdminLvl) {
@@ -140,7 +141,7 @@ function showPage(name) {
   const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol));
+  const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
 
   if (isConsulta) {
     if (name !== 'archivos') name = 'archivos';

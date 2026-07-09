@@ -144,6 +144,10 @@ function isSubareaUsuario(rol) {
   return rol === 'subarea_usuario';
 }
 
+function isJefeArea(rol) {
+  return rol === 'jefe_area';
+}
+
 function getInitials(name) {
   return (name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }

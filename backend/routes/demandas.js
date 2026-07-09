@@ -204,12 +204,12 @@ router.put('/:id', noConsulta, async (req, res) => {
       }
     }
 
-    // Estado: solo Administrador, Subadmin o el usuario de la subarea a la que fue enviada
-    if ('estado' in body && !['Administrador', 'Subadmin', 'subarea_usuario'].includes(req.user.rol)) {
+    // Estado: Administrador, Subadmin, el usuario de la subarea a la que fue enviada, o el jefe de area
+    if ('estado' in body && !['Administrador', 'Subadmin', 'subarea_usuario', 'jefe_area'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar el estado' });
     }
-    // Prioridad: Administrador, Subadmin o el usuario de area
-    if ('prioridad' in body && !['Administrador', 'Subadmin', 'area_usuario'].includes(req.user.rol)) {
+    // Prioridad: Administrador, Subadmin, el usuario de area o el jefe de area
+    if ('prioridad' in body && !['Administrador', 'Subadmin', 'area_usuario', 'jefe_area'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar la prioridad' });
     }
 
@@ -429,7 +429,7 @@ router.post('/:id/transferir', adminOSubadmin, async (req, res) => {
 // Enviar a una subarea de la propia area (usuario de area, o Administrador/Subadmin)
 router.post('/:id/enviar-subarea', async (req, res) => {
   try {
-    if (!['area_usuario', 'Administrador', 'Subadmin'].includes(req.user.rol)) {
+    if (!['area_usuario', 'jefe_area', 'Administrador', 'Subadmin'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para esta accion' });
     }
 

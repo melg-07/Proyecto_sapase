@@ -27,7 +27,7 @@ pool.getConnection()
 async function ensureRolEnumSubadmin() {
   try {
     await pool.execute(
-      "ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario') NOT NULL DEFAULT 'Capturista'"
+      "ALTER TABLE usuarios MODIFY rol ENUM('Administrador','Subadmin','Capturista','Consulta','TIC','area_usuario','subarea_usuario','jefe_area') NOT NULL DEFAULT 'Capturista'"
     );
   } catch (err) {
     console.error('⚠  No se pudo actualizar el ENUM de rol:', err.message);

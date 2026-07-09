@@ -106,7 +106,7 @@ function renderArchivosTable(list) {
   const tbody        = document.getElementById('archivos-table');
   const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta    = currentUser && currentUser.rol === 'Consulta';
-  const isAreaUser    = currentUser && isAreaUsuario(currentUser.rol);
+  const isAreaUser    = currentUser && (isAreaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
   const isSubareaUser = currentUser && isSubareaUsuario(currentUser.rol);
 
   tbody.innerHTML = list.map(d => `
@@ -282,13 +282,14 @@ function openEditDemanda(id) {
   if (!d) return;
   currentViewId  = id;
 
-  // Estado: solo Administrador/Subadmin. Prioridad: ademas, el usuario de area
-  const isAdmin      = isAdminLevel(currentUser.rol);
-  const isAreaUser   = isAreaUsuario(currentUser.rol);
+  // Estado: Administrador/Subadmin y el jefe de area. Prioridad: ademas, el usuario de area
+  const isAdmin       = isAdminLevel(currentUser.rol);
+  const isAreaUser    = isAreaUsuario(currentUser.rol);
+  const isJefeAreaUser = isJefeArea(currentUser.rol);
   const estadoGroup   = document.getElementById('ed-estado-group');
   const prioridadGroup = document.getElementById('ed-prioridad-group');
-  if (estadoGroup)    estadoGroup.style.display    = isAdmin ? '' : 'none';
-  if (prioridadGroup) prioridadGroup.style.display = (isAdmin || isAreaUser) ? '' : 'none';
+  if (estadoGroup)    estadoGroup.style.display    = (isAdmin || isJefeAreaUser) ? '' : 'none';
+  if (prioridadGroup) prioridadGroup.style.display = (isAdmin || isAreaUser || isJefeAreaUser) ? '' : 'none';
 
   document.getElementById('ed-folio').value         = d.folio;
   document.getElementById('ed-fecha').value         = d.fecha;
@@ -320,8 +321,9 @@ function openEditDemanda(id) {
 async function saveEditDemanda() {
   const areaName   = document.getElementById('ed-area').value;
   const area_id    = getAreaId(areaName);
-  const isAdmin    = currentUser && isAdminLevel(currentUser.rol);
-  const isAreaUser = currentUser && isAreaUsuario(currentUser.rol);
+  const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
+  const isAreaUser    = currentUser && isAreaUsuario(currentUser.rol);
+  const isJefeAreaUser = currentUser && isJefeArea(currentUser.rol);
 
   const payload = {
     ref:           document.getElementById('ed-ref').value.trim(),
@@ -337,8 +339,8 @@ async function saveEditDemanda() {
     concepto:      document.getElementById('ed-concepto').value.trim(),
     fecha_demanda: document.getElementById('ed-fecha-demanda').value,
   };
-  if (isAdmin) payload.estado = document.getElementById('ed-estado').value;
-  if (isAdmin || isAreaUser) payload.prioridad = document.getElementById('ed-prioridad').value;
+  if (isAdmin || isJefeAreaUser) payload.estado = document.getElementById('ed-estado').value;
+  if (isAdmin || isAreaUser || isJefeAreaUser) payload.prioridad = document.getElementById('ed-prioridad').value;
 
   try {
     const updated = await apiEditarDemanda(currentViewId, payload);
