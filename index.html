@@ -274,6 +274,20 @@
           <div id="area-info-toggle" style="margin-left:auto; display:flex; gap:8px;"></div>
         </div>
       </div>
+      <!-- Resumen por subarea (solo jefe de area) -->
+      <div id="subareas-panel" style="display:none; margin-bottom:16px;">
+        <div class="card">
+          <div class="card-title">Subareas</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Subarea</th><th>Total</th><th>Pendientes</th><th>En Proceso</th><th>Atendidas</th></tr>
+              </thead>
+              <tbody id="subareas-panel-table"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <div id="area-detail" style="display:none; margin-top:0;">
         <div class="card">
           <div class="card-title" id="area-detail-title">Peticiones del Area</div>
@@ -421,6 +435,24 @@
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-guinda btn-sm" onclick="confirmReportarProblema()">Reportar</button>
       <button class="btn btn-outline btn-sm" onclick="closeModal('modal-reportar-problema')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Marcar Observacion como Corregida -->
+<div class="modal-overlay" id="modal-resolver-observacion">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Observacion Corregida</div>
+      <button class="modal-close" onclick="closeModal('modal-resolver-observacion')">x</button>
+    </div>
+    <div class="field-group full">
+      <label>Describe la correccion realizada</label>
+      <textarea id="ro-nota" rows="4" placeholder="Explica que se hizo para corregir el problema..."></textarea>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-green btn-sm" onclick="confirmResolverObservacion()">Marcar como Corregida</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('modal-resolver-observacion')">Cancelar</button>
     </div>
   </div>
 </div>

@@ -201,15 +201,49 @@ function showAreaDetail(area) {
   document.getElementById('area-detail').style.display     = 'block';
   document.getElementById('area-detail-title').textContent = area;
   filterAreaDetail();
+  renderSubareasPanel();
   document.getElementById('area-detail').scrollIntoView({ behavior: 'smooth' });
 }
 
 function hideAreaDetail() {
   document.getElementById('area-detail').style.display     = 'none';
   document.getElementById('area-info-panel').style.display = 'none';
+  const subareasPanel = document.getElementById('subareas-panel');
+  if (subareasPanel) subareasPanel.style.display = 'none';
   const sel = document.getElementById('areas-dropdown');
   if (sel) sel.value = '';
   selectedArea = null;
+}
+
+// Resumen de peticiones por subarea (solo visible para el jefe de area)
+async function renderSubareasPanel() {
+  const panel = document.getElementById('subareas-panel');
+  if (!panel) return;
+  const isJefe = currentUser && isJefeArea(currentUser.rol);
+  if (!isJefe || !currentUser.area_id) { panel.style.display = 'none'; return; }
+
+  panel.style.display = 'block';
+  const tbody = document.getElementById('subareas-panel-table');
+  try {
+    const subareas = await apiGetSubareas(currentUser.area_id);
+    tbody.innerHTML = subareas.map(s => {
+      const lista      = demandas.filter(d => Number(d.subarea_id) === Number(s.id));
+      const total      = lista.length;
+      const pendientes = lista.filter(d => d.estado === 'Pendiente').length;
+      const enProceso  = lista.filter(d => d.estado === 'En proceso').length;
+      const atendidas  = lista.filter(d => d.estado === 'Atendida').length;
+      return `
+        <tr>
+          <td>${s.nombre}</td>
+          <td>${total}</td>
+          <td>${pendientes}</td>
+          <td>${enProceso}</td>
+          <td>${atendidas}</td>
+        </tr>`;
+    }).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Sin subareas</td></tr>';
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Error al cargar las subareas</td></tr>';
+  }
 }
 
 function filterAreaDetail() {
