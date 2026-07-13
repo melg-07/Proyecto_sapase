@@ -20,6 +20,7 @@ pool.getConnection()
     console.log('✔  MySQL conectado');
     conn.release();
     await ensureRolEnumSubadmin();
+    await ensureObservacionesSchema();
   })
   .catch(err => { console.error('✖  MySQL:', err.message); });
 
@@ -31,6 +32,35 @@ async function ensureRolEnumSubadmin() {
     );
   } catch (err) {
     console.error('⚠  No se pudo actualizar el ENUM de rol:', err.message);
+  }
+}
+
+// Agrega la columna de comentario a historial_estados y la tabla de reportes
+// de problema si aun no existen (idempotente, para bases de datos ya creadas
+// antes de que existiera esta funcionalidad).
+async function ensureObservacionesSchema() {
+  try {
+    await pool.execute('ALTER TABLE historial_estados ADD COLUMN comentario TEXT NULL AFTER archivo_ruta');
+  } catch (err) {
+    if (err.code !== 'ER_DUP_FIELDNAME') console.error('⚠  No se pudo agregar historial_estados.comentario:', err.message);
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reportes_problema (
+        id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        demanda_id  VARCHAR(20)  NOT NULL,
+        area_id     INT UNSIGNED,
+        usuario_id  INT UNSIGNED,
+        nota        TEXT NOT NULL,
+        creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (demanda_id) REFERENCES demandas(id)  ON DELETE CASCADE,
+        FOREIGN KEY (area_id)    REFERENCES areas(id)      ON DELETE SET NULL,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)   ON DELETE SET NULL
+      ) ENGINE=InnoDB
+    `);
+  } catch (err) {
+    console.error('⚠  No se pudo crear la tabla reportes_problema:', err.message);
   }
 }
 

@@ -306,6 +306,26 @@
       </div>
     </div>
 
+    <!-- OBSERVACIONES (peticiones reportadas por usuarios de area) -->
+    <div id="page-observaciones" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Peticiones con Observaciones</h2>
+          <p>Problemas reportados por los usuarios de area</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Folio</th><th>Area</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Observacion</th><th>Reportado por</th><th>Fecha</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="observaciones-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- USUARIOS -->
     <div id="page-usuarios" class="page">
       <div class="section-header">
@@ -383,6 +403,24 @@
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF(currentViewId)">Imprimir</button>
       <button class="btn btn-blue btn-sm" id="btn-transferir-demanda" onclick="openTransferModal(currentViewId)">Enviar a otra Area</button>
+    </div>
+  </div>
+</div>
+
+<!-- Reportar Observacion / Problema -->
+<div class="modal-overlay" id="modal-reportar-problema">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Reportar Observacion</div>
+      <button class="modal-close" onclick="closeModal('modal-reportar-problema')">x</button>
+    </div>
+    <div class="field-group full">
+      <label>Describe el problema</label>
+      <textarea id="rp-nota" rows="4" placeholder="Explica la observacion o problema con esta peticion..."></textarea>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-guinda btn-sm" onclick="confirmReportarProblema()">Reportar</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('modal-reportar-problema')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -743,6 +781,10 @@
       <span id="cambio-estado-filename" style="flex:1; word-break:break-all;"></span>
       <button style="background:none; border:none; cursor:pointer; color:#999; font-size:18px; line-height:1;"
               onclick="_clearEstadoFile()">&#215;</button>
+    </div>
+    <div class="field-group full" style="margin-top:12px;">
+      <label>Nota (opcional)</label>
+      <textarea id="cambio-estado-nota" rows="2" placeholder="Agrega una nota sobre este cambio..."></textarea>
     </div>
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-guinda" onclick="confirmCambioEstado()">Confirmar Cambio</button>

@@ -59,7 +59,19 @@ function normalizeHistorialEstados(h) {
     estadoNuevo:   item.estado_nuevo    || '',
     archivoNombre: item.archivo_nombre  || '',
     archivoRuta:   item.archivo_ruta    || '',
+    comentario:    item.comentario      || '',
     cambiadoPor:   item.cambiado_por    || '',
+  }));
+}
+
+function normalizeReportes(r) {
+  if (!r) return [];
+  return r.map(item => ({
+    fecha: item.creado_en
+      ? new Date(item.creado_en).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : '',
+    nota:         item.nota          || '',
+    reportadoPor: item.reportado_por || '',
   }));
 }
 
@@ -101,6 +113,7 @@ function normalizeDemanda(d) {
     historial:         normalizeHistorial(d.historial),
     historialEstados:  normalizeHistorialEstados(d.historial_estados),
     historialEdiciones: normalizeHistorialEdiciones(d.historial_ediciones),
+    reportes:          normalizeReportes(d.reportes),
     creadoPor:     d.creado_por    || d.creadoPor || '',
     fechaCreacion: d.creado_en     || d.fechaCreacion || '',
   };

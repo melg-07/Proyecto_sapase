@@ -264,6 +264,32 @@ CREATE TABLE IF NOT EXISTS historial_ediciones (
   FOREIGN KEY (editado_por) REFERENCES usuarios(id)  ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- Migracion: agrega columna de comentario/nota al cambiar de estado
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'historial_estados' AND column_name = 'comentario'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE historial_estados ADD COLUMN comentario TEXT NULL AFTER archivo_ruta',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+-- ------------------------------------------------------------
+-- REPORTES DE PROBLEMA (observaciones que un usuario de area levanta
+-- sobre una peticion, visibles para el jefe de area y el administrador)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reportes_problema (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  demanda_id  VARCHAR(20)  NOT NULL,
+  area_id     INT UNSIGNED,
+  usuario_id  INT UNSIGNED,
+  nota        TEXT NOT NULL,
+  creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (demanda_id) REFERENCES demandas(id)  ON DELETE CASCADE,
+  FOREIGN KEY (area_id)    REFERENCES areas(id)      ON DELETE SET NULL,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)   ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- Migracion: crea 4 subareas por cada area que aun no tenga ninguna
 INSERT IGNORE INTO subareas (area_id, nombre)
 SELECT a.id, s.nombre

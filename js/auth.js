@@ -106,8 +106,9 @@ function renderSidebar(activePage) {
     html += navItem('dashboard',  'Dashboard',    activePage);
     html += navItem('formulario', 'Nueva Peticion', activePage);
     html += navSection('Gestion');
-    html += navItem('archivos', 'Archivos', activePage);
-    html += navItem('areas',    'Areas',    activePage);
+    html += navItem('archivos',      'Archivos',      activePage);
+    html += navItem('areas',         'Areas',         activePage);
+    html += navItem('observaciones', 'Observaciones', activePage);
     if (isFullAdmin) {
       html += navSection('Sistema');
       html += navItem('usuarios',      'Usuarios',      activePage);
@@ -118,8 +119,9 @@ function renderSidebar(activePage) {
     html += navItem('archivos', 'Archivos', activePage);
   } else if (isJefe) {
     html += navSection('Gestion');
-    html += navItem('areas',    'Mi Area', activePage);
-    html += navItem('archivos', 'Archivos', activePage);
+    html += navItem('areas',         'Mi Area',       activePage);
+    html += navItem('archivos',      'Archivos',      activePage);
+    html += navItem('observaciones', 'Observaciones', activePage);
   } else if (isAreaUser) {
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
@@ -154,7 +156,7 @@ function showPage(name) {
   } else if (isAdminLvl) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
   } else if (isJefe) {
-    if (!['areas', 'archivos'].includes(name)) name = 'areas';
+    if (!['areas', 'archivos', 'observaciones'].includes(name)) name = 'areas';
   } else if (isAreaUser) {
     if (name !== 'archivos') name = 'archivos';
   } else if (!['formulario', 'archivos'].includes(name)) {
@@ -177,12 +179,13 @@ function showPage(name) {
     btnNuevaArea.style.display = (name === 'areas' && isAdminLvl) ? 'inline-flex' : 'none';
   }
 
-  // Los usuarios de subarea solo ven las peticiones de su propia area, no tiene
-  // sentido ofrecerles un filtro para buscar por area.
+  // Jefe de area, usuario de area y usuario de subarea solo ven las peticiones
+  // de su propia area/subarea (el backend ya las filtra), no tiene sentido
+  // ofrecerles un filtro para buscar en todas las areas.
   const filterAreaSel = document.getElementById('filter-area');
   if (filterAreaSel) {
-    const isSubareaUser = currentUser && isSubareaUsuario(currentUser.rol);
-    filterAreaSel.style.display = isSubareaUser ? 'none' : '';
+    const showAreaFilter = currentUser && (isAdminLvl || isConsulta);
+    filterAreaSel.style.display = showAreaFilter ? '' : 'none';
   }
 
   if (name === 'archivos')  { renderArchivos(); }
@@ -194,6 +197,7 @@ function showPage(name) {
   if (name === 'dashboard') { updateStats(); renderDashboard(); }
   if (name === 'usuarios')  { renderUsuarios(); }
   if (name === 'configuracion') { renderConfiguracion(); }
+  if (name === 'observaciones') { renderObservaciones(); }
 }
 
 // Perfil

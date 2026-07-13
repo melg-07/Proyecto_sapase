@@ -82,6 +82,38 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Peticiones con observaciones (reportes de problema) - jefe de area (de su
+// propia area) y Administrador/Subadmin (de todas). Debe ir antes de '/:id'
+// para que Express no interprete "reportes" como un id de demanda.
+router.get('/reportes/lista', async (req, res) => {
+  try {
+    if (!['Administrador', 'Subadmin', 'jefe_area'].includes(req.user.rol)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para ver las observaciones' });
+    }
+
+    let sql = `
+      SELECT r.id, r.demanda_id, r.nota, r.creado_en,
+             d.folio, d.remitente, d.asunto, d.estado,
+             a.nombre AS area, u.nombre AS reportado_por
+      FROM reportes_problema r
+      JOIN demandas d      ON r.demanda_id = d.id
+      LEFT JOIN areas    a ON r.area_id    = a.id
+      LEFT JOIN usuarios u ON r.usuario_id = u.id
+      WHERE 1=1`;
+    const params = [];
+
+    const scope = scopeArea(req);
+    if (scope) { sql += ' AND r.area_id = ?'; params.push(scope); }
+
+    sql += ' ORDER BY r.creado_en DESC';
+
+    const [rows] = await db.execute(sql, params);
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Detalle
 router.get('/:id', async (req, res) => {
   try {
@@ -111,11 +143,20 @@ router.get('/:id', async (req, res) => {
 
     const [histEst] = await db.execute(
       `SELECT he.creado_en, he.estado_anterior, he.estado_nuevo,
-              he.archivo_nombre, he.archivo_ruta, u.nombre AS cambiado_por
+              he.archivo_nombre, he.archivo_ruta, he.comentario, u.nombre AS cambiado_por
        FROM historial_estados he
        LEFT JOIN usuarios u ON he.cambiado_por = u.id
        WHERE he.demanda_id = ?
        ORDER BY he.creado_en ASC`,
+      [req.params.id]
+    );
+
+    const [reportes] = await db.execute(
+      `SELECT r.creado_en, r.nota, u.nombre AS reportado_por
+       FROM reportes_problema r
+       LEFT JOIN usuarios u ON r.usuario_id = u.id
+       WHERE r.demanda_id = ?
+       ORDER BY r.creado_en ASC`,
       [req.params.id]
     );
 
@@ -128,7 +169,7 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst, historial_ediciones: histEdit } });
+    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst, historial_ediciones: histEdit, reportes } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -353,6 +394,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
     }
 
     const { estado } = req.body;
+    const comentario = s(req.body.comentario);
 
     if (!['En proceso', 'Atendida'].includes(estado)) {
       if (req.file) fs.unlinkSync(req.file.path);
@@ -383,15 +425,47 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
 
     await db.execute(
       `INSERT INTO historial_estados
-         (demanda_id, estado_anterior, estado_nuevo, archivo_nombre, archivo_ruta, cambiado_por)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [req.params.id, dem[0].estado, estado, req.file.originalname, req.file.filename, req.user.id]
+         (demanda_id, estado_anterior, estado_nuevo, archivo_nombre, archivo_ruta, comentario, cambiado_por)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.params.id, dem[0].estado, estado, req.file.originalname, req.file.filename, comentario, req.user.id]
     );
 
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
     res.json({ ok: true, data: rows[0] });
   } catch (err) {
     if (req.file) { try { fs.unlinkSync(req.file.path); } catch (_) {} }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Reportar un problema / observacion sobre una peticion (usuario de area).
+// Queda visible para el jefe de esa area y para Administrador/Subadmin.
+router.post('/:id/reportar', noConsulta, async (req, res) => {
+  try {
+    if (req.user.rol !== 'area_usuario') {
+      return res.status(403).json({ ok: false, error: 'Solo el usuario de area puede reportar una observacion' });
+    }
+
+    const nota = s(req.body.nota);
+    if (!nota) {
+      return res.status(400).json({ ok: false, error: 'Escribe una nota describiendo el problema' });
+    }
+
+    const [dem] = await db.execute('SELECT area_id FROM demandas WHERE id = ?', [req.params.id]);
+    if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    const scope = scopeArea(req);
+    if (scope && Number(dem[0].area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    await db.execute(
+      `INSERT INTO reportes_problema (demanda_id, area_id, usuario_id, nota) VALUES (?, ?, ?, ?)`,
+      [req.params.id, dem[0].area_id, req.user.id, nota]
+    );
+
+    res.status(201).json({ ok: true });
+  } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });

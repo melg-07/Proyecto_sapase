@@ -285,6 +285,7 @@ async function changeEstadoArea(id, estado, selectEl) {
     _pendingEstadoSel = selectEl;
     document.getElementById('cambio-estado-titulo').textContent = `Cambiar estado a: ${estado}`;
     _clearEstadoFile();
+    document.getElementById('cambio-estado-nota').value = '';
     document.getElementById('modal-cambio-estado').classList.add('open');
     return;
   }
@@ -341,7 +342,8 @@ async function confirmCambioEstado() {
     return;
   }
   try {
-    const updated = await apiCambiarEstado(_pendingEstadoId, _pendingEstadoVal, _pendingEstadoFile);
+    const nota    = document.getElementById('cambio-estado-nota')?.value.trim() || '';
+    const updated = await apiCambiarEstado(_pendingEstadoId, _pendingEstadoVal, _pendingEstadoFile, nota);
     const norm    = normalizeDemanda(updated);
     const idx     = demandas.findIndex(x => x.id === _pendingEstadoId);
     if (idx >= 0) demandas[idx] = norm;

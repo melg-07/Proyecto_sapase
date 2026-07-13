@@ -103,10 +103,12 @@ function filterArchivos() {
 }
 
 function renderArchivosTable(list) {
-  const tbody        = document.getElementById('archivos-table');
-  const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
-  const isAreaUser    = currentUser && (isAreaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
-  const isSubareaUser = currentUser && isSubareaUsuario(currentUser.rol);
+  const tbody          = document.getElementById('archivos-table');
+  const isAdmin         = currentUser && isAdminLevel(currentUser.rol);
+  const isAreaUsuarioRol = currentUser && isAreaUsuario(currentUser.rol);
+  const isJefeRol        = currentUser && isJefeArea(currentUser.rol);
+  const isAreaUser      = isAreaUsuarioRol || isJefeRol;
+  const isSubareaUser   = currentUser && isSubareaUsuario(currentUser.rol);
 
   tbody.innerHTML = list.map(d => `
     <tr>
@@ -128,13 +130,37 @@ function renderArchivosTable(list) {
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
           <button class="btn btn-guinda btn-sm"  onclick="exportSinglePDF('${d.id}')">Imprimir</button>
-          ${isAreaUser ? `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>` : ''}
+          ${isAreaUsuarioRol ? `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>` : ''}
+          ${isAreaUsuarioRol ? `<button class="btn btn-outline btn-sm" onclick="openReportarProblema('${d.id}')">Observaciones</button>` : ''}
           ${isAreaUser ? `<button class="btn btn-outline btn-sm" onclick="openEnviarSubarea('${d.id}')">Enviar a Subarea</button>` : ''}
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>
       </td>
     </tr>
   `).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
+}
+
+/* ---------- Observaciones (peticiones reportadas) ---------- */
+async function renderObservaciones() {
+  const tbody = document.getElementById('observaciones-table');
+  try {
+    const list = await apiGetReportes();
+    tbody.innerHTML = list.map(r => `
+      <tr>
+        <td><code style="font-size:11px; color:var(--guinda);">${r.folio}</code></td>
+        <td><small>${r.area || ''}</small></td>
+        <td>${r.remitente}</td>
+        <td>${r.asunto}</td>
+        <td><span class="badge ${badgeClass(r.estado)}">${r.estado}</span></td>
+        <td>${r.nota}</td>
+        <td>${r.reportado_por || ''}</td>
+        <td>${r.creado_en ? new Date(r.creado_en).toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' }) : ''}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="viewDemanda('${r.demanda_id}')">Ver</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--gray); padding:20px;">Sin observaciones reportadas</td></tr>';
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--gray); padding:20px;">Error al cargar las observaciones</td></tr>';
+  }
 }
 
 /* ---------- Ver detalle ---------- */
@@ -177,6 +203,7 @@ function _renderViewModal(d) {
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
       ${d.historialEstados && d.historialEstados.length ? historialEstadosHTML(d.historialEstados) : ''}
       ${d.historialEdiciones && d.historialEdiciones.length ? historialEdicionesHTML(d.historialEdiciones) : ''}
+      ${d.reportes && d.reportes.length ? reportesHTML(d.reportes) : ''}
     </div>
   `;
 
@@ -220,11 +247,28 @@ function historialEstadosHTML(historial) {
           <span class="badge ${badgeClass(h.estadoNuevo)}" style="font-size:10px;">${h.estadoNuevo}</span>
           ${h.cambiadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${h.cambiadoPor}</span>` : ''}
         </div>
+        ${h.comentario ? `<div style="margin-top:4px; font-size:11px;">${h.comentario}</div>` : ''}
         ${archivoLink ? `<div>${archivoLink}</div>` : ''}
       </div>`;
   }).join('');
   return `<div style="grid-column:1/-1;">
     <div style="font-size:10px; font-weight:700; color:var(--guinda); text-transform:uppercase; margin-bottom:6px;">Historial de Cambios de Estado</div>
+    ${items}
+  </div>`;
+}
+
+function reportesHTML(reportes) {
+  const items = reportes.map(r => `
+    <div style="background:#fdecea; padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <strong>${r.fecha}</strong>
+        ${r.reportadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${r.reportadoPor}</span>` : ''}
+      </div>
+      <div style="margin-top:4px;">${r.nota}</div>
+    </div>`
+  ).join('');
+  return `<div style="grid-column:1/-1;">
+    <div style="font-size:10px; font-weight:700; color:var(--guinda); text-transform:uppercase; margin-bottom:6px;">Observaciones Reportadas</div>
     ${items}
   </div>`;
 }
@@ -412,6 +456,28 @@ async function confirmTransfer() {
     closeModal('modal-transfer');
   } catch (err) {
     showToast(err.message || 'Error al transferir demanda', 'error');
+  }
+}
+
+/* ---------- Reportar observacion / problema ---------- */
+let reportarProblemaId = null;
+
+function openReportarProblema(id) {
+  reportarProblemaId = id;
+  document.getElementById('rp-nota').value = '';
+  document.getElementById('modal-reportar-problema').classList.add('open');
+}
+
+async function confirmReportarProblema() {
+  const nota = document.getElementById('rp-nota').value.trim();
+  if (!nota) { showToast('Escribe una nota describiendo el problema', 'error'); return; }
+
+  try {
+    await apiReportarProblema(reportarProblemaId, nota);
+    closeModal('modal-reportar-problema');
+    showToast('Observacion reportada', 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al reportar la observacion', 'error');
   }
 }
 

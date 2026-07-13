@@ -165,6 +165,18 @@ async function apiEnviarSubarea(id, subarea_id) {
   return res.data;
 }
 
+async function apiReportarProblema(id, nota) {
+  await apiFetch('/demandas/' + id + '/reportar', {
+    method: 'POST',
+    body: JSON.stringify({ nota }),
+  });
+}
+
+async function apiGetReportes() {
+  const res = await apiFetch('/demandas/reportes/lista');
+  return res.data;
+}
+
 // Configuracion / Logos
 
 async function apiGetLogos() {
@@ -196,10 +208,11 @@ async function apiSubirLogo(key, file) {
   return data.data;
 }
 
-async function apiCambiarEstado(id, estado, archivo) {
+async function apiCambiarEstado(id, estado, archivo, comentario) {
   const fd = new FormData();
   fd.append('estado', estado);
   fd.append('archivo', archivo);
+  if (comentario) fd.append('comentario', comentario);
 
   const res = await fetch(API_BASE + '/demandas/' + id + '/cambiar-estado', {
     method:  'POST',
