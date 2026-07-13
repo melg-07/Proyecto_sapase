@@ -51,18 +51,37 @@ async function ensureObservacionesSchema() {
     // rompe la constraint (Error 3780). Las consultas ya hacen JOIN manualmente.
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reportes_problema (
-        id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        demanda_id  VARCHAR(20)  NOT NULL,
-        area_id     INT UNSIGNED,
-        usuario_id  INT UNSIGNED,
-        nota        TEXT NOT NULL,
-        creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        demanda_id       VARCHAR(20)  NOT NULL,
+        area_id          INT UNSIGNED,
+        usuario_id       INT UNSIGNED,
+        nota             TEXT NOT NULL,
+        resuelto         TINYINT(1) NOT NULL DEFAULT 0,
+        nota_resolucion  TEXT NULL,
+        resuelto_por     INT UNSIGNED NULL,
+        resuelto_en      DATETIME NULL,
+        creado_en        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY idx_reportes_demanda (demanda_id),
         KEY idx_reportes_area    (area_id)
       ) ENGINE=InnoDB
     `);
   } catch (err) {
     console.error('⚠  No se pudo crear la tabla reportes_problema:', err.message);
+  }
+
+  // Para bases donde reportes_problema ya existia sin las columnas de resolucion
+  const reporteCols = [
+    "ADD COLUMN resuelto TINYINT(1) NOT NULL DEFAULT 0 AFTER nota",
+    "ADD COLUMN nota_resolucion TEXT NULL AFTER resuelto",
+    "ADD COLUMN resuelto_por INT UNSIGNED NULL AFTER nota_resolucion",
+    "ADD COLUMN resuelto_en DATETIME NULL AFTER resuelto_por",
+  ];
+  for (const clause of reporteCols) {
+    try {
+      await pool.execute(`ALTER TABLE reportes_problema ${clause}`);
+    } catch (err) {
+      if (err.code !== 'ER_DUP_FIELDNAME') console.error('⚠  No se pudo actualizar reportes_problema:', err.message);
+    }
   }
 }
 

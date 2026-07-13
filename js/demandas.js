@@ -145,6 +145,8 @@ async function renderObservaciones() {
   const tbody = document.getElementById('observaciones-table');
   try {
     const list = await apiGetReportes();
+    _reportesPendientes = list.length;
+    renderSidebar(_currentPage);
     tbody.innerHTML = list.map(r => `
       <tr>
         <td><code style="font-size:11px; color:var(--guinda);">${r.folio}</code></td>
@@ -155,11 +157,51 @@ async function renderObservaciones() {
         <td>${r.nota}</td>
         <td>${r.reportado_por || ''}</td>
         <td>${r.creado_en ? new Date(r.creado_en).toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' }) : ''}</td>
-        <td><button class="btn btn-outline btn-sm" onclick="viewDemanda('${r.demanda_id}')">Ver</button></td>
+        <td>
+          <div style="display:flex; gap:4px; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="viewDemanda('${r.demanda_id}')">Ver</button>
+            <button class="btn btn-blue btn-sm" onclick="openEditDemanda('${r.demanda_id}')">Editar</button>
+            <button class="btn btn-green btn-sm" onclick="openResolverObservacion('${r.id}')">Observacion Corregida</button>
+          </div>
+        </td>
       </tr>
     `).join('') || '<tr><td colspan="9" style="text-align:center; color:var(--gray); padding:20px;">Sin observaciones reportadas</td></tr>';
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--gray); padding:20px;">Error al cargar las observaciones</td></tr>';
+  }
+}
+
+async function refreshReportesPendientes() {
+  if (!currentUser || !(isAdminLevel(currentUser.rol) || isJefeArea(currentUser.rol))) return;
+  try {
+    const list = await apiGetReportes();
+    _reportesPendientes = list.length;
+  } catch (err) {
+    _reportesPendientes = 0;
+  }
+  renderSidebar(_currentPage);
+}
+
+/* ---------- Marcar observacion como corregida ---------- */
+let resolverObservacionId = null;
+
+function openResolverObservacion(reporteId) {
+  resolverObservacionId = reporteId;
+  document.getElementById('ro-nota').value = '';
+  document.getElementById('modal-resolver-observacion').classList.add('open');
+}
+
+async function confirmResolverObservacion() {
+  const nota = document.getElementById('ro-nota').value.trim();
+  if (!nota) { showToast('Escribe una nota sobre la correccion', 'error'); return; }
+
+  try {
+    await apiResolverReporte(resolverObservacionId, nota);
+    closeModal('modal-resolver-observacion');
+    showToast('Observacion marcada como corregida', 'success');
+    renderObservaciones();
+  } catch (err) {
+    showToast(err.message || 'Error al marcar la observacion como corregida', 'error');
   }
 }
 
@@ -259,12 +301,21 @@ function historialEstadosHTML(historial) {
 
 function reportesHTML(reportes) {
   const items = reportes.map(r => `
-    <div style="background:#fdecea; padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
+    <div style="background:${r.resuelto ? 'var(--cream)' : '#fdecea'}; padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <strong>${r.fecha}</strong>
         ${r.reportadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${r.reportadoPor}</span>` : ''}
+        <span class="badge ${r.resuelto ? 'badge-green' : 'badge-gold'}" style="font-size:10px;">${r.resuelto ? 'Corregida' : 'Pendiente'}</span>
       </div>
       <div style="margin-top:4px;">${r.nota}</div>
+      ${r.resuelto ? `
+      <div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(0,0,0,.08);">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <strong>${r.fechaResolucion}</strong>
+          ${r.resueltoPor ? `<span style="color:var(--gray); font-size:11px;">por ${r.resueltoPor}</span>` : ''}
+        </div>
+        <div style="margin-top:4px;">${r.notaResolucion}</div>
+      </div>` : ''}
     </div>`
   ).join('');
   return `<div style="grid-column:1/-1;">

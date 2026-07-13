@@ -7,6 +7,8 @@ let currentViewId    = null;
 let transferId       = null;
 let selectedArea     = null;
 let filteredDemandas = [];
+let _reportesPendientes = 0;
+let _currentPage        = null;
 
 let _pendingEstadoId   = null;
 let _pendingEstadoVal  = null;
@@ -70,8 +72,14 @@ function normalizeReportes(r) {
     fecha: item.creado_en
       ? new Date(item.creado_en).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
       : '',
-    nota:         item.nota          || '',
-    reportadoPor: item.reportado_por || '',
+    nota:            item.nota            || '',
+    reportadoPor:    item.reportado_por   || '',
+    resuelto:        !!item.resuelto,
+    notaResolucion:  item.nota_resolucion || '',
+    resueltoPor:     item.resuelto_por    || '',
+    fechaResolucion: item.resuelto_en
+      ? new Date(item.resuelto_en).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+      : '',
   }));
 }
 

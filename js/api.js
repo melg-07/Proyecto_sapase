@@ -172,6 +172,13 @@ async function apiReportarProblema(id, nota) {
   });
 }
 
+async function apiResolverReporte(reporteId, nota) {
+  await apiFetch('/demandas/reportes/' + reporteId + '/resolver', {
+    method: 'PUT',
+    body: JSON.stringify({ nota }),
+  });
+}
+
 async function apiGetReportes() {
   const res = await apiFetch('/demandas/reportes/lista');
   return res.data;

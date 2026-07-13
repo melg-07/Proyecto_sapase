@@ -42,6 +42,8 @@ async function bootApp() {
                      : 'formulario';
   const savedPage = sessionStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
+
+  refreshReportesPendientes();
 }
 
 // Login
@@ -108,7 +110,7 @@ function renderSidebar(activePage) {
     html += navSection('Gestion');
     html += navItem('archivos',      'Archivos',      activePage);
     html += navItem('areas',         'Areas',         activePage);
-    html += navItem('observaciones', 'Observaciones', activePage);
+    html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
     if (isFullAdmin) {
       html += navSection('Sistema');
       html += navItem('usuarios',      'Usuarios',      activePage);
@@ -121,7 +123,7 @@ function renderSidebar(activePage) {
     html += navSection('Gestion');
     html += navItem('areas',         'Mi Area',       activePage);
     html += navItem('archivos',      'Archivos',      activePage);
-    html += navItem('observaciones', 'Observaciones', activePage);
+    html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
   } else if (isAreaUser) {
     html += navSection('Gestion');
     html += navItem('archivos', 'Archivos', activePage);
@@ -138,9 +140,15 @@ function navSection(label) {
   return `<div class="nav-section">${label}</div>`;
 }
 
-function navItem(page, label, active) {
+function navItem(page, label, active, extra) {
   const cls = page === active ? ' active' : '';
-  return `<div class="nav-item${cls}" onclick="showPage('${page}')"><span class="nav-dot"></span>${label}</div>`;
+  return `<div class="nav-item${cls}" onclick="showPage('${page}')"><span class="nav-dot"></span>${label}${extra || ''}</div>`;
+}
+
+// Puntito rojo con el numero de observaciones pendientes de corregir
+function obsBadgeHTML() {
+  if (!_reportesPendientes) return '';
+  return `<span style="background:#c62828; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 6px; margin-left:6px;">${_reportesPendientes}</span>`;
 }
 
 // Navegación
@@ -164,6 +172,7 @@ function showPage(name) {
   }
 
   sessionStorage.setItem('sapase_page', name);
+  _currentPage = name;
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);

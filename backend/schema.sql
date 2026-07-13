@@ -282,12 +282,16 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- collation distinta a la que usan las tablas nuevas por defecto, lo que
 -- rompe la constraint (Error 3780). Las consultas ya hacen JOIN manualmente.
 CREATE TABLE IF NOT EXISTS reportes_problema (
-  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  demanda_id  VARCHAR(20)  NOT NULL,
-  area_id     INT UNSIGNED,
-  usuario_id  INT UNSIGNED,
-  nota        TEXT NOT NULL,
-  creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  demanda_id       VARCHAR(20)  NOT NULL,
+  area_id          INT UNSIGNED,
+  usuario_id       INT UNSIGNED,
+  nota             TEXT NOT NULL,
+  resuelto         TINYINT(1) NOT NULL DEFAULT 0,
+  nota_resolucion  TEXT NULL,
+  resuelto_por     INT UNSIGNED NULL,
+  resuelto_en      DATETIME NULL,
+  creado_en        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_reportes_demanda (demanda_id),
   KEY idx_reportes_area    (area_id)
 ) ENGINE=InnoDB;

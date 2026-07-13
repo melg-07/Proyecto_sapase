@@ -91,24 +91,66 @@ router.get('/reportes/lista', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para ver las observaciones' });
     }
 
+    // Se filtra por el area ACTUAL de la demanda (d.area_id), no por el area
+    // guardada en el reporte al momento de crearse, para que siga viendola
+    // el jefe correcto aunque la peticion se haya transferido despues.
     let sql = `
       SELECT r.id, r.demanda_id, r.nota, r.creado_en,
-             d.folio, d.remitente, d.asunto, d.estado,
+             d.folio, d.remitente, d.asunto, d.estado, d.area_id,
              a.nombre AS area, u.nombre AS reportado_por
       FROM reportes_problema r
       JOIN demandas d      ON BINARY r.demanda_id = BINARY d.id
-      LEFT JOIN areas    a ON r.area_id    = a.id
+      LEFT JOIN areas    a ON d.area_id    = a.id
       LEFT JOIN usuarios u ON r.usuario_id = u.id
-      WHERE 1=1`;
+      WHERE r.resuelto = 0`;
     const params = [];
 
     const scope = scopeArea(req);
-    if (scope) { sql += ' AND r.area_id = ?'; params.push(scope); }
+    if (scope) { sql += ' AND d.area_id = ?'; params.push(scope); }
 
     sql += ' ORDER BY r.creado_en DESC';
 
     const [rows] = await db.execute(sql, params);
     res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Marcar una observacion como corregida
+router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
+  try {
+    if (!['Administrador', 'Subadmin', 'jefe_area'].includes(req.user.rol)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para esta accion' });
+    }
+
+    const nota = s(req.body.nota);
+    if (!nota) {
+      return res.status(400).json({ ok: false, error: 'Escribe una nota sobre la correccion' });
+    }
+
+    const [rep] = await db.execute(
+      `SELECT r.id, d.area_id
+       FROM reportes_problema r
+       JOIN demandas d ON BINARY r.demanda_id = BINARY d.id
+       WHERE r.id = ?`,
+      [req.params.reporteId]
+    );
+    if (!rep.length) return res.status(404).json({ ok: false, error: 'Observacion no encontrada' });
+
+    const scope = scopeArea(req);
+    if (scope && Number(rep[0].area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Observacion no encontrada' });
+    }
+
+    await db.execute(
+      `UPDATE reportes_problema
+       SET resuelto = 1, nota_resolucion = ?, resuelto_por = ?, resuelto_en = NOW()
+       WHERE id = ?`,
+      [nota, req.user.id, req.params.reporteId]
+    );
+
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -152,9 +194,11 @@ router.get('/:id', async (req, res) => {
     );
 
     const [reportes] = await db.execute(
-      `SELECT r.creado_en, r.nota, u.nombre AS reportado_por
+      `SELECT r.creado_en, r.nota, u.nombre AS reportado_por,
+              r.resuelto, r.nota_resolucion, r.resuelto_en, ru.nombre AS resuelto_por
        FROM reportes_problema r
-       LEFT JOIN usuarios u ON r.usuario_id = u.id
+       LEFT JOIN usuarios u  ON r.usuario_id  = u.id
+       LEFT JOIN usuarios ru ON r.resuelto_por = ru.id
        WHERE r.demanda_id = ?
        ORDER BY r.creado_en ASC`,
       [req.params.id]
