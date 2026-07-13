@@ -40,7 +40,7 @@ async function bootApp() {
                      : isSubareaUsuario(currentUser.rol)                ? 'archivos'
                      : isJefeArea(currentUser.rol)                     ? 'areas'
                      : 'formulario';
-  const savedPage = localStorage.getItem('sapase_page');
+  const savedPage = sessionStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
 }
 
@@ -84,7 +84,7 @@ function doLogout() {
   _areasCache      = [];
   _usersCache      = [];
   filteredDemandas = [];
-  localStorage.removeItem('sapase_page');
+  sessionStorage.removeItem('sapase_page');
 
   document.getElementById('app').style.display          = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -161,7 +161,7 @@ function showPage(name) {
     name = 'formulario';
   }
 
-  localStorage.setItem('sapase_page', name);
+  sessionStorage.setItem('sapase_page', name);
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + name);
@@ -175,6 +175,14 @@ function showPage(name) {
   const btnNuevaArea = document.getElementById('btn-nueva-area');
   if (btnNuevaArea) {
     btnNuevaArea.style.display = (name === 'areas' && isAdminLvl) ? 'inline-flex' : 'none';
+  }
+
+  // Los usuarios de subarea solo ven las peticiones de su propia area, no tiene
+  // sentido ofrecerles un filtro para buscar por area.
+  const filterAreaSel = document.getElementById('filter-area');
+  if (filterAreaSel) {
+    const isSubareaUser = currentUser && isSubareaUsuario(currentUser.rol);
+    filterAreaSel.style.display = isSubareaUser ? 'none' : '';
   }
 
   if (name === 'archivos')  { renderArchivos(); }

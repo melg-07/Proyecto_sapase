@@ -214,10 +214,14 @@ function hideAreaDetail() {
 
 function filterAreaDetail() {
   const q       = (document.getElementById('area-search')?.value || '').toLowerCase();
+  const fs      = document.getElementById('area-filter-status')?.value    || '';
+  const fp      = document.getElementById('area-filter-prioridad')?.value || '';
   const isAdmin = currentUser && isAdminLevel(currentUser.rol);
   const list    = demandas.filter(d =>
     d.area === selectedArea &&
-    (!q || d.folio.toLowerCase().includes(q) || d.remitente.toLowerCase().includes(q) || d.asunto.toLowerCase().includes(q))
+    (!q  || d.folio.toLowerCase().includes(q) || d.remitente.toLowerCase().includes(q) || d.asunto.toLowerCase().includes(q)) &&
+    (!fs || d.estado    === fs) &&
+    (!fp || d.prioridad === fp)
   );
   const tbody = document.getElementById('area-detail-table');
   tbody.innerHTML = list.map(d => `

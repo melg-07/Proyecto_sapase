@@ -1,12 +1,14 @@
 // URL relativa: funciona desde cualquier IP porque usa el mismo origen que la pagina
 const API_BASE = '/api';
 
-// Token persistido en localStorage para sobrevivir a un refresh de pagina
-let _token = localStorage.getItem('sapase_token');
+// Token persistido en sessionStorage: sobrevive a un refresh de pagina pero es
+// exclusivo de cada pestaña, para que iniciar sesion en otra pestaña (u otro
+// perfil) no cambie la sesion de esta.
+let _token = sessionStorage.getItem('sapase_token');
 
-function setToken(t)  { _token = t; localStorage.setItem('sapase_token', t); }
+function setToken(t)  { _token = t; sessionStorage.setItem('sapase_token', t); }
 function getToken()   { return _token; }
-function clearToken() { _token = null; localStorage.removeItem('sapase_token'); }
+function clearToken() { _token = null; sessionStorage.removeItem('sapase_token'); }
 
 async function apiFetch(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };

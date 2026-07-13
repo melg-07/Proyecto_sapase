@@ -279,6 +279,18 @@
           <div class="card-title" id="area-detail-title">Peticiones del Area</div>
           <div class="search-bar">
             <input class="search-input" id="area-search" placeholder="Buscar en esta area..." oninput="filterAreaDetail()">
+            <select id="area-filter-status" onchange="filterAreaDetail()">
+              <option value="">Todos los estados</option>
+              <option value="Pendiente">Pendiente</option>
+              <option value="Atendida">Atendida</option>
+              <option value="En proceso">En proceso</option>
+            </select>
+            <select id="area-filter-prioridad" onchange="filterAreaDetail()">
+              <option value="">Todas las prioridades</option>
+              <option value="Alta">Alta</option>
+              <option value="Media">Media</option>
+              <option value="Baja">Baja</option>
+            </select>
             <button class="btn btn-green btn-sm" onclick="exportAreaExcel()">Exportar Excel</button>
             <button class="btn btn-outline btn-sm" id="btn-cerrar-area" onclick="hideAreaDetail()">Cerrar</button>
           </div>
