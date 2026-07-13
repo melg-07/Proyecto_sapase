@@ -125,9 +125,6 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
     }
 
     const nota = s(req.body.nota);
-    if (!nota) {
-      return res.status(400).json({ ok: false, error: 'Escribe una nota sobre la correccion' });
-    }
 
     const [rep] = await db.execute(
       `SELECT r.id, d.area_id

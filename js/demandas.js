@@ -125,7 +125,14 @@ function renderArchivosTable(list) {
           <option ${d.estado==='En proceso' ?'selected':''}>En proceso</option>
           <option ${d.estado==='Atendida'   ?'selected':''}>Atendida</option>
         </select>` : `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`}</td>
-      <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
+      <td>${isAreaUsuarioRol ? `
+        <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
+                onfocus="this.dataset.prev=this.value"
+                onchange="changePrioridadArea('${d.id}', this.value, this)">
+          <option ${d.prioridad==='Alta'  ?'selected':''}>Alta</option>
+          <option ${d.prioridad==='Media' ?'selected':''}>Media</option>
+          <option ${d.prioridad==='Baja'  ?'selected':''}>Baja</option>
+        </select>` : `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`}</td>
       <td>
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
@@ -193,7 +200,6 @@ function openResolverObservacion(reporteId) {
 
 async function confirmResolverObservacion() {
   const nota = document.getElementById('ro-nota').value.trim();
-  if (!nota) { showToast('Escribe una nota sobre la correccion', 'error'); return; }
 
   try {
     await apiResolverReporte(resolverObservacionId, nota);
@@ -314,7 +320,7 @@ function reportesHTML(reportes) {
           <strong>${r.fechaResolucion}</strong>
           ${r.resueltoPor ? `<span style="color:var(--gray); font-size:11px;">por ${r.resueltoPor}</span>` : ''}
         </div>
-        <div style="margin-top:4px;">${r.notaResolucion}</div>
+        ${r.notaResolucion ? `<div style="margin-top:4px;">${r.notaResolucion}</div>` : ''}
       </div>` : ''}
     </div>`
   ).join('');
