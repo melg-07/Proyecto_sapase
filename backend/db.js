@@ -46,6 +46,9 @@ async function ensureObservacionesSchema() {
   }
 
   try {
+    // Sin FOREIGN KEY: algunas bases ya existentes tienen demandas.id con una
+    // collation distinta a la que usan las tablas nuevas por defecto, lo que
+    // rompe la constraint (Error 3780). Las consultas ya hacen JOIN manualmente.
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reportes_problema (
         id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -54,9 +57,8 @@ async function ensureObservacionesSchema() {
         usuario_id  INT UNSIGNED,
         nota        TEXT NOT NULL,
         creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (demanda_id) REFERENCES demandas(id)  ON DELETE CASCADE,
-        FOREIGN KEY (area_id)    REFERENCES areas(id)      ON DELETE SET NULL,
-        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)   ON DELETE SET NULL
+        KEY idx_reportes_demanda (demanda_id),
+        KEY idx_reportes_area    (area_id)
       ) ENGINE=InnoDB
     `);
   } catch (err) {

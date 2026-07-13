@@ -96,7 +96,7 @@ router.get('/reportes/lista', async (req, res) => {
              d.folio, d.remitente, d.asunto, d.estado,
              a.nombre AS area, u.nombre AS reportado_por
       FROM reportes_problema r
-      JOIN demandas d      ON r.demanda_id = d.id
+      JOIN demandas d      ON BINARY r.demanda_id = BINARY d.id
       LEFT JOIN areas    a ON r.area_id    = a.id
       LEFT JOIN usuarios u ON r.usuario_id = u.id
       WHERE 1=1`;

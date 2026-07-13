@@ -278,6 +278,9 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 -- REPORTES DE PROBLEMA (observaciones que un usuario de area levanta
 -- sobre una peticion, visibles para el jefe de area y el administrador)
 -- ------------------------------------------------------------
+-- Sin FOREIGN KEY: algunas bases ya existentes tienen demandas.id con una
+-- collation distinta a la que usan las tablas nuevas por defecto, lo que
+-- rompe la constraint (Error 3780). Las consultas ya hacen JOIN manualmente.
 CREATE TABLE IF NOT EXISTS reportes_problema (
   id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   demanda_id  VARCHAR(20)  NOT NULL,
@@ -285,9 +288,8 @@ CREATE TABLE IF NOT EXISTS reportes_problema (
   usuario_id  INT UNSIGNED,
   nota        TEXT NOT NULL,
   creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (demanda_id) REFERENCES demandas(id)  ON DELETE CASCADE,
-  FOREIGN KEY (area_id)    REFERENCES areas(id)      ON DELETE SET NULL,
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)   ON DELETE SET NULL
+  KEY idx_reportes_demanda (demanda_id),
+  KEY idx_reportes_area    (area_id)
 ) ENGINE=InnoDB;
 
 -- Migracion: crea 4 subareas por cada area que aun no tenga ninguna
