@@ -274,20 +274,6 @@
           <div id="area-info-toggle" style="margin-left:auto; display:flex; gap:8px;"></div>
         </div>
       </div>
-      <!-- Resumen por subarea (solo jefe de area) -->
-      <div id="subareas-panel" style="display:none; margin-bottom:16px;">
-        <div class="card">
-          <div class="card-title">Subareas</div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Subarea</th><th>Total</th><th>Pendientes</th><th>En Proceso</th><th>Atendidas</th></tr>
-              </thead>
-              <tbody id="subareas-panel-table"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
       <div id="area-detail" style="display:none; margin-top:0;">
         <div class="card">
           <div class="card-title" id="area-detail-title">Peticiones del Area</div>
@@ -335,6 +321,26 @@
               <tr><th>Folio</th><th>Area</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Observacion</th><th>Reportado por</th><th>Fecha</th><th>Acciones</th></tr>
             </thead>
             <tbody id="observaciones-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBAREAS (resumen de peticiones por subarea, solo jefe de area) -->
+    <div id="page-subareas" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Subareas</h2>
+          <p>Peticiones por subarea</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Subarea</th><th>Total</th><th>Pendientes</th><th>En Proceso</th><th>Atendidas</th></tr>
+            </thead>
+            <tbody id="subareas-panel-table"></tbody>
           </table>
         </div>
       </div>

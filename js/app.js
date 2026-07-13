@@ -201,29 +201,26 @@ function showAreaDetail(area) {
   document.getElementById('area-detail').style.display     = 'block';
   document.getElementById('area-detail-title').textContent = area;
   filterAreaDetail();
-  renderSubareasPanel();
   document.getElementById('area-detail').scrollIntoView({ behavior: 'smooth' });
 }
 
 function hideAreaDetail() {
   document.getElementById('area-detail').style.display     = 'none';
   document.getElementById('area-info-panel').style.display = 'none';
-  const subareasPanel = document.getElementById('subareas-panel');
-  if (subareasPanel) subareasPanel.style.display = 'none';
   const sel = document.getElementById('areas-dropdown');
   if (sel) sel.value = '';
   selectedArea = null;
 }
 
-// Resumen de peticiones por subarea (solo visible para el jefe de area)
+// Resumen de peticiones por subarea (pagina "Subareas", solo jefe de area)
 async function renderSubareasPanel() {
-  const panel = document.getElementById('subareas-panel');
-  if (!panel) return;
-  const isJefe = currentUser && isJefeArea(currentUser.rol);
-  if (!isJefe || !currentUser.area_id) { panel.style.display = 'none'; return; }
-
-  panel.style.display = 'block';
   const tbody = document.getElementById('subareas-panel-table');
+  if (!tbody) return;
+  if (!currentUser || !currentUser.area_id) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Sin area asignada</td></tr>';
+    return;
+  }
+
   try {
     const subareas = await apiGetSubareas(currentUser.area_id);
     tbody.innerHTML = subareas.map(s => {
