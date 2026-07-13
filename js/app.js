@@ -85,22 +85,25 @@ function _updateAreaInfoPanel(areaNombre) {
     ? '<span class="badge badge-green">Activa</span>'
     : '<span class="badge badge-red">Inactiva</span>';
   document.getElementById('area-info-count').innerHTML  = `
-    <div class="stats-row-mini" style="margin:0;">
-      <div class="stat-card">
-        <div class="stat-num">${total}</div>
-        <div class="stat-label">Total</div>
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:var(--guinda-dark);">${total}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Total</div>
       </div>
-      <div class="stat-card" style="border-color:var(--gold);">
-        <div class="stat-num" style="color:var(--gold);">${pendientes}</div>
-        <div class="stat-label">Pendientes</div>
+      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:var(--gold);">${pendientes}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Pendientes</div>
       </div>
-      <div class="stat-card" style="border-color:#1565C0;">
-        <div class="stat-num" style="color:#1565C0;">${enProceso}</div>
-        <div class="stat-label">En Proceso</div>
+      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:#1565C0;">${enProceso}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">En Proceso</div>
       </div>
-      <div class="stat-card" style="border-color:#2E7D32;">
-        <div class="stat-num" style="color:#2E7D32;">${atendidas}</div>
-        <div class="stat-label">Atendidas</div>
+      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:#2E7D32;">${atendidas}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Atendidas</div>
       </div>
     </div>`;
   document.getElementById('area-info-toggle').innerHTML  = isAdmin

@@ -105,7 +105,6 @@ function filterArchivos() {
 function renderArchivosTable(list) {
   const tbody        = document.getElementById('archivos-table');
   const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
-  const isConsulta    = currentUser && currentUser.rol === 'Consulta';
   const isAreaUser    = currentUser && (isAreaUsuario(currentUser.rol) || isJefeArea(currentUser.rol));
   const isSubareaUser = currentUser && isSubareaUsuario(currentUser.rol);
 
@@ -130,7 +129,6 @@ function renderArchivosTable(list) {
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
           <button class="btn btn-guinda btn-sm"  onclick="exportSinglePDF('${d.id}')">Imprimir</button>
           ${isAreaUser ? `<button class="btn btn-outline btn-sm" onclick="openEnviarSubarea('${d.id}')">Enviar a Subarea</button>` : ''}
-          ${(isConsulta || isSubareaUser) ? '' : `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>`}
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>
       </td>
