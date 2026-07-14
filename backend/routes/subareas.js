@@ -5,7 +5,7 @@ const { authMiddleware, areaUsuarioGuard, scopeArea } = require('../middleware/a
 router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 
-// Lista las subareas de un area. Un usuario de area solo puede ver las de su propia area.
+// Lista las subareas de un area.
 router.get('/', async (req, res) => {
   try {
     const scope = scopeArea(req);

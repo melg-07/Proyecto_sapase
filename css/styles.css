@@ -183,7 +183,7 @@ tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
 .search-input:focus { border-color:var(--guinda); }
 .search-bar select { padding:9px 12px; border:1.5px solid var(--cream-dark); border-radius:var(--radius); font-size:13px; outline:none; }
 
-/* ============ AREAS ============ */
+/* ============ ÁREAS ============ */
 .areas-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
 .area-card {
   background:var(--white); border:1.5px solid var(--cream-dark); border-radius:var(--radius);
@@ -293,7 +293,7 @@ tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
   /* Card menos padding */
   .card { padding:16px; }
 
-  /* Botones de accion apilables */
+  /* Botones de acción apilables */
   .btn-row.stack-mobile { flex-direction:column; }
   .btn-row.stack-mobile .btn { width:100%; justify-content:center; }
 }
@@ -328,7 +328,7 @@ tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
 .export-menu-item:last-child { border-bottom: none; }
 .export-menu-item:hover { background: var(--guinda); color: var(--white); }
 
-/* ============ AREA INACTIVA ============ */
+/* ============ ÁREA INACTIVA ============ */
 .area-inactiva {
   opacity: 0.55;
   background: var(--gray-light);

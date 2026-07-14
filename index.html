@@ -48,7 +48,7 @@
       <img id="topbar-logo-sapase" src="assets/logo_sapase.png" alt="SAPASE" style="height:30px;">
     </div>
     <div class="topbar-title">
-      <h2>Sistema de Gestion de Peticiones</h2>
+      <h2>Sistema de Gestión de Peticiones</h2>
       <p>SAPASE – Ecatepec de Morelos 2025–2027</p>
     </div>
     <div class="topbar-user" onclick="openUserProfile()" title="Ver mi perfil">
@@ -95,7 +95,7 @@
         </div>
         <div class="stat-card" style="border-color:#1565C0;">
           <div class="stat-num" style="color:#1565C0;" id="stat-areas">0</div>
-          <div class="stat-label">Areas Activas</div>
+          <div class="stat-label">Áreas Activas</div>
         </div>
       </div>
       <div class="card">
@@ -103,7 +103,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Area</th><th>Asunto</th><th>Estado</th></tr>
+              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Área</th><th>Asunto</th><th>Estado</th></tr>
             </thead>
             <tbody id="dashboard-table"></tbody>
           </table>
@@ -139,9 +139,9 @@
             <input type="text" id="f-ref" placeholder="Ej. REG6/ECA/524/26">
           </div>
           <div class="field-group full">
-            <label>Area Responsable</label>
+            <label>Área Responsable</label>
             <select id="f-area">
-              <option value="">— Seleccione un area —</option>
+              <option value="">— Seleccione un área —</option>
             </select>
           </div>
         </div>
@@ -166,11 +166,11 @@
             <input type="text" id="f-colonia" placeholder="Colonia o Fraccionamiento">
           </div>
           <div class="field-group">
-            <label>Telefono Principal (Obligatorio)</label>
+            <label>Teléfono Principal (Obligatorio)</label>
             <input type="tel" id="f-tel1" placeholder="Ej: +52 (55) 1234-5678 EXT 123" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
           </div>
           <div class="field-group">
-            <label>Telefono Secundario</label>
+            <label>Teléfono Secundario</label>
             <input type="tel" id="f-tel2" placeholder="Opcional" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
           </div>
         </div>
@@ -203,7 +203,7 @@
       <div class="section-header">
         <div class="section-title">
           <h2>Archivos</h2>
-          <p>Gestion y exportacion de peticiones</p>
+          <p>Gestión y exportación de peticiones</p>
         </div>
         <div class="btn-row" style="margin:0;">
           <button class="btn btn-green" onclick="exportarTodoExcel()">Exportar Todo a Excel</button>
@@ -214,7 +214,7 @@
         <div class="search-bar">
           <input class="search-input" id="search-input" placeholder="Buscar por folio, nombre, asunto..." oninput="filterArchivos()">
           <select id="filter-area" onchange="filterArchivos()">
-            <option value="">Todas las areas</option>
+            <option value="">Todas las áreas</option>
           </select>
           <select id="filter-status" onchange="filterArchivos()">
             <option value="">Todos los estados</option>
@@ -235,7 +235,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Area</th><th>Asunto</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr>
+              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Área</th><th>Asunto</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr>
             </thead>
             <tbody id="archivos-table"></tbody>
           </table>
@@ -243,25 +243,25 @@
       </div>
     </div>
 
-    <!-- AREAS -->
+    <!-- ÁREAS -->
     <div id="page-areas" class="page">
       <div class="section-header">
         <div class="section-title">
-          <h2>Areas</h2>
-          <p>Gestion por departamento</p>
+          <h2>Áreas</h2>
+          <p>Gestión por departamento</p>
         </div>
-        <button class="btn btn-guinda" id="btn-nueva-area" style="display:none;" onclick="openNuevaArea()">Nueva Area</button>
+        <button class="btn btn-guinda" id="btn-nueva-area" style="display:none;" onclick="openNuevaArea()">Nueva Área</button>
       </div>
-      <!-- Dropdown selector de area -->
+      <!-- Dropdown selector de área -->
       <div class="card" id="areas-dropdown-wrap" style="margin-bottom:16px;">
         <div class="field-group" style="margin:0;">
-          <label>Seleccionar Area</label>
+          <label>Seleccionar Área</label>
           <select id="areas-dropdown" onchange="onAreaDropdownChange(this.value)">
-            <option value="">— Seleccione un area —</option>
+            <option value="">— Seleccione un área —</option>
           </select>
         </div>
       </div>  
-      <!-- Panel de info del area seleccionada -->
+      <!-- Panel de info del área seleccionada -->
       <div id="area-info-panel" style="display:none; margin-bottom:16px;">
         <div class="card" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:16px;">
           <div>
@@ -276,7 +276,7 @@
       </div>
       <div id="area-detail" style="display:none; margin-top:0;">
         <div class="card">
-          <div class="card-title" id="area-detail-title">Peticiones del Area</div>
+          <div class="card-title" id="area-detail-title">Peticiones del Área</div>
           <div class="search-bar">
             <input class="search-input" id="area-search" placeholder="Buscar en esta area..." oninput="filterAreaDetail()">
             <select id="area-filter-status" onchange="filterAreaDetail()">
@@ -318,7 +318,7 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Folio</th><th>Area</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Observacion</th><th>Reportado por</th><th>Fecha</th><th>Acciones</th></tr>
+              <tr><th>Folio</th><th>Área</th><th>Remitente</th><th>Asunto</th><th>Estado</th><th>Observación</th><th>Reportado por</th><th>Fecha</th><th>Acciones</th></tr>
             </thead>
             <tbody id="observaciones-table"></tbody>
           </table>
@@ -362,11 +362,11 @@
               <th>ID</th>
               <th>Nombre Completo</th>
               <th>Usuario</th>
-              <th>Contrasena</th>
+              <th>Contraseña</th>
               <th>Correo</th>
-              <th>Telefono</th>
+              <th>Teléfono</th>
               <th>Cargo</th>
-              <th>Area</th>
+              <th>Área</th>
               <th>Subarea</th>
               <th>Rol</th>
               <th>Estado</th>
@@ -377,7 +377,7 @@
       </div>
     </div>
 
-    <!-- CONFIGURACION -->
+    <!-- CONFIGURACIÓN -->
     <div id="page-configuracion" class="page">
       <div class="section-header">
         <div class="section-title">
@@ -422,21 +422,21 @@
     <div id="modal-ver-content"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF(currentViewId)">Imprimir</button>
-      <button class="btn btn-blue btn-sm" id="btn-transferir-demanda" onclick="openTransferModal(currentViewId)">Enviar a otra Area</button>
+      <button class="btn btn-blue btn-sm" id="btn-transferir-demanda" onclick="openTransferModal(currentViewId)">Enviar a otra Área</button>
     </div>
   </div>
 </div>
 
-<!-- Reportar Observacion / Problema -->
+<!-- Reportar Observación / Problema -->
 <div class="modal-overlay" id="modal-reportar-problema">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Reportar Observacion</div>
+      <div class="modal-title">Reportar Observación</div>
       <button class="modal-close" onclick="closeModal('modal-reportar-problema')">x</button>
     </div>
     <div class="field-group full">
       <label>Describe el problema</label>
-      <textarea id="rp-nota" rows="4" placeholder="Explica la observacion o problema con esta peticion..."></textarea>
+      <textarea id="rp-nota" rows="4" placeholder="Explica la observación o problema con esta petición..."></textarea>
     </div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-guinda btn-sm" onclick="confirmReportarProblema()">Reportar</button>
@@ -445,15 +445,15 @@
   </div>
 </div>
 
-<!-- Marcar Observacion como Corregida -->
+<!-- Marcar Observación como Corregida -->
 <div class="modal-overlay" id="modal-resolver-observacion">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Observacion Corregida</div>
+      <div class="modal-title">Observación Corregida</div>
       <button class="modal-close" onclick="closeModal('modal-resolver-observacion')">x</button>
     </div>
     <div class="field-group full">
-      <label>Describe la correccion realizada (opcional)</label>
+      <label>Describe la corrección realizada (opcional)</label>
       <textarea id="ro-nota" rows="4" placeholder="Explica que se hizo para corregir el problema..."></textarea>
     </div>
     <div class="btn-row" style="margin-top:16px;">
@@ -488,7 +488,7 @@
         <input type="text" id="ed-ref">
       </div>
       <div class="field-group">
-        <label>Area</label>
+        <label>Área</label>
         <select id="ed-area"></select>
       </div>
       <div class="field-group full">
@@ -508,11 +508,11 @@
         <input type="text" id="ed-colonia">
       </div>
       <div class="field-group">
-        <label>Telefono Principal</label>
+        <label>Teléfono Principal</label>
         <input type="tel" id="ed-tel1" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
       </div>
       <div class="field-group">
-        <label>Telefono Secundario</label>
+        <label>Teléfono Secundario</label>
         <input type="tel" id="ed-tel2" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
       </div>
       <div class="field-group full">
@@ -555,16 +555,16 @@
 <div class="modal-overlay" id="modal-transfer">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Enviar a otra Area</div>
+      <div class="modal-title">Enviar a otra Área</div>
       <button class="modal-close" onclick="closeModal('modal-transfer')">x</button>
     </div>
     <div class="field-group">
-      <label>Area Destino</label>
+      <label>Área Destino</label>
       <select id="transfer-area"></select>
     </div>
     <div class="field-group">
       <label>Comentario</label>
-      <textarea id="transfer-comment" rows="3" placeholder="Escriba un comentario para el area receptora..."></textarea>
+      <textarea id="transfer-comment" rows="3" placeholder="Escriba un comentario para el área receptora..."></textarea>
     </div>
     <div class="btn-row">
       <button class="btn btn-guinda" onclick="confirmTransfer()">Enviar</button>
@@ -636,7 +636,7 @@
         <input type="email" id="eu-correo">
       </div>
       <div class="field-group">
-        <label>Telefono</label>
+        <label>Teléfono</label>
         <input type="tel" id="eu-telefono" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
       </div>
       <div class="field-group">
@@ -644,7 +644,7 @@
         <input type="text" id="eu-cargo">
       </div>
       <div class="field-group">
-        <label>Area</label>
+        <label>Área</label>
         <select id="eu-area" onchange="onUsuarioAreaChange('eu-area','eu-subarea')"></select>
       </div>
       <div class="field-group">
@@ -661,9 +661,9 @@
           <option value="Capturista">Capturista</option>
           <option value="Consulta">Consulta</option>
           <option value="TIC">TIC</option>
-          <option value="area_usuario">Usuario de Area</option>
+          <option value="area_usuario">Usuario de Área</option>
           <option value="subarea_usuario">Usuario de Subarea</option>
-          <option value="jefe_area">Jefe de Area</option>
+          <option value="jefe_area">Jefe de Área</option>
         </select>
       </div>
       <div class="field-group">
@@ -698,7 +698,7 @@
         <input type="text" id="nu-user">
       </div>
       <div class="field-group">
-        <label>Contrasena</label>
+        <label>Contraseña</label>
         <div style="display:flex; gap:6px; align-items:center;">
           <input type="password" id="nu-password" style="flex:1;">
           <button type="button" class="btn-eye" id="nu-pw-toggle" onclick="toggleModalPw('nu-password','nu-pw-toggle')">Ver</button>
@@ -709,7 +709,7 @@
         <input type="email" id="nu-correo">
       </div>
       <div class="field-group">
-        <label>Telefono</label>
+        <label>Teléfono</label>
         <input type="tel" id="nu-telefono" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
       </div>
       <div class="field-group">
@@ -717,7 +717,7 @@
         <input type="text" id="nu-cargo">
       </div>
       <div class="field-group">
-        <label>Area</label>
+        <label>Área</label>
         <select id="nu-area" onchange="onUsuarioAreaChange('nu-area','nu-subarea')"></select>
       </div>
       <div class="field-group">
@@ -734,9 +734,9 @@
           <option value="Capturista" selected>Capturista</option>
           <option value="Consulta">Consulta</option>
           <option value="TIC">TIC</option>
-          <option value="area_usuario">Usuario de Area</option>
+          <option value="area_usuario">Usuario de Área</option>
           <option value="subarea_usuario">Usuario de Subarea</option>
-          <option value="jefe_area">Jefe de Area</option>
+          <option value="jefe_area">Jefe de Área</option>
         </select>
       </div>
     </div>
@@ -748,40 +748,40 @@
 </div>
 
 
-<!-- Nueva Area -->
+<!-- Nueva Área -->
 <div class="modal-overlay" id="modal-nueva-area">
   <div class="modal" style="width:460px;">
     <div class="modal-header">
-      <div class="modal-title">Nueva Area</div>
+      <div class="modal-title">Nueva Área</div>
       <button class="modal-close" onclick="closeModal('modal-nueva-area')">x</button>
     </div>
     <div class="field-group">
-      <label>Nombre del Area</label>
+      <label>Nombre del Área</label>
       <input type="text" id="na-nombre" placeholder="Escribe el nombre del area en mayusculas"
              onkeydown="if(event.key==='Enter') saveNuevaArea()">
     </div>
     <div class="btn-row" style="margin-top:16px;">
-      <button class="btn btn-guinda" onclick="saveNuevaArea()">Agregar Area</button>
+      <button class="btn btn-guinda" onclick="saveNuevaArea()">Agregar Área</button>
       <button class="btn btn-outline" onclick="closeModal('modal-nueva-area')">Cancelar</button>
     </div>
   </div>
 </div>
 
-<!-- Editar Area -->
+<!-- Editar Área -->
 <div class="modal-overlay" id="modal-editar-area">
   <div class="modal" style="width:460px;">
     <div class="modal-header">
-      <div class="modal-title">Editar Area</div>
+      <div class="modal-title">Editar Área</div>
       <button class="modal-close" onclick="closeModal('modal-editar-area')">x</button>
     </div>
     <input type="hidden" id="ea-id">
     <div class="field-group">
-      <label>Nombre del Area</label>
+      <label>Nombre del Área</label>
       <input type="text" id="ea-nombre" placeholder="Escribe el nombre del area en mayusculas">
     </div>
     <div class="field-group">
-      <label>Jefe de Area</label>
-      <input type="text" id="ea-jefe" placeholder="Nombre del jefe de area">
+      <label>Jefe de Área</label>
+      <input type="text" id="ea-jefe" placeholder="Nombre del jefe de área">
     </div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-guinda" onclick="saveEditArea()">Guardar Cambios</button>

@@ -37,7 +37,7 @@ function renderDashboard() {
   `).join('') || '<tr><td colspan="6" style="text-align:center; color:var(--gray); padding:20px;">Sin demandas registradas</td></tr>';
 }
 
-// Areas
+// Áreas
 function renderAreasGrid() {
   const isJefe     = currentUser && isJefeArea(currentUser.rol);
   const isAreaUser = currentUser && (isAreaUsuario(currentUser.rol) || isJefe);
@@ -193,7 +193,7 @@ async function saveNuevaArea() {
   }
 }
 
-// Detalle de area
+// Detalle de área
 function showAreaDetail(area) {
   selectedArea = area;
   _updateAreaInfoPanel(area);

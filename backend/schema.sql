@@ -11,7 +11,7 @@ CREATE DATABASE IF NOT EXISTS sapase_db
 USE sapase_db;
 
 -- ------------------------------------------------------------
--- AREAS
+-- ÁREAS
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS areas (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -205,7 +205,7 @@ LEFT JOIN usuarios u  ON d.creado_por = u.id;
 -- DATOS INICIALES
 -- ============================================================
 
--- Areas (27)
+-- Áreas (27)
 INSERT IGNORE INTO areas (nombre) VALUES
   ('MANTENIMIENTO'),
   ('OPERACIONES'),

@@ -51,7 +51,7 @@ async function apiLogout() {
   clearToken();
 }
 
-// Areas
+// Áreas
 
 async function apiGetAreas() {
   const res = await apiFetch('/areas');
@@ -184,7 +184,7 @@ async function apiGetReportes() {
   return res.data;
 }
 
-// Configuracion / Logos
+// Configuración / Logos
 
 async function apiGetLogos() {
   const res  = await fetch(API_BASE + '/config/logos');

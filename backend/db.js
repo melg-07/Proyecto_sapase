@@ -36,8 +36,6 @@ async function ensureRolEnumSubadmin() {
 }
 
 // Agrega la columna de comentario a historial_estados y la tabla de reportes
-// de problema si aun no existen (idempotente, para bases de datos ya creadas
-// antes de que existiera esta funcionalidad).
 async function ensureObservacionesSchema() {
   try {
     await pool.execute('ALTER TABLE historial_estados ADD COLUMN comentario TEXT NULL AFTER archivo_ruta');
@@ -46,9 +44,7 @@ async function ensureObservacionesSchema() {
   }
 
   try {
-    // Sin FOREIGN KEY: algunas bases ya existentes tienen demandas.id con una
-    // collation distinta a la que usan las tablas nuevas por defecto, lo que
-    // rompe la constraint (Error 3780). Las consultas ya hacen JOIN manualmente.
+ 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reportes_problema (
         id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -69,7 +65,6 @@ async function ensureObservacionesSchema() {
     console.error('⚠  No se pudo crear la tabla reportes_problema:', err.message);
   }
 
-  // Para bases donde reportes_problema ya existia sin las columnas de resolucion
   const reporteCols = [
     "ADD COLUMN resuelto TINYINT(1) NOT NULL DEFAULT 0 AFTER nota",
     "ADD COLUMN nota_resolucion TEXT NULL AFTER resuelto",

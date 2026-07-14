@@ -189,7 +189,7 @@ async function refreshReportesPendientes() {
   renderSidebar(_currentPage);
 }
 
-/* ---------- Marcar observacion como corregida ---------- */
+/* ---------- Marcar observación como corregida ---------- */
 let resolverObservacionId = null;
 
 function openResolverObservacion(reporteId) {
@@ -207,7 +207,7 @@ async function confirmResolverObservacion() {
     showToast('Observacion marcada como corregida', 'success');
     renderObservaciones();
   } catch (err) {
-    showToast(err.message || 'Error al marcar la observacion como corregida', 'error');
+    showToast(err.message || 'Error al marcar la observación como corregida', 'error');
   }
 }
 
@@ -460,7 +460,7 @@ async function saveEditDemanda() {
 
 /* ---------- Eliminar petición ---------- */
 async function deleteDemanda(id) {
-  if (!confirm('Eliminar esta demanda? Esta accion no se puede deshacer.')) return;
+  if (!confirm('Eliminar esta demanda? Esta acción no se puede deshacer.')) return;
   try {
     await apiEliminarDemanda(id);
     demandas = demandas.filter(x => x.id !== id);
@@ -516,7 +516,7 @@ async function confirmTransfer() {
   }
 }
 
-/* ---------- Reportar observacion / problema ---------- */
+/* ---------- Reportar observación / problema ---------- */
 let reportarProblemaId = null;
 
 function openReportarProblema(id) {
@@ -534,7 +534,7 @@ async function confirmReportarProblema() {
     closeModal('modal-reportar-problema');
     showToast('Observacion reportada', 'success');
   } catch (err) {
-    showToast(err.message || 'Error al reportar la observacion', 'error');
+    showToast(err.message || 'Error al reportar la observación', 'error');
   }
 }
 

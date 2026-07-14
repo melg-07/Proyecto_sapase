@@ -197,7 +197,7 @@ function closeModal(id) {
   document.getElementById(id).classList.remove('open');
 }
 
-// Selects de area
+// Selects de área
 
 function populateAreaSelect(selId, addEmpty) {
   const sel = document.getElementById(selId);

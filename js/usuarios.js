@@ -5,7 +5,7 @@ function rolLabel(rol) {
   return rol;
 }
 
-// Repuebla el select de subarea segun el area elegida en el select de area.
+// Repuebla el select de subarea según el área elegida en el select de área.
 // Si se pasa nombreSubareaPreseleccionada, intenta dejarla seleccionada al terminar.
 async function populateSubareaSelect(areaSelId, subareaSelId, nombreSubareaPreseleccionada) {
   const areaSel     = document.getElementById(areaSelId);

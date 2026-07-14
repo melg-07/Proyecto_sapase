@@ -34,7 +34,7 @@ router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 router.use(subareaUsuarioGuard);
 
-// undefined / '' → null para MySQL
+
 const s = v => (v === undefined || v === '') ? null : v;
 
 // Acepta dd/mm/yyyy y yyyy-mm-dd
@@ -82,18 +82,14 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Peticiones con observaciones (reportes de problema) - jefe de area (de su
-// propia area) y Administrador/Subadmin (de todas). Debe ir antes de '/:id'
-// para que Express no interprete "reportes" como un id de demanda.
+// Peticiones con observaciones 
 router.get('/reportes/lista', async (req, res) => {
   try {
     if (!['Administrador', 'Subadmin', 'jefe_area'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para ver las observaciones' });
     }
 
-    // Se filtra por el area ACTUAL de la demanda (d.area_id), no por el area
-    // guardada en el reporte al momento de crearse, para que siga viendola
-    // el jefe correcto aunque la peticion se haya transferido despues.
+    // Se filtra por el area ACTUAL de la demanda (d.area_id)
     let sql = `
       SELECT r.id, r.demanda_id, r.nota, r.creado_en,
              d.folio, d.remitente, d.asunto, d.estado, d.area_id,
