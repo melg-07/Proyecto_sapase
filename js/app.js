@@ -243,6 +243,85 @@ async function renderSubareasPanel() {
   }
 }
 
+// Gestion de subareas (pagina "Subareas" del administrador: agregar/eliminar subareas de un area)
+let _gsSelectedAreaId = null;
+
+function renderGestionSubareas() {
+  const sel = document.getElementById('gs-area-dropdown');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Seleccione un área —</option>' +
+    _areasCache.map(a => `<option value="${a.id}">${a.nombre}${!a.activa ? ' — Inactiva' : ''}</option>`).join('');
+  if (prev) sel.value = prev;
+
+  if (_gsSelectedAreaId && _areasCache.some(a => String(a.id) === String(_gsSelectedAreaId))) {
+    sel.value = _gsSelectedAreaId;
+    loadGestionSubareas(_gsSelectedAreaId);
+  } else {
+    _gsSelectedAreaId = null;
+    document.getElementById('gs-subareas-wrap').style.display = 'none';
+  }
+}
+
+function onGestionSubareasAreaChange(areaId) {
+  _gsSelectedAreaId = areaId || null;
+  if (!areaId) {
+    document.getElementById('gs-subareas-wrap').style.display = 'none';
+    return;
+  }
+  loadGestionSubareas(areaId);
+}
+
+async function loadGestionSubareas(areaId) {
+  const wrap  = document.getElementById('gs-subareas-wrap');
+  const tbody = document.getElementById('gs-subareas-table');
+  const area  = _areasCache.find(a => String(a.id) === String(areaId));
+  wrap.style.display = 'block';
+  document.getElementById('gs-subareas-title').textContent = area ? `Subareas de ${area.nombre}` : 'Subareas';
+  document.getElementById('gs-nueva-subarea').value = '';
+  tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--gray); padding:20px;">Cargando...</td></tr>';
+
+  try {
+    const subareas = await apiGetSubareas(areaId);
+    tbody._subareas = subareas;
+    tbody.innerHTML = subareas.map(s => `
+      <tr>
+        <td>${s.nombre}</td>
+        <td><button class="btn btn-outline btn-sm" onclick="deleteGestionSubarea(${s.id})">Eliminar</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="2" style="text-align:center; color:var(--gray); padding:20px;">Sin subareas</td></tr>';
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--gray); padding:20px;">Error al cargar las subareas</td></tr>';
+  }
+}
+
+async function addGestionSubarea() {
+  if (!_gsSelectedAreaId) { showToast('Selecciona un area primero', 'error'); return; }
+  const input  = document.getElementById('gs-nueva-subarea');
+  const nombre = input.value.trim();
+  if (!nombre) { showToast('Escribe el nombre de la subarea', 'error'); return; }
+
+  try {
+    await apiCrearSubarea(_gsSelectedAreaId, nombre);
+    input.value = '';
+    await loadGestionSubareas(_gsSelectedAreaId);
+    showToast('Subarea agregada: ' + nombre, 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al crear la subarea', 'error');
+  }
+}
+
+async function deleteGestionSubarea(id) {
+  if (!confirm('¿Eliminar esta subarea? Esta acción no se puede deshacer.')) return;
+  try {
+    await apiEliminarSubarea(id);
+    await loadGestionSubareas(_gsSelectedAreaId);
+    showToast('Subarea eliminada', 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al eliminar la subarea', 'error');
+  }
+}
+
 function filterAreaDetail() {
   const q       = (document.getElementById('area-search')?.value || '').toLowerCase();
   const fs      = document.getElementById('area-filter-status')?.value    || '';

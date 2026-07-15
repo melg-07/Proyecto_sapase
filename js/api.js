@@ -86,6 +86,18 @@ async function apiGetSubareas(area_id) {
   return res.data;
 }
 
+async function apiCrearSubarea(area_id, nombre) {
+  const res = await apiFetch('/subareas', {
+    method: 'POST',
+    body: JSON.stringify({ area_id, nombre }),
+  });
+  return res.data;
+}
+
+async function apiEliminarSubarea(id) {
+  return apiFetch('/subareas/' + id, { method: 'DELETE' });
+}
+
 // Usuarios
 
 async function apiGetUsuarios() {
@@ -106,6 +118,10 @@ async function apiEditarUsuario(id, data) {
     method: 'PUT',
     body: JSON.stringify(data),
   });
+}
+
+async function apiEliminarUsuario(id) {
+  return apiFetch('/usuarios/' + id, { method: 'DELETE' });
 }
 
 async function apiMiPerfil() {

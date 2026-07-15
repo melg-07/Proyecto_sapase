@@ -110,6 +110,7 @@ function renderSidebar(activePage) {
     html += navSection('Gestion');
     html += navItem('archivos',      'Archivos',      activePage);
     html += navItem('areas',         'Areas',         activePage);
+    html += navItem('gestion-subareas', 'Subareas',   activePage);
     html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
     if (isFullAdmin) {
       html += navSection('Sistema');
@@ -164,6 +165,7 @@ function showPage(name) {
     if (name !== 'archivos') name = 'archivos';
   } else if (isAdminLvl) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
+    if (['subareas'].includes(name)) name = 'gestion-subareas';
   } else if (isJefe) {
     if (!['areas', 'archivos', 'observaciones', 'subareas'].includes(name)) name = 'areas';
   } else if (isAreaUser) {
@@ -209,6 +211,7 @@ function showPage(name) {
   if (name === 'configuracion') { renderConfiguracion(); }
   if (name === 'observaciones') { renderObservaciones(); }
   if (name === 'subareas') { renderSubareasPanel(); }
+  if (name === 'gestion-subareas') { renderGestionSubareas(); }
 }
 
 // Perfil

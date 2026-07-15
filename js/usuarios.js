@@ -203,6 +203,27 @@ async function saveEditUser() {
   }
 }
 
+async function deleteEditUser() {
+  const id = parseInt(document.getElementById('eu-id').value);
+  const u  = _usersCache.find(x => x.id === id);
+  if (!u) return;
+
+  if (currentUser && currentUser.id === id) {
+    showToast('No puedes eliminar tu propio usuario', 'error');
+    return;
+  }
+  if (!confirm(`¿Eliminar al usuario "${u.name}"? Esta acción no se puede deshacer.`)) return;
+
+  try {
+    await apiEliminarUsuario(id);
+    closeModal('modal-edit-user');
+    renderUsuarios();
+    showToast('Usuario eliminado: ' + u.user, 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al eliminar usuario', 'error');
+  }
+}
+
 function openAddUser() {
   if (!currentUser || currentUser.rol !== 'Administrador') {
     showToast('Solo los administradores pueden crear usuarios', 'error');
