@@ -49,6 +49,30 @@ router.post('/', adminOSubadmin, async (req, res) => {
   }
 });
 
+// Renombra una subarea.
+router.put('/:id', adminOSubadmin, async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre?.trim()) {
+      return res.status(400).json({ ok: false, error: 'Nombre requerido' });
+    }
+    const nombreVal = nombre.trim();
+    const [result] = await db.execute(
+      'UPDATE subareas SET nombre = ? WHERE id = ?',
+      [nombreVal, req.params.id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: 'Subarea no encontrada' });
+    }
+    res.json({ ok: true, data: { nombre: nombreVal } });
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ ok: false, error: 'Ya existe una subarea con ese nombre en esta area' });
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Elimina una subarea.
 router.delete('/:id', adminOSubadmin, async (req, res) => {
   try {

@@ -94,6 +94,14 @@ async function apiCrearSubarea(area_id, nombre) {
   return res.data;
 }
 
+async function apiEditarSubarea(id, nombre) {
+  const res = await apiFetch('/subareas/' + id, {
+    method: 'PUT',
+    body: JSON.stringify({ nombre }),
+  });
+  return res.data;
+}
+
 async function apiEliminarSubarea(id) {
   return apiFetch('/subareas/' + id, { method: 'DELETE' });
 }

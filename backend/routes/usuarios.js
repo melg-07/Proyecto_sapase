@@ -124,17 +124,4 @@ router.put('/:id', soloAdmin, async (req, res) => {
   }
 });
 
-router.delete('/:id', soloAdmin, async (req, res) => {
-  try {
-    if (Number(req.params.id) === req.user.id) {
-      return res.status(400).json({ ok: false, error: 'No puedes eliminar tu propio usuario' });
-    }
-    const [result] = await db.execute('DELETE FROM usuarios WHERE id = ?', [req.params.id]);
-    if (!result.affectedRows) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
 module.exports = router;

@@ -287,7 +287,10 @@ async function loadGestionSubareas(areaId) {
     tbody.innerHTML = subareas.map(s => `
       <tr>
         <td>${s.nombre}</td>
-        <td><button class="btn btn-outline btn-sm" onclick="deleteGestionSubarea(${s.id})">Eliminar</button></td>
+        <td style="display:flex; gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="openEditGestionSubarea(${s.id})">Editar</button>
+          <button class="btn btn-outline btn-sm" onclick="deleteGestionSubarea(${s.id})">Eliminar</button>
+        </td>
       </tr>
     `).join('') || '<tr><td colspan="2" style="text-align:center; color:var(--gray); padding:20px;">Sin subareas</td></tr>';
   } catch (err) {
@@ -308,6 +311,30 @@ async function addGestionSubarea() {
     showToast('Subarea agregada: ' + nombre, 'success');
   } catch (err) {
     showToast(err.message || 'Error al crear la subarea', 'error');
+  }
+}
+
+function openEditGestionSubarea(id) {
+  const tbody = document.getElementById('gs-subareas-table');
+  const s = (tbody._subareas || []).find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('es2-id').value     = s.id;
+  document.getElementById('es2-nombre').value = s.nombre;
+  document.getElementById('modal-editar-subarea').classList.add('open');
+}
+
+async function saveEditGestionSubarea() {
+  const id     = document.getElementById('es2-id').value;
+  const nombre = document.getElementById('es2-nombre').value.trim();
+  if (!nombre) { showToast('Escribe el nombre de la subarea', 'error'); return; }
+
+  try {
+    await apiEditarSubarea(id, nombre);
+    closeModal('modal-editar-subarea');
+    await loadGestionSubareas(_gsSelectedAreaId);
+    showToast('Subarea actualizada: ' + nombre, 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al actualizar la subarea', 'error');
   }
 }
 
