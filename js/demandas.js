@@ -102,6 +102,10 @@ function filterArchivos() {
   renderArchivosTable(filteredDemandas);
 }
 
+function tieneObservacionesPendientes(d) {
+  return Array.isArray(d.reportes) && d.reportes.some(r => !r.resuelto);
+}
+
 function renderArchivosTable(list) {
   const tbody          = document.getElementById('archivos-table');
   const isAdmin         = currentUser && isAdminLevel(currentUser.rol);
@@ -110,7 +114,7 @@ function renderArchivosTable(list) {
   const isAreaUser      = isAreaUsuarioRol || isJefeRol;
   const isSubareaUser   = currentUser && isSubareaUsuario(currentUser.rol);
 
-  tbody.innerHTML = list.map(d => `
+  const rowHtml = d => `
     <tr>
       <td><code style="font-size:11px; color:var(--guinda);">${d.folio}</code></td>
       <td>${d.fecha}</td>
@@ -144,7 +148,24 @@ function renderArchivosTable(list) {
         </div>
       </td>
     </tr>
-  `).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
+  `;
+
+  const pendientesEnvio = list.filter(d => !d.area_id || tieneObservacionesPendientes(d));
+  const enGestion       = list.filter(d => d.area_id && !tieneObservacionesPendientes(d));
+
+  const dividerHtml = `
+    <tr class="archivos-group-divider">
+      <td colspan="8" style="padding:8px 10px; background:var(--cream); border-top:2px solid var(--guinda-light); border-bottom:2px solid var(--guinda-light); font-size:11px; font-weight:700; color:var(--guinda); text-transform:uppercase; letter-spacing:.3px;">
+        Enviadas a área / En proceso / Atendidas
+      </td>
+    </tr>
+  `;
+
+  let html = pendientesEnvio.map(rowHtml).join('');
+  if (pendientesEnvio.length && enGestion.length) html += dividerHtml;
+  html += enGestion.map(rowHtml).join('');
+
+  tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
 }
 
 /* ---------- Observaciones (peticiones reportadas) ---------- */
