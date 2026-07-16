@@ -150,13 +150,16 @@ function renderArchivosTable(list) {
     </tr>
   `;
 
-  const pendientesEnvio = list.filter(d => !d.area_id || tieneObservacionesPendientes(d));
-  const enGestion       = list.filter(d => d.area_id && !tieneObservacionesPendientes(d));
+  const esPendienteEnvio = d =>
+    (!d.subarea_id && d.estado === 'Pendiente') || tieneObservacionesPendientes(d);
+
+  const pendientesEnvio = list.filter(esPendienteEnvio);
+  const enGestion       = list.filter(d => !esPendienteEnvio(d));
 
   const dividerHtml = `
     <tr class="archivos-group-divider">
       <td colspan="8" style="padding:8px 10px; background:var(--cream); border-top:2px solid var(--guinda-light); border-bottom:2px solid var(--guinda-light); font-size:11px; font-weight:700; color:var(--guinda); text-transform:uppercase; letter-spacing:.3px;">
-        Enviadas a área / En proceso / Atendidas
+        Enviadas a subarea / En proceso / Atendidas
       </td>
     </tr>
   `;
