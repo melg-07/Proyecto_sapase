@@ -62,5 +62,5 @@ app.listen(PORT, HOST, () => {
   log('INFO', `Accesible desde red: http://0.0.0.0:${PORT}`);
   Object.values(nets).flat()
     .filter(n => n.family === 'IPv4' && !n.internal)
-    .forEach(n => log('INFO', `LAN:   http://${n.address}:${PORT}`));
+    .forEach(n => log('INFO', `LAN:   http://${n.address}:${PORT}/mel`));
 });
