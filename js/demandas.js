@@ -508,6 +508,7 @@ function openTransferModal(id) {
   transferId = id;
   closeModal('modal-ver');
   document.getElementById('transfer-comment').value = '';
+  populateAreaSelect('transfer-area', true);
   document.getElementById('modal-transfer').classList.add('open');
 }
 

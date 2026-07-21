@@ -5,15 +5,26 @@ const { authMiddleware, adminOSubadmin, areaUsuarioGuard, scopeArea } = require(
 router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 
+const direccionGeneralMatcher = /DIRECCI[OÓ]N GENERAL/i;
+
 router.get('/', async (req, res) => {
   try {
     const scope = scopeArea(req);
-    const [rows] = await db.execute(
-      scope
-        ? 'SELECT id, nombre, jefe_area, activa FROM areas WHERE id = ? ORDER BY id ASC'
-        : 'SELECT id, nombre, jefe_area, activa FROM areas ORDER BY id ASC',
-      scope ? [scope] : []
-    );
+    let query = 'SELECT id, nombre, jefe_area, activa FROM areas ORDER BY id ASC';
+    let params = [];
+
+    if (scope) {
+      const [areaRows] = await db.execute('SELECT nombre FROM areas WHERE id = ? LIMIT 1', [scope]);
+      const areaName = areaRows[0]?.nombre || '';
+      const isDireccionGeneralUser = direccionGeneralMatcher.test(areaName);
+
+      if (!isDireccionGeneralUser) {
+        query = 'SELECT id, nombre, jefe_area, activa FROM areas WHERE id = ? ORDER BY id ASC';
+        params = [scope];
+      }
+    }
+
+    const [rows] = await db.execute(query, params);
     res.json({ ok: true, data: rows });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
