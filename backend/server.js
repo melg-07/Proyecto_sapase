@@ -59,8 +59,8 @@ app.listen(PORT, HOST, () => {
 
   log('INFO', `SAPASE iniciado en puerto ${PORT}`);
   log('INFO', `Local: http://localhost:${PORT}`);
-  log('INFO', `Accesible desde red: http://0.0.0.0:${PORT}`);
+  log('INFO', `Accesible desde red: http://0.0.0.0:${PORT}//Sistema de gestión de peticiones`);
   Object.values(nets).flat()
     .filter(n => n.family === 'IPv4' && !n.internal)
-    .forEach(n => log('INFO', `LAN:   http://${n.address}:${PORT}/mel`));
+    .forEach(n => log('INFO', `LAN:   http://${n.address}:${PORT}`));
 });
