@@ -50,13 +50,16 @@ app.use((err, req, res, _next) => {
   res.status(500).json({ ok: false, error: 'Error interno del servidor' });
 });
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, '0.0.0.0', () => {
+const PORT = Number(process.env.PORT || 3001);
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
   const { networkInterfaces } = require('os');
   const nets = networkInterfaces();
 
   log('INFO', `SAPASE iniciado en puerto ${PORT}`);
   log('INFO', `Local: http://localhost:${PORT}`);
+  log('INFO', `Accesible desde red: http://0.0.0.0:${PORT}`);
   Object.values(nets).flat()
     .filter(n => n.family === 'IPv4' && !n.internal)
     .forEach(n => log('INFO', `LAN:   http://${n.address}:${PORT}`));
