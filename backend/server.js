@@ -30,7 +30,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(path.join(__dirname, '..')));
+app.use('/Sistema_Gestión_de_Peticiones',express.static(path.join(__dirname, '..')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rutas
