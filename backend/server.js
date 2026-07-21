@@ -41,7 +41,7 @@ app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/demandas', require('./routes/demandas'));
 app.use('/api/config',   require('./routes/config'));
 
-app.get('/Sistema de Gestión de Peticiones', (req, res) => {
+app.get('/Sistema_Gestión_de_Peticiones', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
