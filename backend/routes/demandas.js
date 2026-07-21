@@ -507,11 +507,29 @@ router.post('/:id/reportar', noConsulta, async (req, res) => {
   }
 });
 
+const direccionGeneralMatcher = /DIRECCI[OÓ]N GENERAL/i;
+
+function isDireccionGeneralAreaName(name) {
+  if (!name) return false;
+  return direccionGeneralMatcher.test(name.toString().trim());
+}
+
 // Transferir
-router.post('/:id/transferir', adminOSubadmin, async (req, res) => {
+router.post('/:id/transferir', noConsulta, async (req, res) => {
   try {
     const area_destino_id = req.body.area_destino_id;
     const comentario      = s(req.body.comentario);
+
+    const isAdmin = req.user?.rol === 'Administrador';
+    if (!isAdmin) {
+      if (req.user?.rol !== 'area_usuario' || !req.user?.area_id) {
+        return res.status(403).json({ ok: false, error: 'No tienes permisos suficientes para transferir esta demanda' });
+      }
+      const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ? LIMIT 1', [req.user.area_id]);
+      if (!areas.length || !isDireccionGeneralAreaName(areas[0].nombre)) {
+        return res.status(403).json({ ok: false, error: 'No tienes permisos suficientes para transferir esta demanda' });
+      }
+    }
 
     if (!area_destino_id) {
       return res.status(400).json({ ok: false, error: 'area_destino_id requerido' });

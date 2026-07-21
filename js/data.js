@@ -157,6 +157,19 @@ function isAdminLevel(rol) {
   return rol === 'Administrador' || rol === 'Subadmin';
 }
 
+function isFullAdmin(rol) {
+  return rol === 'Administrador';
+}
+
+function normalizeAreaName(area) {
+  if (!area) return '';
+  return area.toString().trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+}
+
+function isDireccionGeneralArea(area) {
+  return normalizeAreaName(area) === 'DIRECCION GENERAL';
+}
+
 function isAreaUsuario(rol) {
   return rol === 'area_usuario';
 }

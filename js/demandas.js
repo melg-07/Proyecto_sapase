@@ -281,8 +281,8 @@ function _renderViewModal(d) {
 
   const btnTransferir = document.getElementById('btn-transferir-demanda');
   if (btnTransferir) {
-    const isAdmin = currentUser && isAdminLevel(currentUser.rol);
-    btnTransferir.style.display = isAdmin ? '' : 'none';
+    const canTransfer = currentUser && (isFullAdmin(currentUser.rol) || (currentUser.rol === 'area_usuario' && isDireccionGeneralArea(currentUser.area)));
+    btnTransferir.style.display = canTransfer ? '' : 'none';
   }
 
   document.getElementById('modal-ver').classList.add('open');
@@ -500,8 +500,9 @@ async function deleteDemanda(id) {
 
 /* ---------- Transferir ---------- */
 function openTransferModal(id) {
-  if (!currentUser || currentUser.rol === 'Consulta') {
-    showToast('El usuario de consulta solo puede ver e imprimir', 'error');
+  const canTransfer = currentUser && (isFullAdmin(currentUser.rol) || (currentUser.rol === 'area_usuario' && isDireccionGeneralArea(currentUser.area)));
+  if (!canTransfer) {
+    showToast('No tienes permiso para enviar a otra área', 'error');
     return;
   }
   transferId = id;
