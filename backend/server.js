@@ -30,6 +30,14 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get('/', (req, res) => {
+  res.redirect('/sistema-peticiones');
+});
+
+app.get('/sistema-peticiones', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
 app.use(express.static(path.join(__dirname, '..')));
 app.use('/sistema-peticiones', express.static(path.join(__dirname, '..')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -41,14 +49,6 @@ app.use('/api/subareas', require('./routes/subareas'));
 app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/demandas', require('./routes/demandas'));
 app.use('/api/config',   require('./routes/config'));
-
-app.get('/sistema-peticiones', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
-});
-
-app.get('/', (req, res) => {
-  res.redirect('/sistema-peticiones');
-});
 
 app.use((err, req, res, _next) => {
   log('ERROR', `${req.method} ${req.path} – ${err.stack || err}`);
