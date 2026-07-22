@@ -363,7 +363,7 @@ function filterAreaDetail() {
   const tbody = document.getElementById('area-detail-table');
   tbody.innerHTML = list.map(d => `
     <tr>
-      <td><code style="font-size:11px; color:var(--guinda);">${d.folio}</code></td>
+      <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fecha}</td>
       <td>${d.remitente}</td>
       <td>${d.asunto}</td>

@@ -116,7 +116,7 @@ function renderArchivosTable(list) {
 
   const rowHtml = d => `
     <tr>
-      <td><code style="font-size:11px; color:var(--guinda);">${d.folio}</code></td>
+      <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fecha}</td>
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
@@ -180,7 +180,7 @@ async function renderObservaciones() {
     renderSidebar(_currentPage);
     tbody.innerHTML = list.map(r => `
       <tr>
-        <td><code style="font-size:11px; color:var(--guinda);">${r.folio}</code></td>
+        <td><span class="folio-cell">${r.folio}</span></td>
         <td><small>${r.area || ''}</small></td>
         <td>${r.remitente}</td>
         <td>${r.asunto}</td>

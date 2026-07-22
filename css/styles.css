@@ -162,6 +162,14 @@ thead th { background:var(--guinda); color:var(--white); padding:10px 12px; text
 tbody tr { border-bottom:1px solid var(--cream-dark); transition:background .15s; }
 tbody tr:hover { background:var(--cream); }
 tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
+.folio-cell {
+  display:inline-block;
+  font-size:12px;
+  font-weight:700;
+  color:var(--guinda);
+  white-space:nowrap;
+  padding-right:8px;
+}
 .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
 .badge-green  { background:#E8F5E9; color:#2E7D32; }
 .badge-gold   { background:#FFF8E1; color:#F57F17; }
