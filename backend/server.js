@@ -30,7 +30,7 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/Sistema_Gestión_de_Peticiones',express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rutas
@@ -41,7 +41,7 @@ app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/demandas', require('./routes/demandas'));
 app.use('/api/config',   require('./routes/config'));
 
-app.get('/Sistema_Gestión_de_Peticiones', (req, res) => {
+app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
