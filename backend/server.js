@@ -31,6 +31,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, '..')));
+app.use('/sistema-peticiones', express.static(path.join(__dirname, '..')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rutas
@@ -41,8 +42,12 @@ app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/demandas', require('./routes/demandas'));
 app.use('/api/config',   require('./routes/config'));
 
-app.get('/', (req, res) => {
+app.get('/sistema-peticiones', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
+
+app.get('/', (req, res) => {
+  res.redirect('/sistema-peticiones');
 });
 
 app.use((err, req, res, _next) => {
