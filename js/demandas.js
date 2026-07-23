@@ -335,7 +335,7 @@ function reportesHTML(reportes) {
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
         <strong>${r.fecha}</strong>
         ${r.reportadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${r.reportadoPor}</span>` : ''}
-        <span class="badge ${r.resuelto ? 'badge-green' : 'badge-gold'}" style="font-size:10px;">${r.resuelto ? 'Corregida' : 'Pendiente'}</span>
+        ${!r.resuelto ? `<span class="badge badge-gold" style="font-size:10px;">Pendiente</span>` : ''}
       </div>
       <div style="margin-top:4px;">${r.nota}</div>
       ${r.resuelto ? `
@@ -343,6 +343,7 @@ function reportesHTML(reportes) {
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <strong>${r.fechaResolucion}</strong>
           ${r.resueltoPor ? `<span style="color:var(--gray); font-size:11px;">por ${r.resueltoPor}</span>` : ''}
+          <span class="badge badge-green" style="font-size:10px;">Corregida</span>
         </div>
         ${r.notaResolucion ? `<div style="margin-top:4px;">${r.notaResolucion}</div>` : ''}
       </div>` : ''}
