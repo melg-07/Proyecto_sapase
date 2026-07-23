@@ -169,6 +169,12 @@ tbody td { padding:9px 12px; color:var(--gray-dark); vertical-align:middle; }
   color:var(--guinda);
   white-space:nowrap;
   padding-right:8px;
+  line-height:1.2;
+}
+
+#dashboard-table td:first-child,
+#dashboard-table th:first-child {
+  white-space:nowrap;
 }
 .badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
 .badge-green  { background:#E8F5E9; color:#2E7D32; }

@@ -27,7 +27,7 @@ function renderDashboard() {
   const list  = demandas.slice(0, 10);
   tbody.innerHTML = list.map(d => `
     <tr>
-      <td><code style="font-size:11px; color:var(--guinda);">${d.folio}</code></td>
+      <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fecha}</td>
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
