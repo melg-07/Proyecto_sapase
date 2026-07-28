@@ -22,6 +22,19 @@ function clearForm() {
   initForm();
 }
 
+function formatFixedPhone(value) {
+  const digits = (value.match(/\d/g) || []).join('').slice(0, 10);
+  if (!digits) return '';
+  const part1 = digits.slice(0, 2);
+  const part2 = digits.slice(2, 6);
+  const part3 = digits.slice(6, 10);
+  return part1 + (part2 ? ' ' + part2 : '') + (part3 ? ' ' + part3 : '');
+}
+
+function formatPhoneInput(input) {
+  input.value = formatFixedPhone(input.value);
+}
+
 function formatDateInput(val) {
   if (!val) return '';
   const [y, m, d] = val.split('-');
@@ -37,9 +50,22 @@ async function saveDemanda() {
   const domicilio= document.getElementById('f-domicilio').value.trim();
   const colonia  = document.getElementById('f-colonia').value.trim();
   const tel1     = document.getElementById('f-tel1').value.trim();
+  const tel2     = document.getElementById('f-tel2').value.trim();
+  const cleanTel1= (tel1.match(/\d/g) || []).join('');
+  const cleanTel2= (tel2.match(/\d/g) || []).join('');
 
-  if (!remitente || !area_id || !asunto || !domicilio || !colonia || !tel1) {
+  if (!remitente || !area_id || !asunto || !domicilio || !colonia || !cleanTel1) {
     showToast('Rellene los campos obligatorios', 'error');
+    return;
+  }
+
+  if (cleanTel1.length !== 10) {
+    showToast('Teléfono Principal debe tener 10 dígitos', 'error');
+    return;
+  }
+
+  if (cleanTel2 && cleanTel2.length !== 10) {
+    showToast('Teléfono Secundario debe tener 10 dígitos o estar vacío', 'error');
     return;
   }
 
@@ -50,8 +76,8 @@ async function saveDemanda() {
     asunto,
     domicilio,
     colonia,
-    tel1,
-    tel2:          document.getElementById('f-tel2').value.trim(),
+    tel1:          formatFixedPhone(tel1),
+    tel2:          tel2 ? formatFixedPhone(tel2) : '',
     demanda:       document.getElementById('f-demanda').value.trim(),
     observaciones: document.getElementById('f-observaciones').value.trim(),
     concepto:      document.getElementById('f-concepto').value.trim(),

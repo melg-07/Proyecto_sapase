@@ -117,7 +117,7 @@
         <div class="section-title">
           <h2>Nueva Petición</h2>
           <p>Complete todos los campos del formulario</p>
-          <p><span style="color:red;">*Datos obligatorios: Nombre, Asunto, Domicilio, Colonia, Teléfono, Áreas </span></p>
+          <p><span style="color:red;">*Datos obligatorios: Nombre, Asunto, Domicilio, Colonia, Teléfono, Área </span></p>
         </div>
       </div>
       <div class="card">
@@ -168,11 +168,11 @@
           </div>
           <div class="field-group">
             <label>Teléfono Principal <span style="color:red;">*Obligatorio</span></label>
-            <input type="tel" id="f-tel1" placeholder="Ej: +52 (55) 1234-5678 EXT 123" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
+            <input type="tel" id="f-tel1" placeholder="Ej: 55 8963 4651" inputmode="numeric" maxlength="12" oninput="formatPhoneInput(this)">
           </div>
           <div class="field-group">
             <label>Teléfono Secundario</label>
-            <input type="tel" id="f-tel2" placeholder="Opcional" maxlength="30" oninput="this.value=this.value.replace(/[^0-9a-zA-Z()+\-\s]/g,'')">
+            <input type="tel" id="f-tel2" placeholder="Opcional" inputmode="numeric" maxlength="12" oninput="formatPhoneInput(this)">
           </div>
         </div>
       </div>
