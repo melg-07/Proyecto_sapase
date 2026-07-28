@@ -1,6 +1,9 @@
 /* ================================================
    SAPASE – Exportacion (PDF, Excel)
    ================================================ */
+/* ============================================================
+   EXPORTAR INFORME
+   ============================================================ */   
 
 /* ============================================================
    EXPORTAR EXCEL
@@ -107,8 +110,8 @@ function exportSinglePDF(id) {
 
   function nextRow() { rowTop += RH + VGAP; }
 
-  /* Igual que field(), pero centra verticalmente el bloque de texto
-     completo (como en Asunto): si el valor ocupa varias lineas, sube
+  /* Igual que field(), pero centra verticalmente el bloque de texto,
+     si el valor ocupa varias lineas, sube
      hacia el renglon de arriba para quedar centrado en el recuadro. */
   function fieldCentered(label, value, x, x2, h) {
     doc.setFont('helvetica', 'bold');
@@ -170,7 +173,7 @@ function exportSinglePDF(id) {
   rowTop += RH2 + VGAP;
 
   /* ================================================================
-     FILA 5 — Telefono 
+     FILA 5 — Teléfono 
      ================================================================ */
   const telStr = [d.tel1, d.tel2].filter(Boolean).join('  /  ');
   field('Telefono', telStr, ML, ML + 90);

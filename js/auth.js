@@ -106,32 +106,32 @@ function renderSidebar(activePage) {
   if (isAdminLvl) {
     html += navSection('Principal');
     html += navItem('dashboard',  'Dashboard',    activePage);
-    html += navItem('formulario', 'Nueva Peticion', activePage);
-    html += navSection('Gestion');
+    html += navItem('formulario', 'Nueva Petición', activePage);
+    html += navSection('Gestión');
     html += navItem('archivos',      'Archivos',      activePage);
-    html += navItem('areas',         'Areas',         activePage);
+    html += navItem('areas',         'Áreas',         activePage);
     html += navItem('gestion-subareas', 'Subareas',   activePage);
     html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
     if (isFullAdmin) {
       html += navSection('Sistema');
       html += navItem('usuarios',      'Usuarios',      activePage);
-      html += navItem('configuracion', 'Configuracion', activePage);
+      html += navItem('configuracion', 'Configuración', activePage);
     }
   } else if (isConsulta) {
-    html += navSection('Gestion');
+    html += navSection('Gestión');
     html += navItem('archivos', 'Archivos', activePage);
   } else if (isJefe) {
-    html += navSection('Gestion');
-    html += navItem('areas',         'Mi Area',       activePage);
+    html += navSection('Gestión');
+    html += navItem('areas',         'Mi Área',       activePage);
     html += navItem('archivos',      'Archivos',      activePage);
     html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
-    html += navItem('subareas',      'Subareas',      activePage);
+    html += navItem('subareas',      'Subáreas',      activePage);
   } else if (isAreaUser) {
-    html += navSection('Gestion');
+    html += navSection('Gestión');
     html += navItem('archivos', 'Archivos', activePage);
   } else {
-    html += navSection('Gestion');
-    html += navItem('formulario', 'Nueva Peticion', activePage);
+    html += navSection('Gestión');
+    html += navItem('formulario', 'Nueva Petición', activePage);
     html += navItem('archivos',   'Archivos',      activePage);
   }
 
@@ -192,8 +192,7 @@ function showPage(name) {
   }
 
   // Jefe de area, usuario de area y usuario de subarea solo ven las peticiones
-  // de su propia area/subarea (el backend ya las filtra), no tiene sentido
-  // ofrecerles un filtro para buscar en todas las areas.
+  // de su propia area/subarea (el backend ya las filtra)
   const filterAreaSel = document.getElementById('filter-area');
   if (filterAreaSel) {
     const showAreaFilter = currentUser && (isAdminLvl || isConsulta);
