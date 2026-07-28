@@ -59,7 +59,7 @@ async function doLogin() {
     currentUser = buildCurrentUser(resp.user);
     await bootApp();
   } catch (err) {
-    errEl.textContent   = err.message || 'Usuario o contrasena incorrectos.';
+    errEl.textContent   = err.message || 'Usuario o contraseña incorrectos.';
     errEl.style.display = 'block';
   }
 }
@@ -79,7 +79,7 @@ async function restoreSession() {
 // Logout
 function doLogout() {
   if (getToken()) {
-    apiLogout(); // invalida la sesion en el servidor
+    apiLogout(); // invalida la sesión en el servidor
   }
   currentUser      = null;
   demandas         = [];
@@ -147,7 +147,7 @@ function navItem(page, label, active, extra) {
   return `<div class="nav-item${cls}" onclick="showPage('${page}')"><span class="nav-dot"></span>${label}${extra || ''}</div>`;
 }
 
-// Puntito rojo con el numero de observaciones pendientes de corregir
+// Puntito rojo con el número de observaciones pendientes de corregir
 function obsBadgeHTML() {
   if (!_reportesPendientes) return '';
   return `<span style="background:#c62828; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 6px; margin-left:6px;">${_reportesPendientes}</span>`;

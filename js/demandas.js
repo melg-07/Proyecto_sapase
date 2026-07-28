@@ -1,5 +1,5 @@
 /* ================================================
-   SAPASE – Gestion de Peticiones (CRUD)
+   SAPASE – Gestion de Peticiones 
    ================================================ */
 
 /* ---------- Formulario nuevo ---------- */
@@ -192,7 +192,7 @@ async function renderObservaciones() {
           <div style="display:flex; gap:4px; flex-wrap:wrap;">
             <button class="btn btn-outline btn-sm" onclick="viewDemanda('${r.demanda_id}')">Ver</button>
             <button class="btn btn-blue btn-sm" onclick="openEditDemanda('${r.demanda_id}')">Editar</button>
-            <button class="btn btn-green btn-sm" onclick="openResolverObservacion('${r.id}')">Observacion Corregida</button>
+            <button class="btn btn-green btn-sm" onclick="openResolverObservacion('${r.id}')">Observación Corregida</button>
           </div>
         </td>
       </tr>
@@ -228,7 +228,7 @@ async function confirmResolverObservacion() {
   try {
     await apiResolverReporte(resolverObservacionId, nota);
     closeModal('modal-resolver-observacion');
-    showToast('Observacion marcada como corregida', 'success');
+    showToast('Observación marcada como corregida', 'success');
     renderObservaciones();
   } catch (err) {
     showToast(err.message || 'Error al marcar la observación como corregida', 'error');

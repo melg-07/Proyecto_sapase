@@ -1,4 +1,4 @@
-// Metadata de los logos vigentes, disponible globalmente (p.ej. para el PDF)
+// Metadata de los logos vigentes, disponible globalmente 
 let currentLogosMeta = null;
 
 // Aplica los logos (login, topbar y vista previa de configuracion)
