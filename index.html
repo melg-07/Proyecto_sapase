@@ -206,9 +206,6 @@
           <h2>Archivos</h2>
           <p>Gestión y exportación de peticiones</p>
         </div>
-        <div class="btn-row" style="margin:0;">
-          <button class="btn btn-green" onclick="exportarTodoExcel()">Informe</button>
-        </div>
       </div>
       <div class="card">
         <div class="card-title">Busqueda y Filtros</div>
@@ -229,6 +226,10 @@
             <option value="Media">Media</option>
             <option value="Baja">Baja</option>
           </select>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+            <button class="btn btn-green btn-sm" onclick="exportarTodoExcel()">Exportar Excel</button>
+            <button class="btn btn-guinda btn-sm" onclick="openExportarInformeModal()">Exportar Informe</button>
+          </div>
         </div>
       </div>
       <div class="card">
@@ -444,6 +445,77 @@
 
   </div><!-- /main -->
 </div><!-- /app -->
+
+<div class="modal-overlay" id="modal-exportar-informe">
+  <div class="modal" style="width:760px; max-width:95vw;">
+    <div class="modal-header">
+      <div class="modal-title">Informe</div>
+      <button class="modal-close" onclick="closeModal('modal-exportar-informe')">x</button>
+    </div>
+    <div class="form-grid">
+      <div class="field-group">
+        <label>Área</label>
+        <select id="export-area">
+          <option value="">Todas las áreas</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Estado</label>
+        <select id="export-status">
+          <option value="">Todos los estados</option>
+          <option value="Pendiente">Pendiente</option>
+          <option value="Atendida">Atendida</option>
+          <option value="En proceso">En proceso</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>Prioridad</label>
+        <select id="export-prioridad">
+          <option value="">Todas las prioridades</option>
+          <option value="Alta">Alta</option>
+          <option value="Media">Media</option>
+          <option value="Baja">Baja</option>
+        </select>
+      </div>
+      <div class="field-group" style="align-self:end;">
+        <label style="visibility:hidden;">Tipo</label>
+        <div class="btn-row" style="margin:0; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-blue btn-sm" type="button" onclick="setExportInformeTipo('semanal')">Semanal</button>
+          <button class="btn btn-guinda btn-sm" type="button" onclick="setExportInformeTipo('diario')">Diario</button>
+          <button class="btn btn-green btn-sm" type="button" onclick="setExportInformeTipo('mensual')">Mensual</button>
+          <button class="btn btn-outline btn-sm" type="button" onclick="setExportInformeTipo('anual')">Anual</button>
+        </div>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-top:12px;">
+      <input type="hidden" id="export-report-type" value="semanal">
+      <div class="field-group" id="export-range-group">
+        <label id="export-date-from-label">Desde</label>
+        <input type="date" id="export-date-from">
+      </div>
+      <div class="field-group" id="export-range-to-group">
+        <label id="export-date-to-label">Hasta</label>
+        <input type="date" id="export-date-to">
+      </div>
+      <div class="field-group" id="export-single-group" style="display:none;">
+        <label>Día</label>
+        <input type="date" id="export-date-single">
+      </div>
+      <div class="field-group" id="export-month-group" style="display:none;">
+        <label>Mes</label>
+        <input type="month" id="export-month">
+      </div>
+      <div class="field-group" id="export-year-group" style="display:none;">
+        <label>Año</label>
+        <input type="number" id="export-year" min="2000" max="2100" step="1" placeholder="2026">
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:16px; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="closeModal('modal-exportar-informe')">Cancelar</button>
+      <button class="btn btn-blue" onclick="exportInformePDF(document.getElementById('export-report-type').value)">Aceptar</button>
+    </div>
+  </div>
+</div>
 
 <!-- =============== MODALES =============== -->
 
@@ -898,6 +970,6 @@
 <script src="js/demandas.js?v=14.2"></script>
 <script src="js/usuarios.js?v=14.2"></script>
 <script src="js/configuracion.js?v=14.2"></script>
-<script src="js/exportar.js?v=14.2"></script>
+<script src="js/exportar.js?v=14.9"></script>
 </body>
 </html>
