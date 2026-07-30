@@ -78,7 +78,10 @@ router.post('/login', async (req, res) => {
 router.post('/logout', authMiddleware, async (req, res) => {
   try {
     const token = req.headers['authorization'].slice(7);
-    await db.execute('UPDATE sesiones SET activa = 0 WHERE token = ?', [token]);
+    await db.execute(
+      'UPDATE sesiones SET activa = 0 WHERE token = ? AND activa = 1',
+      [token]
+    );
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'Error al cerrar sesion' });

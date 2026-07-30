@@ -55,7 +55,7 @@ async function doLogin() {
 
   try {
     const resp = await apiLogin(u, p);
-    setToken(resp.token);
+    setTokenForCurrentPage(resp.token);
     currentUser = buildCurrentUser(resp.user);
     await bootApp();
   } catch (err) {
@@ -72,14 +72,14 @@ async function restoreSession() {
     currentUser = buildCurrentUser(u);
     await bootApp();
   } catch (err) {
-    clearToken();
+    clearTokenForCurrentPage();
   }
 }
 
 // Logout
 function doLogout() {
   if (getToken()) {
-    apiLogout(); // invalida la sesión en el servidor
+    apiLogout(); // invalida solo el token activo de esta pestaña
   }
   currentUser      = null;
   demandas         = [];

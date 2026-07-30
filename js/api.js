@@ -10,9 +10,24 @@ function setToken(t)  { _token = t; sessionStorage.setItem('sapase_token', t); }
 function getToken()   { return _token; }
 function clearToken() { _token = null; sessionStorage.removeItem('sapase_token'); }
 
+function getSessionStorageKey() {
+  return 'sapase_token_' + (window.location.pathname || 'default');
+}
+
+function setTokenForCurrentPage(t) {
+  setToken(t);
+  sessionStorage.setItem(getSessionStorageKey(), t);
+}
+
+function clearTokenForCurrentPage() {
+  clearToken();
+  sessionStorage.removeItem(getSessionStorageKey());
+}
+
 async function apiFetch(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  if (_token) headers['Authorization'] = 'Bearer ' + _token;
+  const currentToken = sessionStorage.getItem(getSessionStorageKey()) || _token;
+  if (currentToken) headers['Authorization'] = 'Bearer ' + currentToken;
 
   const res = await fetch(API_BASE + endpoint, {
     ...options,
@@ -28,7 +43,7 @@ async function apiFetch(endpoint, options = {}) {
 
   if (!res.ok) {
     if (res.status === 401) {
-      clearToken();
+      clearTokenForCurrentPage();
       doLogout();
     }
     throw new Error(data.error || 'Error en la solicitud');
@@ -233,7 +248,7 @@ async function apiSubirLogo(key, file) {
     throw new Error(`Error del servidor (${res.status})`);
   }
   if (!res.ok) {
-    if (res.status === 401) { clearToken(); doLogout(); }
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
     throw new Error(data.error || 'Error al subir el logo');
   }
   return data.data;
@@ -257,7 +272,7 @@ async function apiCambiarEstado(id, estado, archivo, comentario) {
     throw new Error(`Error del servidor (${res.status})`);
   }
   if (!res.ok) {
-    if (res.status === 401) { clearToken(); doLogout(); }
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
     throw new Error(data.error || 'Error en la solicitud');
   }
   return data.data;

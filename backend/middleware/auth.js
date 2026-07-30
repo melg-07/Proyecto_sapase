@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const db = require('../db');
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const header = req.headers['authorization'] || '';
   const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -10,6 +11,15 @@ function authMiddleware(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const [rows] = await db.execute(
+      'SELECT id FROM sesiones WHERE token = ? AND activa = 1 AND expira_en > NOW() LIMIT 1',
+      [token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'Sesion invalida o cerrada' });
+    }
+
     req.user = payload; // { id, usuario, rol, nombre, area_id }
     next();
   } catch (err) {
