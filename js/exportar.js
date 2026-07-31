@@ -321,11 +321,6 @@ function exportInformePDF(tipo) {
   doc.text(formatInformeFechaTexto(filters, tipo), ML + 12, 40);
 
   grupos.forEach((grupo, idx) => {
-    if (y > pageH - 50) newPage();
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(120, 40, 40);
-    doc.text(`${idx + 1}. ${grupo.label}`, ML, y);
     y += 6;
 
     const rows = grupo.items.map((d) => {
@@ -352,6 +347,10 @@ function exportInformePDF(tipo) {
   window.open(doc.output('bloburl'), '_blank');
   showToast('Informe PDF generado correctamente', 'success');
 }
+
+/* ============================================================
+   PETICIONES PDF  
+   ============================================================ */
 
 function exportSinglePDF(id) {
   const d = demandas.find(x => x.id === id);
