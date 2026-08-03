@@ -110,12 +110,43 @@ function parseInformeDate(value) {
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
+function parseInformeMonth(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  if (/^\d{4}-\d{2}$/.test(str)) {
+    const [year, month] = str.split('-').map(Number);
+    return new Date(year, month - 1, 1);
+  }
+  const dt = parseInformeDate(value);
+  return dt ? new Date(dt.getFullYear(), dt.getMonth(), 1) : null;
+}
+
+function formatDateForReport(date, options = {}) {
+  if (!date) return 'Sin fecha';
+  const dt = date instanceof Date ? date : parseInformeDate(date);
+  if (!dt) return 'Sin fecha';
+  return dt.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', ...options });
+}
+
+function formatMonthForReport(value) {
+  const dt = parseInformeMonth(value);
+  return dt ? dt.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : 'Sin fecha';
+}
+
+function getDateKey(date) {
+  if (!date) return 'sin-fecha';
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function getDemandDateForReport(d) {
   return parseInformeDate(d.fechaDemanda || d.fecha || '');
 }
 
 function getFilteredInformeDemandas(filters, tipo = filters?.tipo || 'semanal') {
-  const baseList = filteredDemandas.length ? filteredDemandas : demandas;
+  const baseList = (Array.isArray(filteredDemandas) && filteredDemandas.length) ? filteredDemandas : (Array.isArray(demandas) ? demandas : []);
   const from = filters.fechaDesde ? parseInformeDate(filters.fechaDesde) : null;
   const to = filters.fechaHasta ? parseInformeDate(filters.fechaHasta) : null;
 
@@ -160,8 +191,8 @@ function buildInformeGrupos(list, tipo) {
     let label = '';
 
     if (tipo === 'diario') {
-      key = fecha ? fecha.toISOString().slice(0, 10) : 'sin-fecha';
-      label = fecha ? fecha.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Sin fecha';
+      key = getDateKey(fecha);
+      label = fecha ? formatDateForReport(fecha) : 'Sin fecha';
     } else if (tipo === 'mensual') {
       key = fecha ? `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}` : 'sin-fecha';
       label = fecha ? fecha.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : 'Sin fecha';
@@ -175,7 +206,7 @@ function buildInformeGrupos(list, tipo) {
       const monday = new Date(start.getFullYear(), start.getMonth(), diff);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      key = `${monday.toISOString().slice(0, 10)}|${sunday.toISOString().slice(0, 10)}`;
+      key = `${getDateKey(monday)}|${getDateKey(sunday)}`;
       label = `Semana ${monday.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })} - ${sunday.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
     }
 
@@ -184,10 +215,16 @@ function buildInformeGrupos(list, tipo) {
   });
 
   map.forEach((value) => {
-    value.items.sort((a, b) => (getDemandDateForReport(a) || new Date(0)) - (getDemandDateForReport(b) || new Date(0)));
-    grupos.push(value);
-  });
-
+      value.items.sort((a, b) => {
+        const aFolio = String(a.folio || '').replace(/^F-?0*/, '');
+        const bFolio = String(b.folio || '').replace(/^F-?0*/, '');
+        const aNum = Number(aFolio) || 0;
+        const bNum = Number(bFolio) || 0;
+        if (aNum !== bNum) return aNum - bNum;
+        return String(a.folio || '').localeCompare(String(b.folio || ''));
+      });
+      grupos.push(value);
+    });
   return grupos;
 }
 
@@ -205,12 +242,12 @@ function drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, M
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(40, 40, 40);
-  doc.text(title, pageW / 2, 28, { align: 'center' });
+  doc.text(title, pageW / 2, 30, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(90, 90, 90);
-  doc.text(subtitle, pageW / 2, 34, { align: 'center' });
+  doc.text(subtitle, pageW / 2, 36, { align: 'center' });
 
   if (pageNumber) {
     doc.setFontSize(7);
@@ -218,7 +255,7 @@ function drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, M
   }
 }
 
-function drawInformeTable(doc, rows, startY, pageW, pageH, ML, MR) {
+function drawInformeTable(doc, rows, startY, pageW, pageH, ML, MR, title, subtitle, pageNumber) {
   const headers = ['Folio', 'Fecha', 'Remitente', 'Área', 'Asunto', 'Estado', 'Prioridad'];
   const widths = [14, 16, 24, 30, 70, 18, 18];
   const xPositions = [];
@@ -232,7 +269,12 @@ function drawInformeTable(doc, rows, startY, pageW, pageH, ML, MR) {
   const headerHeight = 7.5;
   let y = startY;
 
-  if (y + headerHeight + 6 > pageH - 15) return y;
+  if (y + headerHeight + 6 > pageH - 15) {
+    doc.addPage();
+    pageNumber += 1;
+    drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, MR);
+    y = 42;
+  }
 
   doc.setFillColor(240, 240, 240);
   doc.rect(ML, y, tableWidth, headerHeight, 'F');
@@ -246,37 +288,54 @@ function drawInformeTable(doc, rows, startY, pageW, pageH, ML, MR) {
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.1);
-  rows.forEach((row) => {
-    const cellLines = row.cells.map(cell => (cell.lines || []).length);
-    const rowHeight = Math.max(7.2, 3.8 * Math.max(1, ...cellLines));
-    if (y + rowHeight > pageH - 15) return;
-    doc.setDrawColor(220, 220, 220);
-    doc.line(ML, y + 1.0, pageW - MR, y + 1.0);
+  rows.forEach((row, rowIndex) => {
+    const cellLines = row.cells.map(cell => Math.max(1, (cell.lines || []).length));
+    const lineHeight = 3.6;
+    const rowHeight = Math.max(11, (lineHeight * Math.max(1, ...cellLines)) + 1.4);
+    if (y + rowHeight > pageH - 15) {
+      doc.addPage();
+      pageNumber += 1;
+      drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, MR);
+      y = 42;
+      doc.setFillColor(240, 240, 240);
+      doc.rect(ML, y, tableWidth, headerHeight, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.4);
+      headers.forEach((label, idx) => {
+        doc.text(label, xPositions[idx] + 1.4, y + 4.8);
+      });
+      y += headerHeight;
+    }
+
+    if (rowIndex > 0) {
+      doc.setDrawColor(220, 220, 220);
+      doc.line(ML, y + 1.0, pageW - MR, y + 1.0);
+    }
     row.cells.forEach((cell, idx) => {
       const lines = cell.lines || [];
-      const textY = y + 2.2 + (lines.length > 1 ? 0 : 0.1);
+      const textY = y + 3.3;
       lines.forEach((line, lineIdx) => {
-        doc.text(line, xPositions[idx] + 1.6, textY + (lineIdx * 3.2));
+        doc.text(line, xPositions[idx] + 1.6, textY + (lineIdx * lineHeight));
       });
     });
     y += rowHeight;
   });
 
-  return y;
+  return { y, pageNumber };
 }
 
 function formatInformeFechaTexto(filters, tipo) {
   if (tipo === 'diario') {
-    return filters.fechaUnica ? new Date(filters.fechaUnica).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Sin fecha';
+    return filters.fechaUnica ? formatDateForReport(filters.fechaUnica) : 'Sin fecha';
   }
   if (tipo === 'mensual') {
-    return filters.mes ? new Date(`${filters.mes}-01`).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) : 'Sin fecha';
+    return filters.mes ? formatMonthForReport(filters.mes) : 'Sin fecha';
   }
   if (tipo === 'anual') {
     return filters.anio || 'Sin año';
   }
   if (filters.fechaDesde && filters.fechaHasta) {
-    return new Date(filters.fechaDesde).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return formatDateForReport(filters.fechaDesde);
   }
   return filters.fechaDesde || filters.fechaHasta || 'Sin fecha';
 }
@@ -303,13 +362,6 @@ function exportInformePDF(tipo) {
   let y = 42;
   let pageNumber = 1;
 
-  function newPage() {
-    doc.addPage();
-    pageNumber += 1;
-    drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, MR);
-    y = 42;
-  }
-
   drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, MR);
 
   doc.setFont('helvetica', 'bold');
@@ -332,14 +384,16 @@ function exportInformePDF(tipo) {
         { value: fechaTexto, lines: doc.splitTextToSize(fechaTexto, 15) },
         { value: d.remitente || '-', lines: doc.splitTextToSize(String(d.remitente || '-'), 23) },
         { value: d.area || '-', lines: doc.splitTextToSize(String(d.area || '-'), 29) },
-        { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 68) },
+        { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 82) },
         { value: d.estado || '-', lines: doc.splitTextToSize(String(d.estado || '-'), 17) },
         { value: d.prioridad || '-', lines: doc.splitTextToSize(String(d.prioridad || '-'), 17) }
       ];
       return { cells };
     });
 
-    y = drawInformeTable(doc, rows, y, pageW, pageH, ML, MR);
+    const tableResult = drawInformeTable(doc, rows, y, pageW, pageH, ML, MR, title, subtitle, pageNumber);
+    y = tableResult.y;
+    pageNumber = tableResult.pageNumber;
     y += 3;
   });
 
@@ -374,11 +428,6 @@ function exportSinglePDF(id) {
   const logoFile   = (currentLogosMeta && currentLogosMeta.logo_sapase) || 'logo_sapase.png';
   try { doc.addImage(`assets/${escudoFile}`, 'PNG', ML,            3, 34, 16); } catch(e) {}
   try { doc.addImage(`assets/${logoFile}`,   'PNG', PW - MR - 40, 3, 40, 16); } catch(e) {}
-
-  /* ---- Linea divisoria ---- */
-  doc.setDrawColor(160, 160, 160);
-  doc.setLineWidth(0.4);
-  doc.line(ML, 22, PW - MR, 22);
 
   /* rowTop = borde superior de la fila actual */
   let rowTop = 28;

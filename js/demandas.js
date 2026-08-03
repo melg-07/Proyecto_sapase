@@ -2,7 +2,7 @@
    SAPASE – Gestion de Peticiones 
    ================================================ */
 
-/* ---------- Formulario nuevo ---------- */
+/* ---------- Formulario Nuevo ---------- */
 function initForm() {
   document.getElementById('f-folio').value = generarFolio();
   document.getElementById('f-fecha').value = fechaHoy();
@@ -158,7 +158,8 @@ function renderArchivosTable(list) {
       <td>${isAreaUsuarioRol ? `
         <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
                 onfocus="this.dataset.prev=this.value"
-                onchange="changePrioridadArea('${d.id}', this.value, this)">
+                onchange="changePri
+                oridadArea('${d.id}', this.value, this)">
           <option ${d.prioridad==='Alta'  ?'selected':''}>Alta</option>
           <option ${d.prioridad==='Media' ?'selected':''}>Media</option>
           <option ${d.prioridad==='Baja'  ?'selected':''}>Baja</option>
