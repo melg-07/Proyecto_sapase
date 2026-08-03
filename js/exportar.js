@@ -142,7 +142,7 @@ function getDateKey(date) {
 }
 
 function getDemandDateForReport(d) {
-  return parseInformeDate(d.fechaDemanda || d.fecha || '');
+  return parseInformeDate(d.fecha || d.fechaCaptura || d.fechaDemanda || '');
 }
 
 function getFilteredInformeDemandas(filters, tipo = filters?.tipo || 'semanal') {
