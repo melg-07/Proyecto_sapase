@@ -7,6 +7,7 @@ const {
 const multer = require('multer');
 const path   = require('path');
 const fs     = require('fs');
+const { execFile } = require('child_process');
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -149,6 +150,108 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
   }
 });
 
+// Escaneo con WIA (Windows) para el escáner Kodak S2070 cuando está instalado
+router.post('/scan', noConsulta, async (req, res) => {
+  try {
+    const scanDir = path.join(uploadsDir, 'scanner', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    fs.mkdirSync(scanDir, { recursive: true });
+
+    const scriptPath = path.join(__dirname, '..', 'scripts', 'scan-wia.ps1');
+    const powershell = process.platform === 'win32' ? 'powershell.exe' : 'pwsh';
+    const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, scanDir];
+
+    const stdout = await new Promise((resolve, reject) => {
+      execFile(powershell, args, { timeout: 180000 }, (err, stdout, stderr) => {
+        if (err) {
+          reject(new Error(stderr?.trim() || stdout?.trim() || err.message));
+          return;
+        }
+        resolve(stdout);
+      });
+    });
+
+    let payload;
+    try {
+      payload = JSON.parse(stdout.trim());
+    } catch (_) {
+      payload = { ok: false, error: stdout.trim() || 'No se recibió respuesta del escáner.' };
+    }
+
+    if (!payload?.ok) {
+      return res.status(400).json({ ok: false, error: payload?.error || 'No se pudo completar el escaneo.' });
+    }
+
+    const files = Array.isArray(payload.files) ? payload.files : [];
+    const data = files.map(file => {
+      const relative = path.relative(uploadsDir, file).replace(/\\/g, '/');
+      return {
+        name: path.basename(file),
+        path: relative,
+      };
+    });
+
+    res.json({ ok: true, files: data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || 'Error al escanear documentos' });
+  }
+});
+
+// Adjuntar documentos a una petición
+router.post('/:id/adjuntos', noConsulta, upload.array('archivo', 20), async (req, res) => {
+  try {
+    const demandaId = req.params.id;
+    const [dem] = await db.execute('SELECT id, area_id FROM demandas WHERE id = ?', [demandaId]);
+    if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    const scope = scopeArea(req);
+    if (scope && Number(dem[0].area_id) !== Number(scope)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    const payloadItems = [];
+    if (typeof req.body.archivos === 'string') {
+      try { payloadItems.push(...JSON.parse(req.body.archivos)); } catch (_) {}
+    } else if (Array.isArray(req.body.archivos)) {
+      payloadItems.push(...req.body.archivos);
+    }
+
+    const fileItems = (req.files || []).map(file => ({
+      name: file.originalname,
+      path: file.filename,
+    }));
+
+    const items = [...payloadItems, ...fileItems].filter(item => item && (item.name || item.path));
+    if (!items.length) {
+      return res.status(400).json({ ok: false, error: 'No hay documentos para adjuntar' });
+    }
+
+    const inserted = [];
+    for (const item of items) {
+      const nombre = String(item.name || item.nombre || path.basename(item.path || '')).trim();
+      const ruta = String(item.path || item.ruta || '').trim();
+      if (!nombre || !ruta) continue;
+      await db.execute(
+        'INSERT INTO demanda_archivos (demanda_id, nombre, ruta, tipo) VALUES (?, ?, ?, ?)',
+        [demandaId, nombre, ruta, 'escaneo']
+      );
+      inserted.push({ nombre, ruta });
+    }
+
+    res.json({ ok: true, data: inserted });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || 'Error al adjuntar documentos' });
+  }
+});
+
+router.get('/:id/adjuntos', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT id, nombre, ruta, tipo, creado_en FROM demanda_archivos WHERE demanda_id = ? ORDER BY creado_en ASC', [req.params.id]);
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Detalle
 router.get('/:id', async (req, res) => {
   try {
@@ -206,7 +309,15 @@ router.get('/:id', async (req, res) => {
       [req.params.id]
     );
 
-    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst, historial_ediciones: histEdit, reportes } });
+    const [adjuntos] = await db.execute(
+      `SELECT id, nombre, ruta, tipo, creado_en
+       FROM demanda_archivos
+       WHERE demanda_id = ?
+       ORDER BY creado_en ASC`,
+      [req.params.id]
+    );
+
+    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst, historial_ediciones: histEdit, reportes, adjuntos } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

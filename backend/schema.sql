@@ -92,6 +92,16 @@ CREATE TABLE IF NOT EXISTS demandas (
   FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS demanda_archivos (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  demanda_id  VARCHAR(20) NOT NULL,
+  nombre      VARCHAR(255) NOT NULL,
+  ruta        VARCHAR(500) NOT NULL,
+  tipo        VARCHAR(50) NOT NULL DEFAULT 'escaneo',
+  creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (demanda_id) REFERENCES demandas(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
 -- ------------------------------------------------------------
 -- HISTORIAL DE TRANSFERENCIAS
 -- ------------------------------------------------------------

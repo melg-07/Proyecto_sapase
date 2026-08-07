@@ -194,8 +194,13 @@
         </div>
       </div>
       <div class="btn-row" style="justify-content:flex-end; margin-top:8px;">
+        <button class="btn btn-outline" onclick="scanDocuments()">Escanear documentos</button>
         <button class="btn btn-outline" onclick="clearForm()">Limpiar</button>
         <button class="btn btn-guinda" onclick="saveDemanda()">Guardar Petición</button>
+      </div>
+      <div id="scanner-files-panel" class="card" style="display:none; margin-top:10px;">
+        <div class="card-title">Documentos escaneados para esta petición</div>
+        <ul id="scanner-files-list" style="margin:0; padding-left:18px; color:var(--gray);"></ul>
       </div>
     </div>
 
@@ -963,13 +968,13 @@
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/api.js?v=14.2"></script>
-<script src="js/data.js?v=14.2"></script>
-<script src="js/auth.js?v=14.2"></script>
-<script src="js/app.js?v=14.2"></script>
-<script src="js/demandas.js?v=14.2"></script>
-<script src="js/usuarios.js?v=14.2"></script>
-<script src="js/configuracion.js?v=14.2"></script>
-<script src="js/exportar.js?v=14.9"></script>
+<script src="js/api.js?v=14.3"></script>
+<script src="js/data.js?v=14.3"></script>
+<script src="js/auth.js?v=14.3"></script>
+<script src="js/app.js?v=14.3"></script>
+<script src="js/demandas.js?v=14.3"></script>
+<script src="js/usuarios.js?v=14.3"></script>
+<script src="js/configuracion.js?v=14.3"></script>
+<script src="js/exportar.js?v=14.10"></script>
 </body>
 </html>

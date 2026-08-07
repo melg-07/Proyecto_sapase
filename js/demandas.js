@@ -19,7 +19,42 @@ function clearForm() {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-area').value = '';
+  _pendingScannedDocs = [];
+  renderScannedDocs();
   initForm();
+}
+
+function renderScannedDocs() {
+  const panel = document.getElementById('scanner-files-panel');
+  const list = document.getElementById('scanner-files-list');
+  if (!panel || !list) return;
+  if (!_pendingScannedDocs.length) {
+    panel.style.display = 'none';
+    list.innerHTML = '';
+    return;
+  }
+  panel.style.display = 'block';
+  list.innerHTML = _pendingScannedDocs.map(item => `
+    <li style="margin-bottom:6px;">
+      <strong>${item.name || item.nombre || 'Documento'}</strong>
+      <div style="font-size:12px; color:var(--gray);">${item.path || item.ruta || ''}</div>
+    </li>
+  `).join('');
+}
+
+async function scanDocuments() {
+  try {
+    const res = await apiScanDocuments();
+    if (!res?.files?.length) {
+      showToast('No se detectaron documentos escaneados', 'info');
+      return;
+    }
+    _pendingScannedDocs = res.files.map(file => ({ name: file.name, path: file.path }));
+    renderScannedDocs();
+    showToast(`Se adjuntaron ${_pendingScannedDocs.length} documento(s) al formulario`, 'success');
+  } catch (err) {
+    showToast(err.message || 'No se pudo escanear', 'error');
+  }
 }
 
 function formatFixedPhone(value) {
@@ -86,10 +121,25 @@ async function saveDemanda() {
 
   try {
     const rec = await apiCrearDemanda(payload);
-    demandas.unshift(normalizeDemanda(rec));
+    const created = normalizeDemanda(rec);
+    demandas.unshift(created);
     updateStats();
     renderDashboard();
-    showToast('Demanda guardada: ' + rec.folio, 'success');
+
+    if (_pendingScannedDocs.length) {
+      try {
+        await apiGuardarAdjuntosDemanda(created.id, _pendingScannedDocs);
+        created.adjuntos = _pendingScannedDocs.map(item => ({ nombre: item.name || item.nombre || '', ruta: item.path || item.ruta || '' }));
+        const idx = demandas.findIndex(x => x.id === created.id);
+        if (idx >= 0) demandas[idx] = created;
+        showToast('Demanda guardada y documentos adjuntados', 'success');
+      } catch (err) {
+        showToast('Demanda guardada, pero no se pudieron adjuntar los documentos', 'error');
+      }
+    } else {
+      showToast('Demanda guardada: ' + rec.folio, 'success');
+    }
+
     clearForm();
     showPage('archivos');
   } catch (err) {
@@ -297,6 +347,7 @@ function _renderViewModal(d) {
       ${field2col('Demanda',         `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
       ${d.observaciones ? field2col('Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
+      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" style="color:var(--guinda);">📎 ${a.nombre}</a></div>`).join('')}</div>`) : ''}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
       ${field2('Prioridad', `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}

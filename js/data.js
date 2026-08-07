@@ -14,6 +14,7 @@ let _pendingEstadoId   = null;
 let _pendingEstadoVal  = null;
 let _pendingEstadoSel  = null;
 let _pendingEstadoFile = null;
+let _pendingScannedDocs = [];
 
 // Normalizadores
 
@@ -122,6 +123,11 @@ function normalizeDemanda(d) {
     historialEstados:  normalizeHistorialEstados(d.historial_estados),
     historialEdiciones: normalizeHistorialEdiciones(d.historial_ediciones),
     reportes:          normalizeReportes(d.reportes),
+    adjuntos:          Array.isArray(d.adjuntos) ? d.adjuntos.map(item => ({
+      id: item.id,
+      nombre: item.nombre || item.name || '',
+      ruta: item.ruta || item.path || '',
+    })) : [],
     creadoPor:     d.creado_por    || d.creadoPor || '',
     fechaCreacion: d.creado_en     || d.fechaCreacion || '',
   };
