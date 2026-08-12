@@ -20,6 +20,7 @@ pool.getConnection()
     console.log('✔  MySQL conectado');
     conn.release();
     await ensureRolEnumSubadmin();
+    await ensureDemandasSupportTables();
     await ensureObservacionesSchema();
   })
   .catch(err => { console.error('✖  MySQL:', err.message); });
@@ -35,6 +36,56 @@ async function ensureRolEnumSubadmin() {
   }
 }
 
+async function ensureDemandasSupportTables() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS demanda_archivos (
+        id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        demanda_id  VARCHAR(20) NOT NULL,
+        nombre      VARCHAR(255) NOT NULL,
+        ruta        VARCHAR(500) NOT NULL,
+        tipo        VARCHAR(50) NOT NULL DEFAULT 'escaneo',
+        creado_en   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY idx_demanda_archivos_demanda (demanda_id)
+      ) ENGINE=InnoDB
+    `);
+  } catch (err) {
+    console.error('⚠  No se pudo crear la tabla demanda_archivos:', err.message);
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historial_estados (
+        id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        demanda_id      VARCHAR(20) NOT NULL,
+        estado_anterior VARCHAR(50),
+        estado_nuevo    ENUM('Pendiente','En proceso','Atendida') NOT NULL,
+        archivo_nombre  VARCHAR(255),
+        archivo_ruta    VARCHAR(500),
+        comentario      TEXT NULL,
+        cambiado_por    INT UNSIGNED,
+        creado_en       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB
+    `);
+  } catch (err) {
+    console.error('⚠  No se pudo crear la tabla historial_estados:', err.message);
+  }
+
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historial_ediciones (
+        id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        demanda_id      VARCHAR(20) NOT NULL,
+        editado_por     INT UNSIGNED,
+        campos_editados TEXT,
+        editado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB
+    `);
+  } catch (err) {
+    console.error('⚠  No se pudo crear la tabla historial_ediciones:', err.message);
+  }
+}
+
 // Agrega la columna de comentario a historial_estados y la tabla de reportes
 async function ensureObservacionesSchema() {
   try {
@@ -44,7 +95,6 @@ async function ensureObservacionesSchema() {
   }
 
   try {
- 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reportes_problema (
         id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
