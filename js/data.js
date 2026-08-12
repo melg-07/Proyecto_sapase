@@ -98,6 +98,11 @@ function normalizeHistorialEdiciones(h) {
 }
 
 function normalizeDemanda(d) {
+  const historial = d.historial ?? d.historiales ?? [];
+  const historialEstados = d.historial_estados ?? d.historialEstados ?? [];
+  const historialEdiciones = d.historial_ediciones ?? d.historialEdiciones ?? [];
+  const reportes = d.reportes ?? d.reportesProblema ?? [];
+
   return {
     id:            d.id,
     folio:         d.folio         || '',
@@ -119,10 +124,10 @@ function normalizeDemanda(d) {
     concepto:      d.concepto      || '',
     estado:        d.estado        || 'Pendiente',
     prioridad:     d.prioridad     || 'Media',
-    historial:         normalizeHistorial(d.historial),
-    historialEstados:  normalizeHistorialEstados(d.historial_estados),
-    historialEdiciones: normalizeHistorialEdiciones(d.historial_ediciones),
-    reportes:          normalizeReportes(d.reportes),
+    historial:         normalizeHistorial(historial),
+    historialEstados:  normalizeHistorialEstados(historialEstados),
+    historialEdiciones: normalizeHistorialEdiciones(historialEdiciones),
+    reportes:          normalizeReportes(reportes),
     adjuntos:          Array.isArray(d.adjuntos) ? d.adjuntos.map(item => ({
       id: item.id,
       nombre: item.nombre || item.name || '',

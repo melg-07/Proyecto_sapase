@@ -319,9 +319,19 @@ async function viewDemanda(id) {
   if (local) _renderViewModal(local); // mostrar inmediatamente con datos locales
 
   try {
-    const raw  = await apiGetDemanda(id);
-    const d    = normalizeDemanda(raw);
-    const idx  = demandas.findIndex(x => x.id === id);
+    const raw = await apiGetDemanda(id);
+    const fresh = normalizeDemanda(raw);
+    const base = local || {};
+    const d = {
+      ...base,
+      ...fresh,
+      historial: fresh.historial?.length ? fresh.historial : (base.historial || []),
+      historialEstados: fresh.historialEstados?.length ? fresh.historialEstados : (base.historialEstados || []),
+      historialEdiciones: fresh.historialEdiciones?.length ? fresh.historialEdiciones : (base.historialEdiciones || []),
+      reportes: fresh.reportes?.length ? fresh.reportes : (base.reportes || []),
+      adjuntos: fresh.adjuntos?.length ? fresh.adjuntos : (base.adjuntos || []),
+    };
+    const idx = demandas.findIndex(x => x.id === id);
     if (idx >= 0) demandas[idx] = d;
     _renderViewModal(d); // actualizar con historial
   } catch (err) {

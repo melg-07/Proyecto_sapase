@@ -55,6 +55,66 @@ async function siguienteFolio() {
   return `F-${num}`;
 }
 
+async function loadDemandaDetails(id) {
+  const [hist] = await db.execute(
+    `SELECT t.transferido_en, ao.nombre AS area_origen, ad.nombre AS area_destino,
+            t.comentario, u.nombre AS transferido_por
+     FROM transferencias t
+     LEFT JOIN areas ao   ON t.area_origen_id  = ao.id
+     LEFT JOIN areas ad   ON t.area_destino_id = ad.id
+     LEFT JOIN usuarios u ON t.transferido_por = u.id
+     WHERE t.demanda_id = ?
+     ORDER BY t.transferido_en ASC`,
+    [id]
+  );
+
+  const [histEst] = await db.execute(
+    `SELECT he.creado_en, he.estado_anterior, he.estado_nuevo,
+            he.archivo_nombre, he.archivo_ruta, he.comentario, u.nombre AS cambiado_por
+     FROM historial_estados he
+     LEFT JOIN usuarios u ON he.cambiado_por = u.id
+     WHERE he.demanda_id = ?
+     ORDER BY he.creado_en ASC`,
+    [id]
+  );
+
+  const [reportes] = await db.execute(
+    `SELECT r.creado_en, r.nota, u.nombre AS reportado_por,
+            r.resuelto, r.nota_resolucion, r.resuelto_en, ru.nombre AS resuelto_por
+     FROM reportes_problema r
+     LEFT JOIN usuarios u  ON r.usuario_id  = u.id
+     LEFT JOIN usuarios ru ON r.resuelto_por = ru.id
+     WHERE r.demanda_id = ?
+     ORDER BY r.creado_en ASC`,
+    [id]
+  );
+
+  const [histEdit] = await db.execute(
+    `SELECT he.editado_en, u.nombre AS editado_por, he.campos_editados
+     FROM historial_ediciones he
+     LEFT JOIN usuarios u ON he.editado_por = u.id
+     WHERE he.demanda_id = ?
+     ORDER BY he.editado_en ASC`,
+    [id]
+  );
+
+  const [adjuntos] = await db.execute(
+    `SELECT id, nombre, ruta, tipo, creado_en
+     FROM demanda_archivos
+     WHERE demanda_id = ?
+     ORDER BY creado_en ASC`,
+    [id]
+  );
+
+  return {
+    historial: hist,
+    historial_estados: histEst,
+    historial_ediciones: histEdit,
+    reportes,
+    adjuntos,
+  };
+}
+
 // Listar
 router.get('/', async (req, res) => {
   try {
@@ -77,7 +137,11 @@ router.get('/', async (req, res) => {
     sql += ' ORDER BY creado_en DESC';
 
     const [rows] = await db.execute(sql, params);
-    res.json({ ok: true, data: rows });
+    const data = await Promise.all(rows.map(async row => ({
+      ...row,
+      ...(await loadDemandaDetails(row.id)),
+    })));
+    res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -267,57 +331,8 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
-    const [hist] = await db.execute(
-      `SELECT t.transferido_en, ao.nombre AS area_origen, ad.nombre AS area_destino,
-              t.comentario, u.nombre AS transferido_por
-       FROM transferencias t
-       LEFT JOIN areas ao   ON t.area_origen_id  = ao.id
-       LEFT JOIN areas ad   ON t.area_destino_id = ad.id
-       LEFT JOIN usuarios u ON t.transferido_por = u.id
-       WHERE t.demanda_id = ?
-       ORDER BY t.transferido_en ASC`,
-      [req.params.id]
-    );
-
-    const [histEst] = await db.execute(
-      `SELECT he.creado_en, he.estado_anterior, he.estado_nuevo,
-              he.archivo_nombre, he.archivo_ruta, he.comentario, u.nombre AS cambiado_por
-       FROM historial_estados he
-       LEFT JOIN usuarios u ON he.cambiado_por = u.id
-       WHERE he.demanda_id = ?
-       ORDER BY he.creado_en ASC`,
-      [req.params.id]
-    );
-
-    const [reportes] = await db.execute(
-      `SELECT r.creado_en, r.nota, u.nombre AS reportado_por,
-              r.resuelto, r.nota_resolucion, r.resuelto_en, ru.nombre AS resuelto_por
-       FROM reportes_problema r
-       LEFT JOIN usuarios u  ON r.usuario_id  = u.id
-       LEFT JOIN usuarios ru ON r.resuelto_por = ru.id
-       WHERE r.demanda_id = ?
-       ORDER BY r.creado_en ASC`,
-      [req.params.id]
-    );
-
-    const [histEdit] = await db.execute(
-      `SELECT he.editado_en, u.nombre AS editado_por, he.campos_editados
-       FROM historial_ediciones he
-       LEFT JOIN usuarios u ON he.editado_por = u.id
-       WHERE he.demanda_id = ?
-       ORDER BY he.editado_en ASC`,
-      [req.params.id]
-    );
-
-    const [adjuntos] = await db.execute(
-      `SELECT id, nombre, ruta, tipo, creado_en
-       FROM demanda_archivos
-       WHERE demanda_id = ?
-       ORDER BY creado_en ASC`,
-      [req.params.id]
-    );
-
-    res.json({ ok: true, data: { ...rows[0], historial: hist, historial_estados: histEst, historial_ediciones: histEdit, reportes, adjuntos } });
+    const details = await loadDemandaDetails(req.params.id);
+    res.json({ ok: true, data: { ...rows[0], ...details } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
