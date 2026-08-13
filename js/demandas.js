@@ -19,22 +19,22 @@ function clearForm() {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-area').value = '';
-  _pendingScannedDocs = [];
-  renderScannedDocs();
+  _pendingUploadedDocs = [];
+  renderUploadedDocs();
   initForm();
 }
 
-function renderScannedDocs() {
-  const panel = document.getElementById('scanner-files-panel');
-  const list = document.getElementById('scanner-files-list');
+function renderUploadedDocs() {
+  const panel = document.getElementById('uploaded-files-panel');
+  const list = document.getElementById('uploaded-files-list');
   if (!panel || !list) return;
-  if (!_pendingScannedDocs.length) {
+  if (!_pendingUploadedDocs.length) {
     panel.style.display = 'none';
     list.innerHTML = '';
     return;
   }
   panel.style.display = 'block';
-  list.innerHTML = _pendingScannedDocs.map(item => `
+  list.innerHTML = _pendingUploadedDocs.map(item => `
     <li style="margin-bottom:6px;">
       <strong>${item.name || item.nombre || 'Documento'}</strong>
       <div style="font-size:12px; color:var(--gray);">${item.path || item.ruta || ''}</div>
@@ -42,19 +42,9 @@ function renderScannedDocs() {
   `).join('');
 }
 
-async function scanDocuments() {
-  try {
-    const res = await apiScanDocuments();
-    if (!res?.files?.length) {
-      showToast('No se detectaron documentos escaneados', 'info');
-      return;
-    }
-    _pendingScannedDocs = res.files.map(file => ({ name: file.name, path: file.path }));
-    renderScannedDocs();
-    showToast(`Se adjuntaron ${_pendingScannedDocs.length} documento(s) al formulario`, 'success');
-  } catch (err) {
-    showToast(err.message || 'No se pudo escanear', 'error');
-  }
+function openSubirDocumentos() {
+  _clearSubirDocumentosFile();
+  document.getElementById('modal-subir-documentos').classList.add('open');
 }
 
 function formatFixedPhone(value) {
@@ -126,10 +116,10 @@ async function saveDemanda() {
     updateStats();
     renderDashboard();
 
-    if (_pendingScannedDocs.length) {
+    if (_pendingUploadedDocs.length) {
       try {
-        await apiGuardarAdjuntosDemanda(created.id, _pendingScannedDocs);
-        created.adjuntos = _pendingScannedDocs.map(item => ({ nombre: item.name || item.nombre || '', ruta: item.path || item.ruta || '' }));
+        await apiGuardarAdjuntosDemanda(created.id, _pendingUploadedDocs);
+        created.adjuntos = _pendingUploadedDocs.map(item => ({ nombre: item.name || item.nombre || '', ruta: item.path || item.ruta || '' }));
         const idx = demandas.findIndex(x => x.id === created.id);
         if (idx >= 0) demandas[idx] = created;
         showToast('Demanda guardada y documentos adjuntados', 'success');

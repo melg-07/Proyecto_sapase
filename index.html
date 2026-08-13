@@ -194,13 +194,13 @@
         </div>
       </div>
       <div class="btn-row" style="justify-content:flex-end; margin-top:8px;">
-        <button class="btn btn-outline" onclick="scanDocuments()">Escanear documentos</button>
+        <button class="btn btn-outline" onclick="openSubirDocumentos()">Subir documentos</button>
         <button class="btn btn-outline" onclick="clearForm()">Limpiar</button>
         <button class="btn btn-guinda" onclick="saveDemanda()">Guardar Petición</button>
       </div>
-      <div id="scanner-files-panel" class="card" style="display:none; margin-top:10px;">
-        <div class="card-title">Documentos escaneados para esta petición</div>
-        <ul id="scanner-files-list" style="margin:0; padding-left:18px; color:var(--gray);"></ul>
+      <div id="uploaded-files-panel" class="card" style="display:none; margin-top:10px;">
+        <div class="card-title">Documentos adjuntos para esta petición</div>
+        <ul id="uploaded-files-list" style="margin:0; padding-left:18px; color:var(--gray);"></ul>
       </div>
     </div>
 
@@ -525,7 +525,7 @@
 <!-- =============== MODALES =============== -->
 
 <!-- Ver Demanda -->
-<div class="modal-overlay" id="modal-ver">
+<div class="modal-overlay" id="modal-ver" onclick="event.target.id === 'modal-ver' && closeModal('modal-ver')">
   <div class="modal">
     <div class="modal-header">
       <div class="modal-title">Detalle de Peticiones</div>
@@ -917,6 +917,43 @@
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-guinda" onclick="saveEditGestionSubarea()">Guardar Cambios</button>
       <button class="btn btn-outline" onclick="closeModal('modal-editar-subarea')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Subir Documentos en Formulario -->
+<div class="modal-overlay" id="modal-subir-documentos">
+  <div class="modal" style="width:480px;">
+    <div class="modal-header">
+      <div class="modal-title">Subir Documentos</div>
+      <button class="modal-close" onclick="cancelSubirDocumentos()">x</button>
+    </div>
+    <p style="font-size:13px; color:var(--gray); margin:0 0 16px;">
+      Adjunta los documentos que deseas incluir en esta petición.
+    </p>
+    <div id="subir-documentos-dropzone"
+         style="border:2px dashed #ccc; border-radius:8px; padding:36px 20px; text-align:center; cursor:pointer; transition:border-color .2s;"
+         onclick="document.getElementById('subir-documentos-file').click()"
+         ondragover="event.preventDefault(); this.style.borderColor='var(--guinda)';"
+         ondragleave="this.style.borderColor='#ccc';"
+         ondrop="handleSubirDocumentosDrop(event)">
+      <div style="font-size:42px; color:#ccc;">&#128196;</div>
+      <div style="font-size:13px; color:var(--gray); margin-top:8px;">Haz clic o arrastra un archivo aqui</div>
+      <div style="font-size:11px; color:#bbb; margin-top:4px;">Imagenes, PDF, Word, Excel &mdash; max. 10 MB</div>
+    </div>
+    <input type="file" id="subir-documentos-file" style="display:none;" multiple
+           accept="image/*,.tif,.tiff,.pdf,.doc,.docx,.xls,.xlsx"
+           onchange="handleSubirDocumentosFile(this.files)">
+    <div id="subir-documentos-preview"
+         style="display:none; margin-top:12px; padding:10px 14px; background:var(--cream); border-radius:6px; font-size:12px; align-items:center; gap:8px;">
+      <span style="font-size:20px;">&#128206;</span>
+      <span id="subir-documentos-filename" style="flex:1; word-break:break-all;"></span>
+      <button style="background:none; border:none; cursor:pointer; color:#999; font-size:18px; line-height:1;"
+              onclick="_clearSubirDocumentosFile()">&#215;</button>
+    </div>
+    <div class="btn-row" style="margin-top:20px;">
+      <button class="btn btn-guinda" onclick="confirmSubirDocumentos()">Agregar Documento</button>
+      <button class="btn btn-outline" onclick="cancelSubirDocumentos()">Cancelar</button>
     </div>
   </div>
 </div>

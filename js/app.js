@@ -501,3 +501,67 @@ async function confirmCambioEstado() {
     }
   }
 }
+
+// Subir Documentos en Formulario
+function handleSubirDocumentosDrop(event) {
+  event.preventDefault();
+  document.getElementById('subir-documentos-dropzone').style.borderColor = '#ccc';
+  const file = event.dataTransfer.files[0];
+  if (file) _setSubirDocumentosFile(file);
+}
+
+function handleSubirDocumentosFile(files) {
+  if (!files || files.length === 0) return;
+  
+  // Si hay múltiples archivos, procesarlos todos
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    _pendingUploadedDocs.push({
+      name: file.name,
+      path: file.name,
+      file: file
+    });
+  }
+  
+  renderUploadedDocs();
+  showToast(`${files.length} documento(s) agregado(s)`, 'success');
+  _clearSubirDocumentosFile();
+  closeModal('modal-subir-documentos');
+}
+
+function _setSubirDocumentosFile(file) {
+  _pendingUploadFile = file;
+  document.getElementById('subir-documentos-filename').textContent = file.name;
+  document.getElementById('subir-documentos-preview').style.display = 'flex';
+}
+
+function _clearSubirDocumentosFile() {
+  _pendingUploadFile = null;
+  const inp = document.getElementById('subir-documentos-file');
+  if (inp) inp.value = '';
+  document.getElementById('subir-documentos-preview').style.display = 'none';
+}
+
+function cancelSubirDocumentos() {
+  _clearSubirDocumentosFile();
+  closeModal('modal-subir-documentos');
+}
+
+async function confirmSubirDocumentos() {
+  if (!_pendingUploadFile) {
+    showToast('Debes adjuntar un archivo', 'error');
+    return;
+  }
+  
+  // Simular la subida del archivo (en la práctica, se guardaría cuando se guarde la demanda)
+  _pendingUploadedDocs.push({
+    name: _pendingUploadFile.name,
+    path: _pendingUploadFile.name,
+    file: _pendingUploadFile
+  });
+  
+  renderUploadedDocs();
+  showToast(`Documento "${_pendingUploadFile.name}" agregado`, 'success');
+  _clearSubirDocumentosFile();
+  closeModal('modal-subir-documentos');
+}

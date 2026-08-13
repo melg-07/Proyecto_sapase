@@ -14,7 +14,9 @@ let _pendingEstadoId   = null;
 let _pendingEstadoVal  = null;
 let _pendingEstadoSel  = null;
 let _pendingEstadoFile = null;
-let _pendingScannedDocs = [];
+
+let _pendingUploadedDocs = [];
+let _pendingUploadFile = null;
 
 // Normalizadores
 

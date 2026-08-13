@@ -177,11 +177,6 @@ async function apiCrearDemanda(data) {
   return res.data;
 }
 
-async function apiScanDocuments() {
-  const res = await apiFetch('/demandas/scan', { method: 'POST' });
-  return res;
-}
-
 async function apiGuardarAdjuntosDemanda(id, archivos) {
   const res = await apiFetch('/demandas/' + id + '/adjuntos', {
     method: 'POST',
