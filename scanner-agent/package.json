@@ -1,0 +1,14 @@
+{
+  "name": "sapase-scanner-agent",
+  "version": "2.0.0",
+  "description": "Agente local que conecta el sistema SAPASE con el escáner (Kodak S2070) conectado a esta computadora, usando el driver WIA de Windows.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "pdf-lib": "^1.17.1"
+  }
+}
