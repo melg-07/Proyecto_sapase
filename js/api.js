@@ -178,11 +178,47 @@ async function apiCrearDemanda(data) {
 }
 
 async function apiGuardarAdjuntosDemanda(id, archivos) {
-  const res = await apiFetch('/demandas/' + id + '/adjuntos', {
-    method: 'POST',
-    body: JSON.stringify({ archivos }),
+  // Los documentos elegidos a mano o escaneados vienen con el archivo real (item.file,
+  // un objeto File) y deben subirse como multipart/form-data para que el binario
+  // realmente llegue y se guarde en el servidor (antes solo se mandaba el nombre en
+  // JSON, por lo que el registro quedaba en la base de datos pero el archivo nunca
+  // se guardaba, y al abrirlo daba 404 / no se veía).
+  const fd = new FormData();
+  let hasFiles = false;
+  (archivos || []).forEach(item => {
+    if (item && item.file instanceof File) {
+      fd.append('archivo', item.file, item.name || item.file.name);
+      hasFiles = true;
+    }
   });
-  return res.data;
+
+  if (!hasFiles) {
+    // No hay archivos binarios reales (caso poco común): se manda solo la metadata.
+    const res = await apiFetch('/demandas/' + id + '/adjuntos', {
+      method: 'POST',
+      body: JSON.stringify({ archivos }),
+    });
+    return res.data;
+  }
+
+  const currentToken = sessionStorage.getItem(getSessionStorageKey()) || _token;
+  const res = await fetch(API_BASE + '/demandas/' + id + '/adjuntos', {
+    method: 'POST',
+    headers: currentToken ? { 'Authorization': 'Bearer ' + currentToken } : {},
+    body: fd,
+  });
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    throw new Error(`Error del servidor (${res.status})`);
+  }
+  if (!res.ok) {
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
+    throw new Error(data.error || 'Error en la solicitud');
+  }
+  return data.data;
 }
 
 async function apiEditarDemanda(id, data) {

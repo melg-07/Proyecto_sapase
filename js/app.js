@@ -503,43 +503,58 @@ async function confirmCambioEstado() {
 }
 
 // Subir Documentos en Formulario
+// Los archivos elegidos (clic o arrastrados) se guardan primero en una lista
+// temporal dentro del modal (_subirDocumentosStaged), donde se pueden quitar
+// antes de confirmarlos. Al confirmar, TODOS se agregan de una sola vez a
+// _pendingUploadedDocs (la lista real que se sube al guardar la petición).
+let _subirDocumentosStaged = [];
+
+function _addFilesToStaged(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  files.forEach(file => _subirDocumentosStaged.push(file));
+  _renderSubirDocumentosPreview();
+}
+
+function _renderSubirDocumentosPreview() {
+  const list = document.getElementById('subir-documentos-preview-list');
+  if (!list) return;
+  if (!_subirDocumentosStaged.length) {
+    list.innerHTML = '';
+    return;
+  }
+  list.innerHTML = _subirDocumentosStaged.map((file, idx) => `
+    <li style="display:flex; align-items:center; gap:8px; padding:8px 10px; margin-bottom:6px; background:var(--cream); border-radius:6px; font-size:12px;">
+      <span style="font-size:18px;">&#128206;</span>
+      <span style="flex:1; word-break:break-all;">${file.name}</span>
+      <button type="button" style="background:none; border:none; cursor:pointer; color:#999; font-size:16px; line-height:1;"
+              onclick="_removeStagedDocumento(${idx})">&#215;</button>
+    </li>
+  `).join('');
+}
+
+function _removeStagedDocumento(idx) {
+  _subirDocumentosStaged.splice(idx, 1);
+  _renderSubirDocumentosPreview();
+}
+
 function handleSubirDocumentosDrop(event) {
   event.preventDefault();
   document.getElementById('subir-documentos-dropzone').style.borderColor = '#ccc';
-  const file = event.dataTransfer.files[0];
-  if (file) _setSubirDocumentosFile(file);
+  _addFilesToStaged(event.dataTransfer.files);
 }
 
 function handleSubirDocumentosFile(files) {
-  if (!files || files.length === 0) return;
-  
-  // Si hay múltiples archivos, procesarlos todos
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    _pendingUploadedDocs.push({
-      name: file.name,
-      path: file.name,
-      file: file
-    });
-  }
-  
-  renderUploadedDocs();
-  showToast(`${files.length} documento(s) agregado(s)`, 'success');
-  _clearSubirDocumentosFile();
-  closeModal('modal-subir-documentos');
-}
-
-function _setSubirDocumentosFile(file) {
-  _pendingUploadFile = file;
-  document.getElementById('subir-documentos-filename').textContent = file.name;
-  document.getElementById('subir-documentos-preview').style.display = 'flex';
+  _addFilesToStaged(files);
+  const inp = document.getElementById('subir-documentos-file');
+  if (inp) inp.value = '';
 }
 
 function _clearSubirDocumentosFile() {
-  _pendingUploadFile = null;
+  _subirDocumentosStaged = [];
   const inp = document.getElementById('subir-documentos-file');
   if (inp) inp.value = '';
-  document.getElementById('subir-documentos-preview').style.display = 'none';
+  _renderSubirDocumentosPreview();
 }
 
 function cancelSubirDocumentos() {
@@ -548,20 +563,69 @@ function cancelSubirDocumentos() {
 }
 
 async function confirmSubirDocumentos() {
-  if (!_pendingUploadFile) {
-    showToast('Debes adjuntar un archivo', 'error');
+  if (!_subirDocumentosStaged.length) {
+    showToast('Debes adjuntar al menos un archivo', 'error');
     return;
   }
-  
-  // Simular la subida del archivo (en la práctica, se guardaría cuando se guarde la demanda)
-  _pendingUploadedDocs.push({
-    name: _pendingUploadFile.name,
-    path: _pendingUploadFile.name,
-    file: _pendingUploadFile
+
+  _subirDocumentosStaged.forEach(file => {
+    _pendingUploadedDocs.push({
+      name: file.name,
+      path: file.name,
+      file: file,
+    });
   });
-  
+
+  const total = _subirDocumentosStaged.length;
   renderUploadedDocs();
-  showToast(`Documento "${_pendingUploadFile.name}" agregado`, 'success');
+  showToast(`${total} documento(s) agregado(s)`, 'success');
   _clearSubirDocumentosFile();
   closeModal('modal-subir-documentos');
+}
+
+/* ---------- Escaneo de documentos (escáner conectado a la PC del usuario) ---------- */
+// El navegador no puede hablar directo con un escáner. Para escanear se usa un
+// pequeño "Agente de Escaneo SAPASE" (ver carpeta /scanner-agent) que corre en
+// la propia computadora del usuario y expone http://127.0.0.1:5175. El botón
+// "Escanear documentos" le pide a ESE agente local que escanee, y el resultado
+// se agrega a la lista de documentos de la petición, igual que un archivo subido
+// a mano. Cada computadora con un escáner conectado necesita tener el agente
+// instalado y corriendo (ver README dentro de /scanner-agent).
+const SCANNER_AGENT_URL = (localStorage.getItem('sapase_scanner_agent_url') || 'http://127.0.0.1:5175').replace(/\/$/, '');
+
+async function escanearDocumento() {
+  const btn = document.getElementById('btn-escanear-documentos');
+  const originalText = btn ? btn.innerHTML : null;
+  if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Escaneando...'; }
+  showToast('Escaneando documento, espera un momento...', 'success');
+
+  try {
+    const res = await fetch(SCANNER_AGENT_URL + '/scan', { method: 'POST' });
+
+    if (!res.ok) {
+      let errMsg = 'No se pudo completar el escaneo';
+      try {
+        const errData = await res.json();
+        errMsg = errData.error || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const blob = await res.blob();
+    if (!blob || blob.size === 0) throw new Error('El escáner no devolvió ningún documento');
+
+    const fileName = `Escaneo-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`;
+    const file = new File([blob], fileName, { type: blob.type || 'application/pdf' });
+
+    _pendingUploadedDocs.push({ name: fileName, path: fileName, file });
+    renderUploadedDocs();
+    showToast('Documento escaneado y agregado a la petición', 'success');
+  } catch (err) {
+    const msg = (err && err.message === 'Failed to fetch')
+      ? 'No se detectó el Agente de Escaneo en esta computadora. Instálalo y ábrelo, y verifica que el escáner esté encendido y conectado.'
+      : (err.message || 'Error al escanear');
+    showToast(msg, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+  }
 }

@@ -34,12 +34,18 @@ function renderUploadedDocs() {
     return;
   }
   panel.style.display = 'block';
-  list.innerHTML = _pendingUploadedDocs.map(item => `
-    <li style="margin-bottom:6px;">
-      <strong>${item.name || item.nombre || 'Documento'}</strong>
-      <div style="font-size:12px; color:var(--gray);">${item.path || item.ruta || ''}</div>
+  list.innerHTML = _pendingUploadedDocs.map((item, idx) => `
+    <li style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+      <span style="flex:1;">${item.name || item.nombre || 'Documento'}</span>
+      <button type="button" title="Quitar" style="background:none; border:none; cursor:pointer; color:#999; font-size:14px;"
+              onclick="removePendingUploadedDoc(${idx})">&#215;</button>
     </li>
   `).join('');
+}
+
+function removePendingUploadedDoc(idx) {
+  _pendingUploadedDocs.splice(idx, 1);
+  renderUploadedDocs();
 }
 
 function openSubirDocumentos() {
@@ -118,8 +124,13 @@ async function saveDemanda() {
 
     if (_pendingUploadedDocs.length) {
       try {
-        await apiGuardarAdjuntosDemanda(created.id, _pendingUploadedDocs);
-        created.adjuntos = _pendingUploadedDocs.map(item => ({ nombre: item.name || item.nombre || '', ruta: item.path || item.ruta || '' }));
+        const guardados = await apiGuardarAdjuntosDemanda(created.id, _pendingUploadedDocs);
+        // Se usa la respuesta real del servidor (nombre + ruta con la que quedó
+        // guardado el archivo en /uploads) y no lo que había en el cliente, para
+        // que el enlace "ver documento" funcione siempre.
+        created.adjuntos = Array.isArray(guardados) && guardados.length
+          ? guardados.map(item => ({ nombre: item.nombre || item.name || '', ruta: item.ruta || item.path || '' }))
+          : [];
         const idx = demandas.findIndex(x => x.id === created.id);
         if (idx >= 0) demandas[idx] = created;
         showToast('Demanda guardada y documentos adjuntados', 'success');
