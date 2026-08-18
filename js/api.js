@@ -1,9 +1,6 @@
 // URL relativa: funciona desde cualquier IP porque usa el mismo origen que la pagina
 const API_BASE = '/api';
 
-// Token persistido en sessionStorage: sobrevive a un refresh de pagina pero es
-// exclusivo de cada pestaña, para que iniciar sesion en otra pestaña (u otro
-// perfil) no cambie la sesion de esta.
 let _token = sessionStorage.getItem('sapase_token');
 
 function setToken(t)  { _token = t; sessionStorage.setItem('sapase_token', t); }
@@ -178,11 +175,7 @@ async function apiCrearDemanda(data) {
 }
 
 async function apiGuardarAdjuntosDemanda(id, archivos) {
-  // Los documentos elegidos a mano o escaneados vienen con el archivo real (item.file,
-  // un objeto File) y deben subirse como multipart/form-data para que el binario
-  // realmente llegue y se guarde en el servidor (antes solo se mandaba el nombre en
-  // JSON, por lo que el registro quedaba en la base de datos pero el archivo nunca
-  // se guardaba, y al abrirlo daba 404 / no se veía).
+
   const fd = new FormData();
   let hasFiles = false;
   (archivos || []).forEach(item => {

@@ -503,10 +503,6 @@ async function confirmCambioEstado() {
 }
 
 // Subir Documentos en Formulario
-// Los archivos elegidos (clic o arrastrados) se guardan primero en una lista
-// temporal dentro del modal (_subirDocumentosStaged), donde se pueden quitar
-// antes de confirmarlos. Al confirmar, TODOS se agregan de una sola vez a
-// _pendingUploadedDocs (la lista real que se sube al guardar la petición).
 let _subirDocumentosStaged = [];
 
 function _addFilesToStaged(fileList) {
@@ -583,14 +579,6 @@ async function confirmSubirDocumentos() {
   closeModal('modal-subir-documentos');
 }
 
-/* ---------- Escaneo de documentos (escáner conectado a la PC del usuario) ---------- */
-// El navegador no puede hablar directo con un escáner. Para escanear se usa un
-// pequeño "Agente de Escaneo SAPASE" (ver carpeta /scanner-agent) que corre en
-// la propia computadora del usuario y expone http://127.0.0.1:5175. El botón
-// "Escanear documentos" le pide a ESE agente local que escanee, y el resultado
-// se agrega a la lista de documentos de la petición, igual que un archivo subido
-// a mano. Cada computadora con un escáner conectado necesita tener el agente
-// instalado y corriendo (ver README dentro de /scanner-agent).
 const SCANNER_AGENT_URL = (localStorage.getItem('sapase_scanner_agent_url') || 'http://127.0.0.1:5175').replace(/\/$/, '');
 
 async function escanearDocumento() {

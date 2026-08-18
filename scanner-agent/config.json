@@ -1,8 +1,10 @@
 {
   "puerto": 5175,
-  "nombreDispositivo": "Kodak",
+  "nombreDispositivo": "KODAK S2070 Scanner",
   "origenesPermitidos": [
     "http://localhost:3001",
-    "http://127.0.0.1:3001"
+    "http://127.0.0.1:3001",
+    "http://172.16.32.8:3001",
+    "http://172.16.32.209:3001"
   ]
 }

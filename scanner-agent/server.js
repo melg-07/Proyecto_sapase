@@ -1,23 +1,3 @@
-/**
- * Agente de Escaneo SAPASE (v2 — usa WIA, el mismo driver que instaló el
- * software de Kodak; NO requiere NAPS2 ni ningún otro programa).
- * ---------------------------------------------------------------
- * Este programa corre en la MISMA computadora donde está conectado el
- * escáner (Kodak S2070). Escucha en 127.0.0.1 (solo esta computadora puede
- * hablarle, nunca internet). Cuando la página de SAPASE pide un escaneo:
- *   1. Ejecuta scripts/scan-wia.ps1, que le habla directo al driver WIA
- *      del escáner (instalado junto con el software de Kodak) y devuelve
- *      una imagen por cada hoja escaneada (soporta el alimentador ADF).
- *   2. Une todas las páginas en un solo PDF (con la librería pdf-lib).
- *   3. Le regresa ese PDF al navegador, que lo agrega a la petición.
- *
- * Requisitos en esta computadora:
- *  1. Node.js instalado (https://nodejs.org).
- *  2. El driver del Kodak S2070 instalado (ya lo hiciste: InstallSoftware_s2000).
- *  3. Ejecutar "npm install" una vez, y luego "npm start"
- *     (o usar iniciar-agente.bat) cada vez que se quiera escanear desde SAPASE.
- */
-
 const express      = require('express');
 const cors         = require('cors');
 const { execFile } = require('child_process');

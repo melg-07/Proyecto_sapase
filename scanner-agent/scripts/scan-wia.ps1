@@ -1,20 +1,3 @@
-# scan-wia.ps1
-# Escanea usando el driver WIA del escáner (el que instaló el software de Kodak),
-# SIN depender de NAPS2 ni de ningún otro programa externo.
-#
-# Soporta el alimentador automático de documentos (ADF): si hay varias hojas,
-# escanea todas y regresa una imagen por página. El agente Node.js (server.js)
-# luego las une en un solo PDF.
-#
-# Parámetros:
-#   -OutputDir         Carpeta donde se guardan las imágenes escaneadas (la crea el agente).
-#   -NombreDispositivo  (Opcional) Texto que debe contener el nombre del escáner
-#                        (ej. "Kodak"), para elegirlo automáticamente sin preguntar.
-#
-# Salida: UNA sola línea JSON por stdout al final, por ejemplo:
-#   {"ok":true,"files":["C:\\...\\pagina-0001.jpg","C:\\...\\pagina-0002.jpg"]}
-# Cualquier otro mensaje de diagnóstico se manda a stderr, para no ensuciar el JSON.
-
 param(
   [Parameter(Mandatory = $true)][string]$OutputDir,
   [string]$NombreDispositivo = ""
