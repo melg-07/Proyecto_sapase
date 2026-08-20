@@ -12,6 +12,15 @@ const { execFile } = require('child_process');
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
+const logsDir = path.join(__dirname, '..', 'logs');
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+function log(level, msg) {
+  const ts   = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const line = `[${ts}] [${level}] ${msg}\n`;
+  (level === 'ERROR' ? process.stderr : process.stdout).write(line);
+  try { fs.appendFileSync(path.join(logsDir, level === 'ERROR' ? 'error.log' : 'combined.log'), line); } catch (_) {}
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename:    (req, file, cb) => {
@@ -261,7 +270,15 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
 // });
 
 // Adjuntar documentos a una petición
-router.post('/:id/adjuntos', noConsulta, upload.array('archivo', 20), async (req, res) => {
+router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
+  upload.array('archivo', 20)(req, res, (err) => {
+    if (err) {
+      console.error('[adjuntos] Error de multer al subir archivo(s):', err.message);
+      return res.status(400).json({ ok: false, error: err.message || 'No se pudo subir el archivo' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const demandaId = req.params.id;
     const [dem] = await db.execute('SELECT id, area_id FROM demandas WHERE id = ?', [demandaId]);
@@ -290,15 +307,39 @@ router.post('/:id/adjuntos', noConsulta, upload.array('archivo', 20), async (req
     }
 
     const inserted = [];
+    const fallidos = [];
     for (const item of items) {
       const nombre = String(item.name || item.nombre || path.basename(item.path || '')).trim();
       const ruta = String(item.path || item.ruta || '').trim();
       if (!nombre || !ruta) continue;
+
+      // Si el archivo vino como upload real (multer), confirmamos que en verdad
+      // haya quedado escrito en disco antes de registrarlo en la base de datos.
+      // Esto evita que quede un adjunto "fantasma" que luego da 404 al abrirlo
+      // (por ejemplo si un antivirus lo puso en cuarentena justo después de subirlo).
+      const esArchivoSubido = (req.files || []).some(f => f.filename === ruta);
+      if (esArchivoSubido) {
+        const rutaCompleta = path.join(uploadsDir, ruta);
+        if (!fs.existsSync(rutaCompleta)) {
+          log('ERROR', `[adjuntos] El archivo "${nombre}" (${ruta}) no quedo guardado en disco en ${rutaCompleta}. Puede que un antivirus lo haya movido o que falten permisos de escritura en la carpeta uploads.`);
+          fallidos.push(nombre);
+          continue;
+        }
+      }
+
       await db.execute(
         'INSERT INTO demanda_archivos (demanda_id, nombre, ruta, tipo) VALUES (?, ?, ?, ?)',
         [demandaId, nombre, ruta, 'documento']
       );
       inserted.push({ nombre, ruta });
+    }
+
+    if (fallidos.length) {
+      return res.status(207).json({
+        ok: true,
+        data: inserted,
+        error: `No se pudieron guardar en el servidor estos documentos: ${fallidos.join(', ')}. Revisa el antivirus o los permisos de la carpeta "uploads" e intenta de nuevo.`,
+      });
     }
 
     res.json({ ok: true, data: inserted });

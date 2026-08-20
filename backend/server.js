@@ -41,6 +41,16 @@ app.get('/sistema-peticiones', (req, res) => {
 app.use(express.static(path.join(__dirname, '..')));
 app.use('/sistema-peticiones', express.static(path.join(__dirname, '..')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Si el archivo no existe en /uploads (por ejemplo, se perdió al re-desplegar
+// el proyecto o un antivirus lo movió), mostramos un mensaje claro en vez del
+// "Cannot GET" por defecto de Express.
+app.use('/uploads', (req, res) => {
+  log('ERROR', `Archivo no encontrado: /uploads${req.path}`);
+  res
+    .status(404)
+    .type('html')
+    .send('<h2 style="font-family:sans-serif">Documento no disponible</h2><p style="font-family:sans-serif">Este archivo ya no está en el servidor. Puede haberse perdido al reinstalar el sistema o haber sido movido por un antivirus. Vuelve a subir el documento.</p>');
+});
 
 // Rutas
 app.use('/api/auth',     require('./routes/auth'));

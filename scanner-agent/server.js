@@ -45,20 +45,25 @@ app.post('/scan', (req, res) => {
 
   console.log('[SAPASE Agente] Escaneando...');
 
-  execFile('powershell.exe', args, { timeout: 180000, maxBuffer: 10 * 1024 * 1024 }, async (err, stdout, stderr) => {
+  execFile('powershell.exe', args, { timeout: 180000, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }, async (err, stdout, stderr) => {
     if (stderr && stderr.trim()) console.log('[SAPASE Agente] ' + stderr.trim().replace(/\r?\n/g, '\n[SAPASE Agente] '));
 
-    if (err) {
-      cleanup(tmpDir);
-      return res.status(500).json({ ok: false, error: 'No se pudo ejecutar el escaneo: ' + err.message });
-    }
-
+    // El script de PowerShell escribe el resultado en result.json dentro de
+    // tmpDir. Leer el archivo es mucho más confiable que parsear stdout,
+    // porque stdout se puede corromper por saltos de línea, avisos mezclados
+    // o problemas de codificación de caracteres (acentos) entre PowerShell y
+    // Node — que era la causa del error "Respuesta inesperada del escáner".
+    const resultPath = path.join(tmpDir, 'result.json');
     let payload;
     try {
-      payload = JSON.parse(stdout.trim().split('\n').pop());
-    } catch (_) {
+      const raw = fs.readFileSync(resultPath, 'utf8');
+      payload = JSON.parse(raw);
+    } catch (readErr) {
       cleanup(tmpDir);
-      return res.status(500).json({ ok: false, error: 'Respuesta inesperada del escáner: ' + stdout.trim().slice(0, 300) });
+      if (err) {
+        return res.status(500).json({ ok: false, error: 'No se pudo ejecutar el escaneo: ' + err.message });
+      }
+      return res.status(500).json({ ok: false, error: 'Respuesta inesperada del escáner: ' + (stdout || '').trim().slice(0, 300) });
     }
 
     if (!payload.ok) {
