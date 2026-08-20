@@ -584,7 +584,7 @@ const SCANNER_AGENT_URL = (localStorage.getItem('sapase_scanner_agent_url') || '
 async function escanearDocumento() {
   const btn = document.getElementById('btn-escanear-documentos');
   const originalText = btn ? btn.innerHTML : null;
-  if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Escaneando...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = 'Escaneando...'; }
   showToast('Escaneando documento, espera un momento...', 'success');
 
   try {

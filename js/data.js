@@ -164,7 +164,6 @@ function fechaHoy() {
   return new Date().toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
 
-// Administrador y Subadmin comparten permisos de gestion (demandas, areas);
 // solo Administrador puede ver/editar Usuarios y Configuracion.
 function isAdminLevel(rol) {
   return rol === 'Administrador' || rol === 'Subadmin';

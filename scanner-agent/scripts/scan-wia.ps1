@@ -5,9 +5,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# Forzamos salida en UTF-8 para que los acentos (á, é, í, ó, ú, ñ) no se
-# corrompan al pasar de PowerShell a Node.js. Antes esto rompia el JSON.parse
-# en scanner-agent/server.js y el usuario veia "Respuesta inesperada del escaner".
 try {
   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
   $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -15,10 +12,6 @@ try {
 
 function Log($msg) { [Console]::Error.WriteLine($msg) }
 
-# El resultado final se escribe SIEMPRE a un archivo (result.json) en vez de
-# solo a stdout. Leer el resultado desde un archivo es mucho mas confiable
-# que parsear la ultima linea de la salida de consola, que se puede mezclar
-# con avisos, saltos de linea o problemas de codificacion.
 $resultPath = Join-Path $OutputDir 'result.json'
 function Write-Result($jsonString) {
   [System.IO.File]::WriteAllText($resultPath, $jsonString, (New-Object System.Text.UTF8Encoding($false)))
@@ -28,7 +21,7 @@ function Write-Result($jsonString) {
 # Constantes de propiedades WIA (estandar de Windows, no son especificas de Kodak)
 $WIA_DPS_DOCUMENT_HANDLING_SELECT = 3088
 $WIA_DPS_DOCUMENT_HANDLING_STATUS = 3087
-$WIA_IPA_DATATYPE                 = 4104
+$WIA_IPA_DATATYPE                 = 4103
 $WIA_IPS_XRES                     = 6147
 $WIA_IPS_YRES                     = 6148
 $FEEDER_FLAG                      = 1
@@ -87,12 +80,13 @@ try {
   Log "Usando dispositivo: $($deviceInfo.Properties('Name').Value)"
   $device = $deviceInfo.Connect()
   $item   = $device.Items.Item(1)
+  Log "Formatos soportados por el dispositivo:"
+  foreach ($fmt in $item.Formats) {
+    Log " - $fmt"
+  }
 
   # Intentar usar el alimentador automatico (ADF) si el dispositivo lo soporta
   Set-WiaProperty $item $WIA_DPS_DOCUMENT_HANDLING_SELECT $FEEDER_FLAG
-  Set-WiaProperty $item $WIA_IPA_DATATYPE $COLOR_RGB
-  Set-WiaProperty $item $WIA_IPS_XRES 300
-  Set-WiaProperty $item $WIA_IPS_YRES 300
 
   $files = @()
   $pageNum = 1
@@ -100,40 +94,73 @@ try {
 
   while ($pageNum -le $maxPages) {
     try {
-      Log "Escaneando pagina $pageNum..."
-      $image = $item.Transfer()
-      if (-not $image) { break }
+        Log "Escaneando pagina $pageNum..."
 
-      $filePath = Join-Path $OutputDir ("pagina-{0:D4}.jpg" -f $pageNum)
-      if (Test-Path $filePath) { Remove-Item $filePath -Force }
-      $image.SaveFile($filePath)
-      $files += $filePath
-      $pageNum++
+        $image = $null
+    $format = "{B96B3CB1-0728-11D3-9D7B-0000F81EF32E}"
 
-      # Si el dispositivo no tiene ADF (es un escaner plano/flatbed), Transfer()
-      # normalmente solo entrega una pagina y no hay forma de "seguir". Revisamos
-      # el estado del feeder para decidir si intentar otra pasada.
-      $statusProp = Get-WiaProperty $item $WIA_DPS_DOCUMENT_HANDLING_STATUS
-      $status = $null
-      if ($statusProp) { try { $status = $statusProp.Value } catch {} }
-      if ($null -ne $status -and ($status -band 1) -eq 0) {
-        # bit 1 = "hay papel en el feeder"; si no esta prendido, ya no hay mas hojas
-        break
-      }
-      if ($null -eq $status) {
-        # No se pudo leer el estado del feeder: asumimos que era una sola pagina (flatbed)
-        break
-      }
-    } catch {
-      $hresult = $_.Exception.HResult
-      if ($hresult -eq $WIA_ERROR_PAPER_EMPTY -or $hresult -eq $WIA_ERROR_ITEM_DELETED -or $_.Exception.Message -match 'paper|papel') {
-        Log "Fin del alimentador (no hay mas hojas)."
-        break
-      }
-      throw
+Log "Usando formato: $format"
+
+$image = $item.Transfer($format)
+
+Log "Transfer() exitoso."
+Log "Formato real de imagen: $ ($image.FormatID)"
+
+        if (-not $image) {
+            throw "El escaner rechazo todos los formatos disponibles."
+        }
+
+        Log "Transfer() completado."
+
+        $filePath = Join-Path $OutputDir ("pagina-{0:D4}.jpg" -f $pageNum)
+
+        if (Test-Path $filePath) {
+            Remove-Item $filePath -Force
+        }
+
+        Log "Guardando en: $filePath"
+
+        $image.SaveFile($filePath)
+
+        Log "SaveFile() completado."
+
+        $files += $filePath
+        $pageNum++
+
+        $statusProp = Get-WiaProperty $item $WIA_DPS_DOCUMENT_HANDLING_STATUS
+        $status = $null
+
+        if ($statusProp) {
+            try {
+                $status = $statusProp.Value
+            }
+            catch {}
+        }
+
+        if ($null -ne $status -and ($status -band 1) -eq 0) {
+            break
+        }
+
+        if ($null -eq $status) {
+            break
+        }
     }
-  }
+    catch {
+        $hresult = $_.Exception.HResult
 
+        if (
+            $hresult -eq $WIA_ERROR_PAPER_EMPTY -or
+            $hresult -eq $WIA_ERROR_ITEM_DELETED -or
+            $_.Exception.Message -match 'paper|papel'
+        ) {
+            Log "Fin del alimentador (no hay mas hojas)."
+            break
+        }
+
+        Log "HRESULT exacto: $hresult (0x$($hresult.ToString('X')))"
+        throw
+    }
+}
   if ($files.Count -eq 0) {
     Write-Result '{"ok":false,"error":"No se obtuvo ninguna pagina del escaner."}'
     exit 0

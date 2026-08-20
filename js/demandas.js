@@ -125,9 +125,6 @@ async function saveDemanda() {
     if (_pendingUploadedDocs.length) {
       try {
         const guardados = await apiGuardarAdjuntosDemanda(created.id, _pendingUploadedDocs);
-        // Se usa la respuesta real del servidor (nombre + ruta con la que quedó
-        // guardado el archivo en /uploads) y no lo que había en el cliente, para
-        // que el enlace "ver documento" funcione siempre.
         created.adjuntos = Array.isArray(guardados) && guardados.length
           ? guardados.map(item => ({ nombre: item.nombre || item.name || '', ruta: item.ruta || item.path || '' }))
           : [];
