@@ -48,11 +48,7 @@ app.post('/scan', (req, res) => {
   execFile('powershell.exe', args, { timeout: 180000, maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }, async (err, stdout, stderr) => {
     if (stderr && stderr.trim()) console.log('[SAPASE Agente] ' + stderr.trim().replace(/\r?\n/g, '\n[SAPASE Agente] '));
 
-    // El script de PowerShell escribe el resultado en result.json dentro de
-    // tmpDir. Leer el archivo es mucho más confiable que parsear stdout,
-    // porque stdout se puede corromper por saltos de línea, avisos mezclados
-    // o problemas de codificación de caracteres (acentos) entre PowerShell y
-    // Node — que era la causa del error "Respuesta inesperada del escáner".
+  
     const resultPath = path.join(tmpDir, 'result.json');
     let payload;
     try {

@@ -176,6 +176,19 @@ try {
     $WIA_DPS_DOCUMENT_HANDLING_SELECT `
     $FEEDER_FLAG
 
+  Set-wiaProperty `
+    $item `
+    $WIA_IPA_DATATYPE `
+    $COLOR_RGB  
+  Set-WiaProperty `
+    $item `
+    $WIA_IPS_XRES `
+    300
+  Set-WiaProperty `
+    $item `
+    $WIA_IPS_YRES `
+    300    
+
 
   $files = @()
 
