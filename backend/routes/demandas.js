@@ -223,52 +223,6 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
   }
 });
 
-// COMENTADO: Ruta de escaneo con WIA - Ya no se utiliza
-// router.post('/scan', noConsulta, async (req, res) => {
-//   try {
-//     const scanDir = path.join(uploadsDir, 'scanner', `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-//     fs.mkdirSync(scanDir, { recursive: true });
-//
-//     const scriptPath = path.join(__dirname, '..', 'scripts', 'scan-wia.ps1');
-//     const powershell = process.platform === 'win32' ? 'powershell.exe' : 'pwsh';
-//     const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, scanDir];
-//
-//     const stdout = await new Promise((resolve, reject) => {
-//       execFile(powershell, args, { timeout: 180000 }, (err, stdout, stderr) => {
-//         if (err) {
-//           reject(new Error(stderr?.trim() || stdout?.trim() || err.message));
-//           return;
-//         }
-//         resolve(stdout);
-//       });
-//     });
-//
-//     let payload;
-//     try {
-//       payload = JSON.parse(stdout.trim());
-//     } catch (_) {
-//       payload = { ok: false, error: stdout.trim() || 'No se recibió respuesta del escáner.' };
-//     }
-//
-//     if (!payload?.ok) {
-//       return res.status(400).json({ ok: false, error: payload?.error || 'No se pudo completar el escaneo.' });
-//     }
-//
-//     const files = Array.isArray(payload.files) ? payload.files : [];
-//     const data = files.map(file => {
-//       const relative = path.relative(uploadsDir, file).replace(/\\/g, '/');
-//       return {
-//         name: path.basename(file),
-//         path: relative,
-//       };
-//     });
-//
-//     res.json({ ok: true, files: data });
-//   } catch (err) {
-//     res.status(500).json({ ok: false, error: err.message || 'Error al escanear documentos' });
-//   }
-// });
-
 // Adjuntar documentos a una petición
 router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
   upload.array('archivo', 20)(req, res, (err) => {
@@ -313,10 +267,6 @@ router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
       const ruta = String(item.path || item.ruta || '').trim();
       if (!nombre || !ruta) continue;
 
-      // Si el archivo vino como upload real (multer), confirmamos que en verdad
-      // haya quedado escrito en disco antes de registrarlo en la base de datos.
-      // Esto evita que quede un adjunto "fantasma" que luego da 404 al abrirlo
-      // (por ejemplo si un antivirus lo puso en cuarentena justo después de subirlo).
       const esArchivoSubido = (req.files || []).some(f => f.filename === ruta);
       if (esArchivoSubido) {
         const rutaCompleta = path.join(uploadsDir, ruta);
@@ -400,7 +350,6 @@ router.post('/', noConsulta, async (req, res) => {
     const folio = await siguienteFolio();
 
     // Un usuario de area solo puede capturar peticiones para su propia area,
-    // sin importar que area_id venga en el body
     const scope     = scopeArea(req);
     const areaIdVal = scope || (area_id != null && area_id !== '' ? Number(area_id) : null);
 
@@ -441,7 +390,7 @@ router.put('/:id', noConsulta, async (req, res) => {
   try {
     const body = req.body;
 
-    // Un usuario de subarea solo puede cambiar el estado, nada mas
+    // Un usuario de subarea solo puede cambiar el estado
     if (req.user.rol === 'subarea_usuario') {
       const keys = Object.keys(body);
       if (keys.length !== 1 || keys[0] !== 'estado') {
@@ -722,7 +671,7 @@ router.post('/:id/transferir', noConsulta, async (req, res) => {
   }
 });
 
-// Enviar a una subarea de la propia area (usuario de area, o Administrador/Subadmin)
+// Enviar a una subarea de la propia area (usuario de area, o Administrador)
 router.post('/:id/enviar-subarea', async (req, res) => {
   try {
     if (!['area_usuario', 'jefe_area', 'Administrador', 'Subadmin'].includes(req.user.rol)) {

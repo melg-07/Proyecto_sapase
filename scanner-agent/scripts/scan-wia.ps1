@@ -4,22 +4,32 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Necesario para convertir las imágenes a JPEG real
 Add-Type -AssemblyName System.Drawing
 
-# UTF-8 para evitar problemas de codificación entre PowerShell y Node.js
+# ============================================================
+# UTF-8
+# ============================================================
+
 try {
   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
   $OutputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
+}
+catch {}
 
 function Log($msg) {
   [Console]::Error.WriteLine($msg)
 }
 
-# Archivo donde se guarda el resultado final
+# ============================================================
+# RESULTADO
+# ============================================================
+
 $resultPath = Join-Path $OutputDir 'result.json'
 
 function Write-Result($jsonString) {
+
   [System.IO.File]::WriteAllText(
     $resultPath,
     $jsonString,
@@ -34,7 +44,6 @@ function Write-Result($jsonString) {
 # ============================================================
 
 $WIA_DPS_DOCUMENT_HANDLING_SELECT = 3088
-$WIA_DPS_DOCUMENT_HANDLING_STATUS = 3087
 
 $WIA_IPA_DATATYPE = 4103
 $WIA_IPS_XRES     = 6147
@@ -47,8 +56,12 @@ $COLOR_RGB   = 3
 # ERRORES WIA
 # ============================================================
 
-$WIA_ERROR_PAPER_EMPTY = -2145320957
+$WIA_ERROR_PAPER_EMPTY  = -2145320957
 $WIA_ERROR_ITEM_DELETED = -2145320954
+
+# 0x80070057 - parámetro no válido.
+# En tu Kodak aparece cuando ya no puede realizar otro Transfer.
+$WIA_ERROR_INVALID_PARAMETER = -2147024809
 
 # ============================================================
 # OBTENER PROPIEDAD WIA
@@ -88,7 +101,7 @@ function Set-WiaProperty($item, $propId, $value) {
   }
   catch {
 
-    Log "Aviso: no se pudo ajustar la propiedad $propId ($($_.Exception.Message))"
+    Log "Aviso: no se pudo ajustar la propiedad $propId : $($_.Exception.Message)"
   }
 }
 
@@ -98,7 +111,10 @@ function Set-WiaProperty($item, $propId, $value) {
 
 try {
 
-  # Crear carpeta de salida si no existe
+  # ==========================================================
+  # CREAR CARPETA DE SALIDA
+  # ==========================================================
+
   if (-not (Test-Path $OutputDir)) {
 
     New-Item `
@@ -111,6 +127,8 @@ try {
   # ==========================================================
   # CONECTAR CON WIA
   # ==========================================================
+
+  Log "Conectando con WIA..."
 
   $manager = New-Object -ComObject WIA.DeviceManager
 
@@ -143,7 +161,9 @@ try {
 
     if (-not $deviceInfo) {
 
-      Log "No se encontro un dispositivo cuyo nombre contenga '$NombreDispositivo'. Se usara el primero disponible."
+      Log "No se encontro '$NombreDispositivo'."
+
+      Log "Se utilizara el primer dispositivo disponible."
     }
   }
 
@@ -162,6 +182,9 @@ try {
 
   $item = $device.Items.Item(1)
 
+  # ==========================================================
+  # MOSTRAR FORMATOS
+  # ==========================================================
 
   Log "Formatos soportados por el dispositivo:"
 
@@ -170,46 +193,74 @@ try {
     Log " - $fmt"
   }
 
+  # ==========================================================
+  # CONFIGURAR ALIMENTADOR
+  # ==========================================================
 
   Set-WiaProperty `
     $item `
     $WIA_DPS_DOCUMENT_HANDLING_SELECT `
     $FEEDER_FLAG
 
-  Set-wiaProperty `
+  # ==========================================================
+  # CONFIGURAR COLOR
+  # ==========================================================
+
+  Set-WiaProperty `
     $item `
     $WIA_IPA_DATATYPE `
-    $COLOR_RGB  
+    $COLOR_RGB
+
+  # ==========================================================
+  # RESOLUCION
+  # ==========================================================
+
   Set-WiaProperty `
     $item `
     $WIA_IPS_XRES `
     300
+
   Set-WiaProperty `
     $item `
     $WIA_IPS_YRES `
-    300    
+    300
 
+  Log "Configuracion: COLOR RGB, 300 DPI."
+
+  # ==========================================================
+  # VARIABLES DEL ESCANEO
+  # ==========================================================
 
   $files = @()
 
   $pageNum = 1
 
+  # Limite de seguridad
   $maxPages = 100
 
+  # ==========================================================
+  # ESCANEAR TODAS LAS HOJAS
+  # ==========================================================
 
   while ($pageNum -le $maxPages) {
 
     try {
 
+      Log "=========================================="
       Log "Escaneando pagina $pageNum..."
+      Log "=========================================="
 
-      $image = $null
-
+      # ------------------------------------------------------
+      # FORMATO QUE YA FUNCIONA EN TU KODAK S2070
+      # ------------------------------------------------------
 
       $format = "{B96B3CB1-0728-11D3-9D7B-0000F81EF32E}"
 
       Log "Usando formato: $format"
 
+      # ------------------------------------------------------
+      # ESCANEAR
+      # ------------------------------------------------------
 
       $image = $item.Transfer($format)
 
@@ -220,11 +271,11 @@ try {
 
       Log "Transfer() exitoso."
 
-
       Log "Formato real de imagen: $($image.FormatID)"
 
-      Log "Transfer() completado."
-
+      # ------------------------------------------------------
+      # ARCHIVO JPEG
+      # ------------------------------------------------------
 
       $filePath = Join-Path `
         $OutputDir `
@@ -232,119 +283,147 @@ try {
 
       if (Test-Path $filePath) {
 
-        Remove-Item `
-          $filePath `
-          -Force
+        Remove-Item $filePath -Force
       }
 
-      Log "Guardando en: $filePath"
+      # ------------------------------------------------------
+      # ARCHIVO TEMPORAL
+      # ------------------------------------------------------
 
-      # ==========================================================
-# CONVERTIR LA IMAGEN WIA A JPEG REAL
-# ==========================================================
+      $tempFile = Join-Path `
+        $OutputDir `
+        ("temp-{0:D4}.img" -f $pageNum)
 
-Log "Convirtiendo imagen a JPEG..."
+      try {
 
-$tempFile = Join-Path $OutputDir ("temp-{0:D4}.img" -f $pageNum)
+        if (Test-Path $tempFile) {
 
-try {
+          Remove-Item $tempFile -Force
+        }
 
-    # Guardar temporalmente la imagen en su formato original
-    if (Test-Path $tempFile) {
-        Remove-Item $tempFile -Force
-    }
+        # ----------------------------------------------------
+        # GUARDAR IMAGEN ORIGINAL
+        # ----------------------------------------------------
 
-    $image.SaveFile($tempFile)
+        Log "Guardando imagen original..."
 
-    Log "Imagen original guardada temporalmente."
+        $image.SaveFile($tempFile)
 
-    # Cargar la imagen con System.Drawing
-    $bitmap = [System.Drawing.Image]::FromFile($tempFile)
+        Log "Imagen original guardada."
 
-    try {
+        # ----------------------------------------------------
+        # ABRIR IMAGEN
+        # ----------------------------------------------------
 
-        # Guardar como JPEG real
-        $bitmap.Save(
-            $filePath,
-            [System.Drawing.Imaging.ImageFormat]::Jpeg
-        )
+        Log "Convirtiendo a JPEG..."
 
-    }
-    finally {
-
-        $bitmap.Dispose()
-    }
-
-    Log "JPEG real creado correctamente."
-
-}
-finally {
-
-    # Eliminar archivo temporal
-    if (Test-Path $tempFile) {
-        Remove-Item $tempFile -Force
-    }
-}
-
-      # Agregar archivo al resultado
-      $files += $filePath
-
-      $pageNum++
-
-      $statusProp = Get-WiaProperty `
-        $item `
-        $WIA_DPS_DOCUMENT_HANDLING_STATUS
-
-      $status = $null
-
-      if ($statusProp) {
+        $bitmap = [System.Drawing.Image]::FromFile($tempFile)
 
         try {
 
-          $status = $statusProp.Value
+          # --------------------------------------------------
+          # GUARDAR JPEG REAL
+          # --------------------------------------------------
+
+          $bitmap.Save(
+            $filePath,
+            [System.Drawing.Imaging.ImageFormat]::Jpeg
+          )
 
         }
-        catch {}
+        finally {
+
+          $bitmap.Dispose()
+        }
+
+        Log "JPEG creado correctamente."
+
       }
+      finally {
 
-      # Si existe el estado del alimentador y no hay papel,
-      # terminamos normalmente.
-      if ($null -ne $status) {
+        # ----------------------------------------------------
+        # ELIMINAR TEMPORAL
+        # ----------------------------------------------------
 
-        if (($status -band 1) -eq 0) {
+        if (Test-Path $tempFile) {
 
-          break
+          Remove-Item $tempFile -Force
         }
       }
 
-      if ($null -eq $status) {
+      # ------------------------------------------------------
+      # AGREGAR PAGINA A LA LISTA
+      # ------------------------------------------------------
 
-        break
-      }
+      $files += $filePath
+
+      Log "Pagina $pageNum guardada correctamente."
+
+      Log "Archivo: $filePath"
+
+      # ------------------------------------------------------
+      # SIGUIENTE PAGINA
+      # ------------------------------------------------------
+
+      $pageNum++
+
+      Log "Comprobando si hay otra hoja..."
+
+      # No usamos la propiedad 3087.
+      #
+      # En tu Kodak S2070 esa propiedad no está disponible
+      # correctamente.
+      #
+      # Por eso el siguiente Transfer() determina si todavía
+      # hay hojas.
+
     }
-
     catch {
 
       $hresult = $_.Exception.HResult
 
+      $message = $_.Exception.Message
+
+      Log "------------------------------------------"
+      Log "Transfer() finalizado."
+      Log "Mensaje: $message"
+      Log "HRESULT: $hresult"
+      Log "------------------------------------------"
+
+      # ======================================================
+      # FIN DEL ALIMENTADOR
+      # ======================================================
 
       if (
-        $hresult -eq $WIA_ERROR_PAPER_EMPTY -or
-        $hresult -eq $WIA_ERROR_ITEM_DELETED -or
-        $_.Exception.Message -match 'paper|papel'
+        $files.Count -gt 0 -and
+        (
+          $hresult -eq $WIA_ERROR_PAPER_EMPTY -or
+          $hresult -eq $WIA_ERROR_ITEM_DELETED -or
+          $hresult -eq $WIA_ERROR_INVALID_PARAMETER -or
+          $message -match 'paper|papel|empty|vac'
+        )
       ) {
 
-        Log "Fin del alimentador (no hay mas hojas)."
+        Log "No quedan mas hojas en el alimentador."
+
+        Log "Total de paginas escaneadas: $($files.Count)"
 
         break
       }
 
+      # ======================================================
+      # ERROR REAL
+      # ======================================================
 
-      Log "HRESULT exacto: $hresult (0x$($hresult.ToString('X')))"
+      Log "Error inesperado durante el escaneo."
 
       throw
     }
   }
+
+  # ==========================================================
+  # VALIDAR QUE HAYA ARCHIVOS
+  # ==========================================================
 
   if ($files.Count -eq 0) {
 
@@ -353,12 +432,27 @@ finally {
     exit 0
   }
 
+  # ==========================================================
+  # CREAR JSON DE ARCHIVOS
+  # ==========================================================
+
   $jsonFiles = (
     $files |
     ForEach-Object {
+
       '"' + ($_ -replace '\\', '\\\\') + '"'
+
     }
   ) -join ','
+
+  # ==========================================================
+  # RESULTADO FINAL
+  # ==========================================================
+
+  Log "=========================================="
+  Log "ESCANEO TERMINADO"
+  Log "Paginas escaneadas: $($files.Count)"
+  Log "=========================================="
 
   Write-Result (
     '{"ok":true,"files":[' +
@@ -377,6 +471,8 @@ catch {
     -replace '"', '\"' `
     -replace "`r`n", ' ' `
     -replace "`n", ' '
+
+  Log "ERROR GENERAL: $errMsg"
 
   Write-Result (
     '{"ok":false,"error":"' +
