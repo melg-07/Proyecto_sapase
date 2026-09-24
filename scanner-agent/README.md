@@ -3,10 +3,9 @@
 Este programa es lo que permite que el botón **"Escanear documentos"** de la
 página de SAPASE use el escáner **Kodak S2070** conectado a tu computadora.
 
-No usa NAPS2 ni ningún otro programa de escaneo: habla directo con el mismo
-driver (WIA) que instaló el software de Kodak (`InstallSoftware_s2000`) que
-ya tienes. Tú sigues usando Smart Touch normalmente para lo que ya haces con
-él; este agente solo escanea automáticamente cuando el sistema SAPASE lo pide.
+En este modelo, la ruta WIA no soporta bien el ADF multipágina, así que la
+configuración recomendada es usar **Smart Touch** o **TWAIN** del fabricante
+como motor principal. WIA queda como fallback para una sola hoja o para pruebas.
 
 ## ¿Por qué se necesita un programa aparte?
 
@@ -49,7 +48,10 @@ Abre `config.json` con el Bloc de notas:
 ```json
 {
   "puerto": 5175,
-  "nombreDispositivo": "Kodak",
+  "nombreDispositivo": "KODAK S2070 Scanner",
+  "modoEscaneo": "smarttouch",
+  "rutaSmartTouch": "",
+  "rutaTwain": "",
   "origenesPermitidos": [
     "http://localhost:3001",
     "http://127.0.0.1:3001"
@@ -57,6 +59,9 @@ Abre `config.json` con el Bloc de notas:
 }
 ```
 
+- `modoEscaneo`: usa `smarttouch`, `twain` o `wia`.
+- `rutaSmartTouch` y `rutaTwain`: ruta exacta del ejecutable del software del
+  fabricante si deseas automatizar el escaneo desde ahí.
 - `nombreDispositivo`: una palabra que esté contenida en el nombre que viste
   en el Paso 1 (por ejemplo `"Kodak"` o `"S2070"`), para que el agente elija
   ese escáner automáticamente sin preguntar. Si en esa computadora solo hay

@@ -38,12 +38,16 @@ function Write-Result($jsonString) {
 
   Write-Output $jsonString
 }
-
 # ============================================================
 # PROPIEDADES WIA
 # ============================================================
 
 $WIA_DPS_DOCUMENT_HANDLING_SELECT = 3088
+
+# Cantidad de páginas del ADF (WIA)
+# Algunos modelos usan 3096 y otros 6154.
+$WIA_IPS_PAGES     = 3096
+$WIA_IPS_PAGES_ALT = 6154
 
 $WIA_IPA_DATATYPE = 4103
 $WIA_IPS_XRES     = 6147
@@ -91,17 +95,21 @@ function Set-WiaProperty($item, $propId, $value) {
 
     Log "Aviso: el dispositivo no tiene la propiedad $propId, se omite."
 
-    return
+    return $false
   }
 
   try {
 
     $prop.Value = $value
 
+    return $true
+
   }
   catch {
 
     Log "Aviso: no se pudo ajustar la propiedad $propId : $($_.Exception.Message)"
+
+    return $false
   }
 }
 
@@ -138,6 +146,11 @@ try {
 
     exit 0
   }
+  Log "Conectando con WIA..."
+  $manager = New-Object -ComObject WIA.DeviceManager
+  if($manager.DeviceInfos.Count -eq 0){
+    Write-Result '{"ok":false,"error":"No se detecto ningun escaner por WIA.'
+  } 
 
   # ==========================================================
   # BUSCAR DISPOSITIVO
@@ -203,6 +216,51 @@ try {
     $FEEDER_FLAG
 
   # ==========================================================
+  # COMPROBAR SI EL DRIVER WIA SOPORTA MULTIPAGINA
+  # ==========================================================
+
+  $supportsMultiPage = $false
+  $props = @(
+    $WIA_IPS_PAGES,
+    $WIA_IPS_PAGES_ALT,
+    $WIA_DPS_DOCUMENT_HANDLING_SELECT
+  )
+
+  foreach ($propId in $props) {
+    if ($null -ne (Get-WiaProperty $device $propId) -or $null -ne (Get-WiaProperty $item $propId)) {
+      $supportsMultiPage = $true
+      break
+    }
+  }
+
+  if (-not $supportsMultiPage) {
+    Log "El driver WIA del escaner no expone propiedades de ADF multipagina (3096/6154/3088)."
+    Log "Este modelo solo admite escaneo multipagina con el software del fabricante o con TWAIN, no con WIA." 
+    Write-Result '{"ok":false,"error":"Este escáner no admite escaneo multipágina por WIA. Usa el software del fabricante (Smart Touch) o TWAIN para escanear varias páginas."}'
+    exit 0
+  }
+
+  # ==========================================================
+  # CONFIGURAR ESCANEO DE TODAS LAS HOJAS DEL ADF
+  # ==========================================================
+
+  $pagesConfigured = $false
+
+  $pagesConfigured = Set-WiaProperty $device $WIA_IPS_PAGES 0
+
+  if (-not $pagesConfigured) {
+    $pagesConfigured = Set-WiaProperty $item $WIA_IPS_PAGES 0
+  }
+
+  if (-not $pagesConfigured) {
+    $pagesConfigured = Set-WiaProperty $item $WIA_IPS_PAGES_ALT 0
+  }
+
+  if (-not $pagesConfigured) {
+    Log "Aviso: no se pudo configurar el escaneo de todas las paginas del ADF. El escaner puede continuar solo con la primera hoja."
+  }
+
+  # ==========================================================
   # CONFIGURAR COLOR
   # ==========================================================
 
@@ -251,7 +309,7 @@ try {
       Log "=========================================="
 
       # ------------------------------------------------------
-      # FORMATO QUE YA FUNCIONA EN TU KODAK S2070
+      # FORMATO QUE YA FUNCIONA EN KODAK S2070
       # ------------------------------------------------------
 
       $format = "{B96B3CB1-0728-11D3-9D7B-0000F81EF32E}"
@@ -360,7 +418,6 @@ try {
       Log "Pagina $pageNum guardada correctamente."
 
       Log "Archivo: $filePath"
-
       # ------------------------------------------------------
       # SIGUIENTE PAGINA
       # ------------------------------------------------------
@@ -368,14 +425,6 @@ try {
       $pageNum++
 
       Log "Comprobando si hay otra hoja..."
-
-      # No usamos la propiedad 3087.
-      #
-      # En tu Kodak S2070 esa propiedad no está disponible
-      # correctamente.
-      #
-      # Por eso el siguiente Transfer() determina si todavía
-      # hay hojas.
 
     }
     catch {
@@ -399,7 +448,6 @@ try {
         (
           $hresult -eq $WIA_ERROR_PAPER_EMPTY -or
           $hresult -eq $WIA_ERROR_ITEM_DELETED -or
-          $hresult -eq $WIA_ERROR_INVALID_PARAMETER -or
           $message -match 'paper|papel|empty|vac'
         )
       ) {
@@ -409,6 +457,13 @@ try {
         Log "Total de paginas escaneadas: $($files.Count)"
 
         break
+      }
+
+      if ($hresult -eq $WIA_ERROR_INVALID_PARAMETER -and $files.Count -gt 0) {
+        Log "El driver WIA rechazó el siguiente Transfer(). Esto suele indicar que el dispositivo no soporta ADF multipagina por WIA."
+        Log "Solución: usar Smart Touch / TWAIN del fabricante para escanear varios documentos."
+        Write-Result '{"ok":false,"error":"Este escáner no admite escaneo multipágina por WIA. Usa Smart Touch o TWAIN del fabricante para escanear varias hojas."}'
+        exit 0
       }
 
       # ======================================================

@@ -1,6 +1,9 @@
 {
   "puerto": 5175,
   "nombreDispositivo": "KODAK S2070 Scanner",
+  "modoEscaneo": "twain",
+  "rutaSmartTouch": "C:\\Program Files (x86)\\Kodak\\Document Imaging\\kds_s2000\\Smart Touch\\Workstation\\Plugins\\Shared Files\\Abbyy\\Bin\\ScanTwain.exe",
+  "rutaTwain": "C:\\Program Files (x86)\\Kodak\\Document Imaging\\kds_s2000\\Smart Touch\\Workstation\\Plugins\\Shared Files\\Abbyy\\Bin\\ScanTwain.exe",
   "origenesPermitidos": [
     "http://localhost:3001",
     "http://127.0.0.1:3001",
