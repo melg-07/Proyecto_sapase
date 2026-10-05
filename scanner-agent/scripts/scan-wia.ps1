@@ -146,12 +146,6 @@ try {
 
     exit 0
   }
-  Log "Conectando con WIA..."
-  $manager = New-Object -ComObject WIA.DeviceManager
-  if($manager.DeviceInfos.Count -eq 0){
-    Write-Result '{"ok":false,"error":"No se detecto ningun escaner por WIA.'
-  } 
-
   # ==========================================================
   # BUSCAR DISPOSITIVO
   # ==========================================================
@@ -210,10 +204,17 @@ try {
   # CONFIGURAR ALIMENTADOR
   # ==========================================================
 
-  Set-WiaProperty `
-    $item `
+  $feederConfigured = Set-WiaProperty `
+    $device `
     $WIA_DPS_DOCUMENT_HANDLING_SELECT `
     $FEEDER_FLAG
+
+  if (-not $feederConfigured) {
+    $feederConfigured = Set-WiaProperty `
+      $item `
+      $WIA_DPS_DOCUMENT_HANDLING_SELECT `
+      $FEEDER_FLAG
+  }
 
   # ==========================================================
   # COMPROBAR SI EL DRIVER WIA SOPORTA MULTIPAGINA
@@ -246,14 +247,18 @@ try {
 
   $pagesConfigured = $false
 
-  $pagesConfigured = Set-WiaProperty $device $WIA_IPS_PAGES 0
+  $pagesConfigured = Set-WiaProperty $item $WIA_IPS_PAGES_ALT 0
+
+  if (-not $pagesConfigured) {
+    $pagesConfigured = Set-WiaProperty $device $WIA_IPS_PAGES_ALT 0
+  }
 
   if (-not $pagesConfigured) {
     $pagesConfigured = Set-WiaProperty $item $WIA_IPS_PAGES 0
   }
 
   if (-not $pagesConfigured) {
-    $pagesConfigured = Set-WiaProperty $item $WIA_IPS_PAGES_ALT 0
+    $pagesConfigured = Set-WiaProperty $device $WIA_IPS_PAGES 0
   }
 
   if (-not $pagesConfigured) {
@@ -460,10 +465,8 @@ try {
       }
 
       if ($hresult -eq $WIA_ERROR_INVALID_PARAMETER -and $files.Count -gt 0) {
-        Log "El driver WIA rechazó el siguiente Transfer(). Esto suele indicar que el dispositivo no soporta ADF multipagina por WIA."
-        Log "Solución: usar Smart Touch / TWAIN del fabricante para escanear varios documentos."
-        Write-Result '{"ok":false,"error":"Este escáner no admite escaneo multipágina por WIA. Usa Smart Touch o TWAIN del fabricante para escanear varias hojas."}'
-        exit 0
+        Log "El controlador terminó el alimentador después de $($files.Count) pagina(s)."
+        break
       }
 
       # ======================================================

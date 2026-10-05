@@ -505,10 +505,14 @@ async function confirmCambioEstado() {
 // Subir Documentos en Formulario
 let _subirDocumentosStaged = [];
 
+function _escapeFileName(value) {
+  return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+}
+
 function _addFilesToStaged(fileList) {
   const files = Array.from(fileList || []);
   if (!files.length) return;
-  files.forEach(file => _subirDocumentosStaged.push(file));
+  files.forEach(file => _subirDocumentosStaged.push({ file, previewUrl: URL.createObjectURL(file) }));
   _renderSubirDocumentosPreview();
 }
 
@@ -519,10 +523,10 @@ function _renderSubirDocumentosPreview() {
     list.innerHTML = '';
     return;
   }
-  list.innerHTML = _subirDocumentosStaged.map((file, idx) => `
+  list.innerHTML = _subirDocumentosStaged.map(({ file, previewUrl }, idx) => `
     <li style="display:flex; align-items:center; gap:8px; padding:8px 10px; margin-bottom:6px; background:var(--cream); border-radius:6px; font-size:12px;">
       <span style="font-size:18px;">&#128206;</span>
-      <span style="flex:1; word-break:break-all;">${file.name}</span>
+      <a href="${_escapeFileName(previewUrl)}" target="_blank" rel="noopener" style="flex:1; word-break:break-all; color:#1565c0;">${_escapeFileName(file.name)}</a>
       <button type="button" style="background:none; border:none; cursor:pointer; color:#999; font-size:16px; line-height:1;"
               onclick="_removeStagedDocumento(${idx})">&#215;</button>
     </li>
@@ -530,6 +534,7 @@ function _renderSubirDocumentosPreview() {
 }
 
 function _removeStagedDocumento(idx) {
+  URL.revokeObjectURL(_subirDocumentosStaged[idx].previewUrl);
   _subirDocumentosStaged.splice(idx, 1);
   _renderSubirDocumentosPreview();
 }
@@ -547,6 +552,7 @@ function handleSubirDocumentosFile(files) {
 }
 
 function _clearSubirDocumentosFile() {
+  _subirDocumentosStaged.forEach(item => URL.revokeObjectURL(item.previewUrl));
   _subirDocumentosStaged = [];
   const inp = document.getElementById('subir-documentos-file');
   if (inp) inp.value = '';
@@ -564,22 +570,58 @@ async function confirmSubirDocumentos() {
     return;
   }
 
-  _subirDocumentosStaged.forEach(file => {
+  _subirDocumentosStaged.forEach(({ file, previewUrl }) => {
     _pendingUploadedDocs.push({
       name: file.name,
       path: file.name,
       file: file,
+      previewUrl,
     });
   });
 
   const total = _subirDocumentosStaged.length;
   renderUploadedDocs();
   showToast(`${total} documento(s) agregado(s)`, 'success');
-  _clearSubirDocumentosFile();
+  _subirDocumentosStaged = [];
+  const inp = document.getElementById('subir-documentos-file');
+  if (inp) inp.value = '';
+  _renderSubirDocumentosPreview();
   closeModal('modal-subir-documentos');
 }
 
 const SCANNER_AGENT_URL = (localStorage.getItem('sapase_scanner_agent_url') || 'http://127.0.0.1:5175').replace(/\/$/, '');
+const SCAN2FORM_BRIDGE_URL = 'http://127.0.0.1:3000';
+
+async function getScan2FormClient() {
+  try {
+    const { Scan2Form } = await import(`${SCAN2FORM_BRIDGE_URL}/dist/esm/scanner-client.js`);
+    const scanner = new Scan2Form({ bridgeUrl: SCAN2FORM_BRIDGE_URL, requestTimeoutMs: 180000 });
+    const health = await scanner.getHealth();
+    return health.success
+      ? { scanner, unavailableReason: '' }
+      : { scanner: null, unavailableReason: health.error || 'El puente Scan2Form no está disponible.' };
+  } catch (err) {
+    return { scanner: null, unavailableReason: err.message || 'No se pudo conectar con Scan2Form.' };
+  }
+}
+
+async function escanearConAgenteSAPASE() {
+  const res = await fetch(SCANNER_AGENT_URL + '/scan', { method: 'POST' });
+  if (!res.ok) {
+    let errMsg = 'No se pudo completar el escaneo';
+    try {
+      const errData = await res.json();
+      errMsg = errData.error || errMsg;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+
+  const blob = await res.blob();
+  if (!blob || blob.size === 0) throw new Error('El escáner no devolvió ningún documento');
+
+  const fileName = `Escaneo-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`;
+  return new File([blob], fileName, { type: blob.type || 'application/pdf' });
+}
 
 async function escanearDocumento() {
   const btn = document.getElementById('btn-escanear-documentos');
@@ -588,30 +630,35 @@ async function escanearDocumento() {
   showToast('Escaneando documento, espera un momento...', 'success');
 
   try {
-    const res = await fetch(SCANNER_AGENT_URL + '/scan', { method: 'POST' });
-
-    if (!res.ok) {
-      let errMsg = 'No se pudo completar el escaneo';
+    const { scanner, unavailableReason } = await getScan2FormClient();
+    let file;
+    let engineMessage;
+    if (scanner) {
+      const result = await scanner.scan({ format: 'pdf' });
+      if (!result.success || !result.file) {
+        throw new Error(result.error || 'Scan2Form no devolvió ningún documento.');
+      }
+      file = result.file;
+      engineMessage = 'Documento escaneado con Scan2Form y agregado a la petición';
+    } else {
+      console.warn('[SAPASE] Scan2Form no está disponible; se usará el agente anterior:', unavailableReason);
       try {
-        const errData = await res.json();
-        errMsg = errData.error || errMsg;
-      } catch (_) {}
-      throw new Error(errMsg);
+        file = await escanearConAgenteSAPASE();
+      } catch (legacyError) {
+        throw new Error(`Scan2Form: ${unavailableReason}. Agente SAPASE: ${legacyError.message}`);
+      }
+      engineMessage = 'Documento escaneado con el agente SAPASE y agregado a la petición';
     }
 
-    const blob = await res.blob();
-    if (!blob || blob.size === 0) throw new Error('El escáner no devolvió ningún documento');
-
-    const fileName = `Escaneo-${new Date().toISOString().replace(/[:.]/g, '-')}.pdf`;
-    const file = new File([blob], fileName, { type: blob.type || 'application/pdf' });
-
-    _pendingUploadedDocs.push({ name: fileName, path: fileName, file });
+    _pendingUploadedDocs.push({ name: file.name, path: file.name, file, previewUrl: URL.createObjectURL(file) });
     renderUploadedDocs();
-    showToast('Documento escaneado y agregado a la petición', 'success');
+    showToast(engineMessage, 'success');
   } catch (err) {
-    const msg = (err && err.message === 'Failed to fetch')
-      ? 'No se detectó el Agente de Escaneo en esta computadora. Instálalo y ábrelo, y verifica que el escáner esté encendido y conectado.'
-      : (err.message || 'Error al escanear');
+    const errorMessage = err && err.message ? err.message : 'Error al escanear';
+    const msg = errorMessage.includes('Failed to fetch')
+      ? 'No se pudo conectar con los puentes de escaneo. Inicia iniciar-scan2form.bat o iniciar-agente.bat y verifica que el origen de SAPASE esté permitido.'
+      : errorMessage;
+    console.error('[SAPASE] Error al escanear el documento:', err);
     showToast(msg, 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = originalText; }

@@ -19,6 +19,9 @@ function clearForm() {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-area').value = '';
+  _pendingUploadedDocs.forEach(item => {
+    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  });
   _pendingUploadedDocs = [];
   renderUploadedDocs();
   initForm();
@@ -36,7 +39,7 @@ function renderUploadedDocs() {
   panel.style.display = 'block';
   list.innerHTML = _pendingUploadedDocs.map((item, idx) => `
     <li style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-      <span style="flex:1;">${item.name || item.nombre || 'Documento'}</span>
+      <a href="${_escapeFileName(item.previewUrl || '')}" target="_blank" rel="noopener" style="flex:1; color:#1565c0;">${_escapeFileName(item.name || item.nombre || 'Documento')}</a>
       <button type="button" title="Quitar" style="background:none; border:none; cursor:pointer; color:#999; font-size:14px;"
               onclick="removePendingUploadedDoc(${idx})">&#215;</button>
     </li>
@@ -44,6 +47,7 @@ function renderUploadedDocs() {
 }
 
 function removePendingUploadedDoc(idx) {
+  if (_pendingUploadedDocs[idx]?.previewUrl) URL.revokeObjectURL(_pendingUploadedDocs[idx].previewUrl);
   _pendingUploadedDocs.splice(idx, 1);
   renderUploadedDocs();
 }
@@ -355,7 +359,7 @@ function _renderViewModal(d) {
       ${field2col('Demanda',         `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
       ${d.observaciones ? field2col('Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
-      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" style="color:var(--guinda);">📎 ${a.nombre}</a></div>`).join('')}</div>`) : ''}
+      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" rel="noopener" style="color:#1565c0;">&#128206; ${a.nombre}</a></div>`).join('')}</div>`) : ''}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
       ${field2('Prioridad', `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
@@ -391,8 +395,8 @@ function field2col(label, val) {
 function historialEstadosHTML(historial) {
   const items = historial.map(h => {
     const archivoLink = h.archivoRuta
-      ? `<a href="/uploads/${h.archivoRuta}" target="_blank"
-            style="color:var(--guinda); font-size:11px; display:inline-flex; align-items:center; gap:3px; margin-top:4px;">
+      ? `<a href="/uploads/${h.archivoRuta}" target="_blank" rel="noopener"
+        style="color:#1565c0; font-size:11px; display:inline-flex; align-items:center; gap:3px; margin-top:4px;">
            &#128206; ${h.archivoNombre}
          </a>`
       : '';

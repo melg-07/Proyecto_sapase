@@ -128,7 +128,8 @@ async function ejecutarEscaneoSmartTouch(modoEscaneo, res) {
     });
   }
 
-  const outputDir = await obtenerDirectorioSalidaSmartTouch(exePath);
+  const outputDirs = obtenerDirectoriosSalidaSmartTouch(exePath);
+  const archivosAntes = capturarArchivosSalida(outputDirs);
 
   console.log('[SAPASE Agente] Lanzando Smart Touch para escanear...');
 
@@ -148,8 +149,11 @@ async function ejecutarEscaneoSmartTouch(modoEscaneo, res) {
   }
 
   try {
-    const filePath = await esperarArchivoEscaneado(outputDir, 180000);
-    const pdfBytes = await convertirArchivoAPdf(filePath);
+    const files = await esperarArchivosEscaneados(outputDirs, 180000, archivosAntes);
+    const pdfBytes = await convertirArchivosAPdf(files);
+    const pdf = await PDFDocument.load(pdfBytes);
+    if (pdf.getPageCount() < 1) throw new Error('El PDF del escaneo no contiene páginas.');
+    console.log('[SAPASE Agente] PDF generado con', pdf.getPageCount(), 'página(s) desde TWAIN/Smart Touch');
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="escaneo-${Date.now()}.pdf"`);
@@ -160,46 +164,70 @@ async function ejecutarEscaneoSmartTouch(modoEscaneo, res) {
   }
 }
 
-function obtenerDirectorioSalidaSmartTouch(exePath) {
+function obtenerDirectoriosSalidaSmartTouch(exePath) {
   const candidates = new Set();
   const exeDir = path.dirname(exePath);
+  const documentsRoot = path.join(os.homedir(), 'Documents');
+  const localSmartTouchRoot = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Smart Touch', 's2000');
 
   candidates.add(path.join(exeDir, 'output'));
   candidates.add(path.join(exeDir, 'Output'));
   candidates.add(path.join(exeDir, 'exports'));
   candidates.add(path.join(exeDir, 'Exports'));
-
-  const documentsRoot = path.join(os.homedir(), 'Documents');
   candidates.add(path.join(documentsRoot, 'Smart Touch', 's2000', 'output'));
   candidates.add(path.join(documentsRoot, 'Smart Touch', 'output'));
   candidates.add(path.join(documentsRoot, 's2000', 'output'));
+  candidates.add(path.join(documentsRoot, 'Smart Touch', 's2000'));
+  candidates.add(localSmartTouchRoot);
 
-  const selected = [...candidates].find(dir => fs.existsSync(dir));
-  return selected || [...candidates][0];
+  return [...candidates];
 }
 
-async function esperarArchivoEscaneado(outputDir, timeoutMs) {
+const EXTENSIONES_ESCANEO = ['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff'];
+
+function listarArchivosSalida(outputDirs) {
+  return [...new Set(outputDirs.flatMap(dir => listFilesRecursive(dir)))]
+    .filter(file => EXTENSIONES_ESCANEO.includes(path.extname(file).toLowerCase()));
+}
+
+function capturarArchivosSalida(outputDirs) {
+  return new Map(listarArchivosSalida(outputDirs).map(file => {
+    const stat = fs.statSync(file);
+    return [file, `${stat.size}:${stat.mtimeMs}`];
+  }));
+}
+
+async function esperarArchivosEscaneados(outputDirs, timeoutMs, archivosAntes) {
   const start = Date.now();
-  const validExt = ['.pdf', '.png', '.jpg', '.jpeg', '.tif', '.tiff'];
+  let firmaAnterior = '';
+  let estableDesde = 0;
 
   while (Date.now() - start < timeoutMs) {
-    const candidates = [];
+    const files = listarArchivosSalida(outputDirs).filter(file => {
+      const stat = fs.statSync(file);
+      const firma = `${stat.size}:${stat.mtimeMs}`;
+      return !archivosAntes.has(file) || archivosAntes.get(file) !== firma;
+    });
 
-    for (const dir of [outputDir, path.dirname(outputDir)]) {
-      if (!dir || !fs.existsSync(dir)) continue;
+    if (files.length) {
+      const firma = files.map(file => {
+        const stat = fs.statSync(file);
+        return `${file}:${stat.size}:${stat.mtimeMs}`;
+      }).sort().join('|');
 
-      const files = listFilesRecursive(dir)
-        .filter(file => validExt.includes(path.extname(file).toLowerCase()));
-
-      candidates.push(...files);
+      if (firma !== firmaAnterior) {
+        firmaAnterior = firma;
+        estableDesde = Date.now();
+      } else if (Date.now() - estableDesde >= 10000) {
+        const pdfFiles = files.filter(file => path.extname(file).toLowerCase() === '.pdf');
+        return (pdfFiles.length ? pdfFiles : files).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      }
+    } else {
+      firmaAnterior = '';
+      estableDesde = 0;
     }
 
-    if (candidates.length > 0) {
-      candidates.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-      return candidates[0];
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   throw new Error('Smart Touch no generó ningún archivo de escaneo en el tiempo esperado. Escanea manualmente el documento y asegúrate de que se guarde en la carpeta de salida del software.');
@@ -220,27 +248,39 @@ function listFilesRecursive(dir) {
   return results;
 }
 
-async function convertirArchivoAPdf(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-
-  if (ext === '.pdf') {
-    return fs.readFileSync(filePath);
+async function convertirArchivosAPdf(files) {
+  if (files.length === 1 && path.extname(files[0]).toLowerCase() === '.pdf') {
+    const bytes = fs.readFileSync(files[0]);
+    await PDFDocument.load(bytes);
+    return bytes;
   }
 
-  if (['.png', '.jpg', '.jpeg'].includes(ext)) {
-    const bytes = fs.readFileSync(filePath);
-    const pdf = await PDFDocument.create();
-    const img = ext === '.png' ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
-    const page = pdf.addPage([img.width, img.height]);
-    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
-    return pdf.save();
+  const pdf = await PDFDocument.create();
+  for (const filePath of files) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === '.pdf') {
+      const source = await PDFDocument.load(fs.readFileSync(filePath));
+      const pages = await pdf.copyPages(source, source.getPageIndices());
+      pages.forEach(page => pdf.addPage(page));
+      continue;
+    }
+
+    if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+      const bytes = fs.readFileSync(filePath);
+      const img = ext === '.png' ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
+      const page = pdf.addPage([img.width, img.height]);
+      page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+      continue;
+    }
+
+    if (['.tif', '.tiff'].includes(ext)) {
+      throw new Error('Smart Touch generó un TIFF, pero este motor requiere que el archivo salga como PDF o imagen JPG/PNG. Configura la salida del software a PDF.');
+    }
+
+    throw new Error('El archivo generado por Smart Touch no es compatible con PDF: ' + filePath);
   }
 
-  if (['.tif', '.tiff'].includes(ext)) {
-    throw new Error('Smart Touch generó un TIFF, pero este motor requiere que el archivo salga como PDF o imagen JPG/PNG. Configura la salida del software a PDF.');
-  }
-
-  throw new Error('El archivo generado por Smart Touch no es compatible con PDF: ' + filePath);
+  return pdf.save();
 }
 
 async function imagenesAPdf(files) {
@@ -264,12 +304,16 @@ function cleanup(dir) {
   fs.rm(dir, { recursive: true, force: true }, () => {});
 }
 
-app.listen(PUERTO, '127.0.0.1', () => {
-  console.log('==================================================');
-  console.log('  Agente de Escaneo SAPASE');
-  console.log(`  Escuchando en http://127.0.0.1:${PUERTO}`);
-  console.log(`  Dispositivo configurado: "${NOMBRE_DISPOSITIVO || '(el primero disponible)'}"`);
-  console.log('  Deja esta ventana abierta mientras uses el escaneo');
-  console.log('  desde la página de SAPASE. Ciérrala cuando termines.');
-  console.log('==================================================');
-});
+if (require.main === module) {
+  app.listen(PUERTO, '127.0.0.1', () => {
+    console.log('==================================================');
+    console.log('  Agente de Escaneo SAPASE');
+    console.log(`  Escuchando en http://127.0.0.1:${PUERTO}`);
+    console.log(`  Dispositivo configurado: "${NOMBRE_DISPOSITIVO || '(el primero disponible)'}"`);
+    console.log('  Deja esta ventana abierta mientras uses el escaneo');
+    console.log('  desde la página de SAPASE. Ciérrala cuando termines.');
+    console.log('==================================================');
+  });
+}
+
+module.exports = { convertirArchivosAPdf };
