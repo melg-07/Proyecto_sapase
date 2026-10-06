@@ -7,6 +7,7 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-backdrop').classList.toggle('open');
 }
+//dios dame paciencia
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
