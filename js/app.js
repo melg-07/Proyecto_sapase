@@ -7,7 +7,7 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-backdrop').classList.toggle('open');
 }
-//dios dame paciencia
+//dios dame paciencia y no fuerza
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
