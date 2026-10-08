@@ -64,6 +64,29 @@ async function siguienteFolio() {
   return `F-${num}`;
 }
 
+// Helper: renombra un archivo subido para incluir el folio de la peticion.
+// Ej: 1759876543-abc.pdf  ->  F-00042-1759876543.pdf
+function renombrarConFolio(filename, folio) {
+  if (!filename || !folio) return filename;
+  if (filename.startsWith(folio + '-')) return filename; // ya tiene folio, no tocar
+
+  const ext        = path.extname(filename);
+  const viejoPath  = path.join(uploadsDir, filename);
+  const nuevoNom   = `${folio}-${Date.now()}${ext}`;
+  const nuevoPath  = path.join(uploadsDir, nuevoNom);
+
+  try {
+    if (fs.existsSync(viejoPath)) {
+      fs.renameSync(viejoPath, nuevoPath);
+      return nuevoNom;
+    }
+    log('ERROR', `[renombrarConFolio] No existe el archivo origen: ${viejoPath}`);
+  } catch (err) {
+    log('ERROR', `[renombrarConFolio] No se pudo renombrar ${filename} -> ${nuevoNom}: ${err.message}`);
+  }
+  return filename;
+}
+
 async function loadDemandaDetails(id) {
   const [hist] = await db.execute(
     `SELECT t.transferido_en, ao.nombre AS area_origen, ad.nombre AS area_destino,
@@ -163,7 +186,6 @@ router.get('/reportes/lista', async (req, res) => {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para ver las observaciones' });
     }
 
-    // Se filtra por el area ACTUAL de la demanda (d.area_id)
     let sql = `
       SELECT r.id, r.demanda_id, r.nota, r.creado_en,
              d.folio, d.remitente, d.asunto, d.estado, d.area_id,
@@ -235,13 +257,16 @@ router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
 }, async (req, res) => {
   try {
     const demandaId = req.params.id;
-    const [dem] = await db.execute('SELECT id, area_id FROM demandas WHERE id = ?', [demandaId]);
+    const [dem] = await db.execute('SELECT id, area_id, folio FROM demandas WHERE id = ?', [demandaId]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
     const scope = scopeArea(req);
     if (scope && Number(dem[0].area_id) !== Number(scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
+
+    // Folio de la peticion (para nombrar los archivos en disco)
+    const folio = dem[0].folio || null;
 
     const payloadItems = [];
     if (typeof req.body.archivos === 'string') {
@@ -264,7 +289,7 @@ router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
     const fallidos = [];
     for (const item of items) {
       const nombre = String(item.name || item.nombre || path.basename(item.path || '')).trim();
-      const ruta = String(item.path || item.ruta || '').trim();
+      let ruta     = String(item.path || item.ruta || '').trim();
       if (!nombre || !ruta) continue;
 
       const esArchivoSubido = (req.files || []).some(f => f.filename === ruta);
@@ -275,6 +300,8 @@ router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
           fallidos.push(nombre);
           continue;
         }
+        // ⬇️ Renombramos con el folio ANTES de guardar en BD
+        ruta = renombrarConFolio(ruta, folio);
       }
 
       await db.execute(
@@ -349,7 +376,6 @@ router.post('/', noConsulta, async (req, res) => {
     const id    = 'D-' + Date.now();
     const folio = await siguienteFolio();
 
-    // Un usuario de area solo puede capturar peticiones para su propia area,
     const scope     = scopeArea(req);
     const areaIdVal = scope || (area_id != null && area_id !== '' ? Number(area_id) : null);
 
@@ -390,7 +416,6 @@ router.put('/:id', noConsulta, async (req, res) => {
   try {
     const body = req.body;
 
-    // Un usuario de subarea solo puede cambiar el estado
     if (req.user.rol === 'subarea_usuario') {
       const keys = Object.keys(body);
       if (keys.length !== 1 || keys[0] !== 'estado') {
@@ -398,22 +423,17 @@ router.put('/:id', noConsulta, async (req, res) => {
       }
     }
 
-    // Estado: Administrador, Subadmin, el usuario de la subarea a la que fue enviada, o el jefe de area
     if ('estado' in body && !['Administrador', 'Subadmin', 'subarea_usuario', 'jefe_area'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar el estado' });
     }
-    // Prioridad: Administrador, Subadmin, el usuario de area o el jefe de area
     if ('prioridad' in body && !['Administrador', 'Subadmin', 'area_usuario', 'jefe_area'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar la prioridad' });
     }
 
-    // Leer valores actuales para detectar cambios
     const [current] = await db.execute('SELECT * FROM demandas WHERE id = ?', [req.params.id]);
     if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     const before = current[0];
 
-    // Un usuario de area solo puede editar peticiones de su propia area;
-    // un usuario de subarea, solo las que fueron enviadas a la suya
     const scope    = scopeArea(req);
     const subScope = scopeSubarea(req);
     if (scope && Number(before.area_id) !== Number(scope)) {
@@ -468,7 +488,6 @@ router.put('/:id', noConsulta, async (req, res) => {
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
-    // Registrar qué campos cambiaron
     const labelMap = {
       folio_ref:      'Folio Referencia',
       remitente:      'Remitente',
@@ -494,7 +513,7 @@ router.put('/:id', noConsulta, async (req, res) => {
     const changes = {};
     for (const [bodyKey, col] of Object.entries(bodyToCol)) {
       if (!(bodyKey in body)) continue;
-      if (bodyKey === 'area_id' && scope) continue; // el area no se modifico (usuario de area)
+      if (bodyKey === 'area_id' && scope) continue;
       let newVal;
       if (bodyKey === 'area_id') {
         newVal = body[bodyKey] != null && body[bodyKey] !== '' ? Number(body[bodyKey]) : null;
@@ -557,7 +576,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'Se requiere un archivo adjunto' });
     }
 
-    const [dem] = await db.execute('SELECT estado, area_id, subarea_id FROM demandas WHERE id = ?', [req.params.id]);
+    const [dem] = await db.execute('SELECT estado, area_id, subarea_id, folio FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -574,25 +593,31 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
+    // ⬇️ Renombramos el archivo de evidencia con el folio de la peticion
+    const archivoRuta = renombrarConFolio(req.file.filename, dem[0].folio);
+
     await db.execute('UPDATE demandas SET estado = ? WHERE id = ?', [estado, req.params.id]);
 
     await db.execute(
       `INSERT INTO historial_estados
          (demanda_id, estado_anterior, estado_nuevo, archivo_nombre, archivo_ruta, comentario, cambiado_por)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [req.params.id, dem[0].estado, estado, req.file.originalname, req.file.filename, comentario, req.user.id]
+      [req.params.id, dem[0].estado, estado, req.file.originalname, archivoRuta, comentario, req.user.id]
     );
 
     const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
     res.json({ ok: true, data: rows[0] });
   } catch (err) {
-    if (req.file) { try { fs.unlinkSync(req.file.path); } catch (_) {} }
+    if (req.file) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {
+        try { fs.unlinkSync(path.join(uploadsDir, path.basename(req.file.filename))); } catch (_) {}
+      }
+    }
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
 // Reportar un problema / observacion sobre una peticion (usuario de area).
-// Queda visible para el jefe de esa area y para Administrador/Subadmin.
 router.post('/:id/reportar', noConsulta, async (req, res) => {
   try {
     if (req.user.rol !== 'area_usuario') {
@@ -671,7 +696,7 @@ router.post('/:id/transferir', noConsulta, async (req, res) => {
   }
 });
 
-// Enviar a una subarea de la propia area (usuario de area, o Administrador)
+// Enviar a una subarea de la propia area
 router.post('/:id/enviar-subarea', async (req, res) => {
   try {
     if (!['area_usuario', 'jefe_area', 'Administrador', 'Subadmin'].includes(req.user.rol)) {

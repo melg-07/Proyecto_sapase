@@ -186,7 +186,6 @@ async function apiGuardarAdjuntosDemanda(id, archivos) {
   });
 
   if (!hasFiles) {
-    // No hay archivos binarios reales (caso poco común): se manda solo la metadata.
     const res = await apiFetch('/demandas/' + id + '/adjuntos', {
       method: 'POST',
       body: JSON.stringify({ archivos }),
@@ -211,8 +210,6 @@ async function apiGuardarAdjuntosDemanda(id, archivos) {
     if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
     throw new Error(data.error || 'Error en la solicitud');
   }
-  // El servidor puede devolver ok:true junto con un aviso de que algún
-  // archivo no se pudo guardar en disco (ver backend/routes/demandas.js).
   if (data.error) showToast(data.error, 'error');
   return data.data;
 }

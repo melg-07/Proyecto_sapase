@@ -7,7 +7,6 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebar-backdrop').classList.toggle('open');
 }
-//dios dame paciencia y no fuerza
 
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
@@ -213,7 +212,7 @@ function hideAreaDetail() {
   selectedArea = null;
 }
 
-// Resumen de peticiones por subarea (pagina "Subareas", solo jefe de area)
+// Resumen de peticiones por subarea
 async function renderSubareasPanel() {
   const tbody = document.getElementById('subareas-panel-table');
   if (!tbody) return;
@@ -244,7 +243,7 @@ async function renderSubareasPanel() {
   }
 }
 
-// Gestion de subareas (pagina "Subareas" del administrador: agregar/eliminar subareas de un area)
+// Gestion de subareas
 let _gsSelectedAreaId = null;
 
 function renderGestionSubareas() {
@@ -651,7 +650,12 @@ async function escanearDocumento() {
       engineMessage = 'Documento escaneado con el agente SAPASE y agregado a la petición';
     }
 
-    _pendingUploadedDocs.push({ name: file.name, path: file.name, file, previewUrl: URL.createObjectURL(file) });
+    _pendingUploadedDocs.push({
+      name: file.name,
+      path: file.name,
+      file: file,
+      previewUrl: URL.createObjectURL(file),
+    });
     renderUploadedDocs();
     showToast(engineMessage, 'success');
   } catch (err) {
