@@ -525,7 +525,6 @@ function _renderSubirDocumentosPreview() {
   }
   list.innerHTML = _subirDocumentosStaged.map(({ file, previewUrl }, idx) => `
     <li style="display:flex; align-items:center; gap:8px; padding:8px 10px; margin-bottom:6px; background:var(--cream); border-radius:6px; font-size:12px;">
-      <span style="font-size:18px;">&#128206;</span>
       <a href="${_escapeFileName(previewUrl)}" target="_blank" rel="noopener" style="flex:1; word-break:break-all; color:#1565c0;">${_escapeFileName(file.name)}</a>
       <button type="button" style="background:none; border:none; cursor:pointer; color:#999; font-size:16px; line-height:1;"
               onclick="_removeStagedDocumento(${idx})">&#215;</button>

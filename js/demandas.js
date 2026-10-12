@@ -359,7 +359,7 @@ function _renderViewModal(d) {
       ${field2col('Demanda',         `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
       ${d.observaciones ? field2col('Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
-      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" rel="noopener" style="color:#1565c0;">&#128206; ${a.nombre}</a></div>`).join('')}</div>`) : ''}
+      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" rel="noopener" style="color:#1565c0;">${a.nombre}</a></div>`).join('')}</div>`) : ''}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
       ${field2('Prioridad', `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
@@ -397,7 +397,7 @@ function historialEstadosHTML(historial) {
     const archivoLink = h.archivoRuta
       ? `<a href="/uploads/${h.archivoRuta}" target="_blank" rel="noopener"
         style="color:#1565c0; font-size:11px; display:inline-flex; align-items:center; gap:3px; margin-top:4px;">
-           &#128206; ${h.archivoNombre}
+           ${h.archivoNombre}
          </a>`
       : '';
     return `
