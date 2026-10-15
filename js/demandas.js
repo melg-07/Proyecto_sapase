@@ -348,8 +348,8 @@ function _renderViewModal(d) {
       ${field2('Folio',             `<strong style="color:var(--guinda);">${d.folio}</strong>`)}
       ${field2('Fecha de Captura',  d.fecha)}
       ${field2('Fecha de Demanda',  d.fechaDemanda || '—')}
-      ${field2('Referencia',        d.ref || '—')}
-      ${field2('Otro folio',        d.ref2 || '—')}
+      ${field2('Folio Petición', d.ref || '—')}
+      ${field2('Folio Recepción', d.ref2 || '—')}
       ${field2('Area',              d.area)}
       ${d.subarea ? field2('Subarea', d.subarea) : ''}
       ${field2col('Remitente',      d.remitente)}
