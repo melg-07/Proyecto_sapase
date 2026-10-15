@@ -111,6 +111,7 @@ function normalizeDemanda(d) {
     fecha:         d.fecha         || '',
     fechaDemanda:  d.fecha_demanda || d.fechaDemanda || '',
     ref:           d.ref           || '',
+    ref2:          d.ref2          || '',
     area_id:       d.area_id       || null,
     area:          d.area          || '',
     subarea_id:    d.subarea_id    || null,
@@ -234,7 +235,10 @@ function populateAreaSelect(selId, addEmpty) {
     opt.value = ''; opt.textContent = '— Seleccione un area —';
     sel.appendChild(opt);
   }
-  getAreasActivas().forEach(a => {
+  const areas = selId === 'f-area'
+    ? ['DIRECCION GENERAL', 'COORDINACION JURIDICA'].filter(a => getAreasActivas().includes(a))
+    : getAreasActivas();
+  areas.forEach(a => {
     const opt = document.createElement('option');
     opt.value = a; opt.textContent = a;
     sel.appendChild(opt);

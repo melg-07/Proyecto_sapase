@@ -14,7 +14,7 @@ function initForm() {
 }
 
 function clearForm() {
-  ['f-ref','f-remitente','f-asunto','f-domicilio','f-colonia',
+  ['f-ref','f-ref2','f-remitente','f-asunto','f-domicilio','f-colonia',
    'f-tel1','f-tel2','f-demanda','f-observaciones','f-concepto'].forEach(id => {
     document.getElementById(id).value = '';
   });
@@ -106,6 +106,7 @@ async function saveDemanda() {
 
   const payload = {
     ref:           document.getElementById('f-ref').value.trim(),
+    ref2:          document.getElementById('f-ref2').value.trim(),
     area_id,
     remitente,
     asunto,
@@ -348,6 +349,7 @@ function _renderViewModal(d) {
       ${field2('Fecha de Captura',  d.fecha)}
       ${field2('Fecha de Demanda',  d.fechaDemanda || '—')}
       ${field2('Referencia',        d.ref || '—')}
+      ${field2('Otro folio',        d.ref2 || '—')}
       ${field2('Area',              d.area)}
       ${d.subarea ? field2('Subarea', d.subarea) : ''}
       ${field2col('Remitente',      d.remitente)}

@@ -21,16 +21,18 @@
       <p>Servicio de Agua Potable, Alcantarillado y Saneamiento</p>
     </div>
     <hr class="login-sep">
-    <div class="field-group">
-      <label>Usuario</label>
-      <input type="text" id="username" placeholder="Ingrese su usuario">
-    </div>
-    <div class="field-group">
-      <label>Contraseña</label>
-      <input type="password" id="password" placeholder="Ingrese su contraseña">
-    </div>
-    <div id="login-error" class="login-error" style="display:none;"></div>
-    <button class="btn-primary" onclick="doLogin()">Iniciar Sesión</button>
+    <form onsubmit="event.preventDefault(); doLogin()">
+      <div class="field-group">
+        <label for="username">Usuario</label>
+        <input type="text" id="username" placeholder="Ingrese su usuario">
+      </div>
+      <div class="field-group">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" placeholder="Ingrese su contraseña">
+      </div>
+      <div id="login-error" class="login-error" style="display:none;"></div>
+      <button class="btn-primary" type="submit">Iniciar Sesión</button>
+    </form>
   </div>
 </div>
 
@@ -138,6 +140,10 @@
           <div class="field-group">
             <label>Folio de Petición</label>
             <input type="text" id="f-ref" placeholder="Ej. REG6/ECA/524/26">
+          </div>
+          <div class="field-group">
+            <label>Folio de Recepción</label>
+            <input type="text" id="f-ref2" placeholder="Folio adicional (opcional)">
           </div>
           <div class="field-group full">
             <label>Área Responsable <span style="color:red;">*Obligatorio</span></label>

@@ -364,7 +364,7 @@ router.post('/', noConsulta, async (req, res) => {
     }
 
     const {
-      ref, area_id, remitente, asunto,
+      ref, ref2, area_id, remitente, asunto,
       domicilio, colonia, tel1, tel2,
       demanda, observaciones, concepto, fecha_demanda
     } = req.body;
@@ -381,15 +381,16 @@ router.post('/', noConsulta, async (req, res) => {
 
     await db.execute(
       `INSERT INTO demandas
-        (id, folio, fecha_captura, fecha_demanda, folio_ref, area_id,
+        (id, folio, fecha_captura, fecha_demanda, folio_ref, folio_ref2, area_id,
          remitente, asunto, domicilio, colonia, tel_principal, tel_secundario,
          descripcion, observaciones, concepto, estado, creado_por)
-       VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?)`,
+       VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?)`,
       [
         id,
         folio,
         parseFecha(s(fecha_demanda)),
         s(ref),
+        s(ref2),
         areaIdVal,
         String(remitente).trim(),
         String(asunto).trim(),

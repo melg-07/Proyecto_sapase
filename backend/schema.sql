@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS demandas (
   fecha_captura    DATE         NOT NULL,
   fecha_demanda    DATE,
   folio_ref        VARCHAR(100),
+  folio_ref2       VARCHAR(100),
   area_id          INT UNSIGNED,
   subarea_id       INT UNSIGNED,
   remitente        VARCHAR(300) NOT NULL,
@@ -168,6 +169,15 @@ SET @sql = IF(@col_exists = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'folio_ref2'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE demandas ADD COLUMN folio_ref2 VARCHAR(100) AFTER folio_ref',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- Migracion: agrega columna de prioridad si la tabla ya existia sin ella
 -- (debe ejecutarse ANTES de crear v_demandas, que referencia esta columna)
 SET @col_exists = (
@@ -189,6 +199,7 @@ SELECT
   DATE_FORMAT(d.fecha_captura, '%d/%m/%Y') AS fecha,
   DATE_FORMAT(d.fecha_demanda, '%d/%m/%Y') AS fecha_demanda,
   d.folio_ref        AS ref,
+  d.folio_ref2       AS ref2,
   a.id               AS area_id,
   a.nombre           AS area,
   sa.id              AS subarea_id,
