@@ -151,7 +151,10 @@ async function loadDemandaDetails(id) {
 router.get('/', async (req, res) => {
   try {
     const { area, estado, prioridad, q } = req.query;
-    let sql    = 'SELECT * FROM v_demandas WHERE 1=1';
+    let sql    = `SELECT v.*, d.folio_ref2 AS folio_ref2
+                  FROM v_demandas v
+                  LEFT JOIN demandas d ON d.id = v.id
+                  WHERE 1=1`;
     const params = [];
 
     const scope    = scopeArea(req);
@@ -337,7 +340,13 @@ router.get('/:id/adjuntos', async (req, res) => {
 // Detalle
 router.get('/:id', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(
+      `SELECT v.*, d.folio_ref2 AS folio_ref2
+       FROM v_demandas v
+       LEFT JOIN demandas d ON d.id = v.id
+       WHERE v.id = ?`,
+      [req.params.id]
+    );
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
     const scope    = scopeArea(req);

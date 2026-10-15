@@ -111,7 +111,7 @@ function normalizeDemanda(d) {
     fecha:         d.fecha         || '',
     fechaDemanda:  d.fecha_demanda || d.fechaDemanda || '',
     ref:           d.ref           || '',
-    ref2:          d.ref2          || '',
+    ref2:          d.ref2          || d.folio_ref2 || '',
     area_id:       d.area_id       || null,
     area:          d.area          || '',
     subarea_id:    d.subarea_id    || null,
