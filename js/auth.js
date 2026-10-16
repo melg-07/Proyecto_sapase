@@ -22,11 +22,13 @@ async function bootApp() {
   document.getElementById('user-avatar').textContent    = getInitials(currentUser.name);
   document.getElementById('user-rol-top').textContent   = currentUser.rol;
 
-  const [areas, rawDemandas] = await Promise.all([
+  const [areas, areasParaPeticion, rawDemandas] = await Promise.all([
     apiGetAreas(),
+    apiGetAreasParaPeticion(),
     apiGetDemandas(),
   ]);
   _areasCache = areas.map(normalizeArea);
+  _peticionAreasCache = areasParaPeticion.map(normalizeArea);
   demandas    = rawDemandas.map(normalizeDemanda);
 
   populateAllSelects();

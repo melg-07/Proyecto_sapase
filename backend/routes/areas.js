@@ -6,6 +6,23 @@ router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 
 const direccionGeneralMatcher = /DIRECCI[OÓ]N GENERAL/i;
+const areasParaPeticion = new Set(['DIRECCION GENERAL', 'COORDINACION JURIDICA']);
+
+function normalizeAreaName(nombre) {
+  return String(nombre || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
+router.get('/para-peticion', async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, nombre, jefe_area, activa FROM areas WHERE activa = 1 ORDER BY id ASC'
+    );
+    const data = rows.filter(area => areasParaPeticion.has(normalizeAreaName(area.nombre)));
+    res.json({ ok: true, data });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 router.get('/', async (req, res) => {
   try {

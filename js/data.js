@@ -1,4 +1,5 @@
 let _areasCache    = [];
+let _peticionAreasCache = [];
 let _usersCache    = [];
 
 let demandas         = [];
@@ -145,8 +146,19 @@ function getAreasActivas() {
   return _areasCache.filter(a => a.activa).map(a => a.nombre);
 }
 
+function getAreasActivasParaPeticion() {
+  const areas = new Map(_peticionAreasCache.map(a => [a.id, a]));
+  _areasCache.forEach(a => {
+    if (['DIRECCION GENERAL', 'COORDINACION JURIDICA'].includes(normalizeAreaName(a.nombre))) {
+      areas.set(a.id, a);
+    }
+  });
+  return [...areas.values()].filter(a => a.activa).map(a => a.nombre);
+}
+
 function getAreaId(nombre) {
-  const a = _areasCache.find(x => x.nombre === nombre);
+  const a = _areasCache.find(x => x.nombre === nombre)
+    || _peticionAreasCache.find(x => x.nombre === nombre);
   return a ? a.id : null;
 }
 
@@ -235,9 +247,7 @@ function populateAreaSelect(selId, addEmpty) {
     opt.value = ''; opt.textContent = '— Seleccione un area —';
     sel.appendChild(opt);
   }
-  const areas = selId === 'f-area'
-    ? ['DIRECCION GENERAL', 'COORDINACION JURIDICA'].filter(a => getAreasActivas().includes(a))
-    : getAreasActivas();
+  const areas = selId === 'f-area' ? getAreasActivasParaPeticion() : getAreasActivas();
   areas.forEach(a => {
     const opt = document.createElement('option');
     opt.value = a; opt.textContent = a;

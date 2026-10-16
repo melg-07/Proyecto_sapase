@@ -70,6 +70,11 @@ async function apiGetAreas() {
   return res.data;
 }
 
+async function apiGetAreasParaPeticion() {
+  const res = await apiFetch('/areas/para-peticion');
+  return res.data;
+}
+
 async function apiCrearArea(nombre, jefe_area) {
   const res = await apiFetch('/areas', {
     method: 'POST',
