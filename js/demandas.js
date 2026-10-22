@@ -173,6 +173,8 @@ function filterArchivos() {
 
   filteredDemandas = demandas.filter(d => {
     const matchQ = !q || d.folio.toLowerCase().includes(q) ||
+                   String(d.ref || '').toLowerCase().includes(q)  ||
+                   String(d.ref2 || '').toLowerCase().includes(q) ||
                    d.remitente.toLowerCase().includes(q)   ||
                    d.asunto.toLowerCase().includes(q);
     const matchA = !fa || d.area      === fa;
