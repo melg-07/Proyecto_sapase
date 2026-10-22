@@ -402,15 +402,24 @@ router.post('/', noConsulta, async (req, res) => {
       demanda, observaciones, concepto, fecha_demanda
     } = req.body;
 
-    if (!remitente || !asunto || !tiposPeticion.has(tipo_peticion)) {
-      return res.status(400).json({ ok: false, error: 'Remitente, asunto y un tipo de petición válido son requeridos' });
+    const scope     = scopeArea(req);
+    const areaIdVal = scope || (area_id != null && area_id !== '' ? Number(area_id) : null);
+    const tipoPeticion = tipo_peticion == null ? '' : String(tipo_peticion).trim();
+    const telPrincipal = String(tel1 || '').replace(/\D/g, '');
+
+    if (!Number.isInteger(Number(areaIdVal)) || Number(areaIdVal) < 1 ||
+        !String(remitente || '').trim() || !String(asunto || '').trim() ||
+        !String(domicilio || '').trim() || !String(colonia || '').trim() ||
+        telPrincipal.length !== 10 ||
+        (tipoPeticion && !tiposPeticion.has(tipoPeticion))) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Área, remitente, asunto, domicilio, colonia y teléfono principal de 10 dígitos son requeridos; el tipo de petición es opcional',
+      });
     }
 
     const id    = 'D-' + Date.now();
     const folio = await siguienteFolio();
-
-    const scope     = scopeArea(req);
-    const areaIdVal = scope || (area_id != null && area_id !== '' ? Number(area_id) : null);
 
     await db.execute(
       `INSERT INTO demandas
@@ -425,7 +434,7 @@ router.post('/', noConsulta, async (req, res) => {
         s(ref),
         s(ref2),
         areaIdVal,
-        tipo_peticion,
+        tipoPeticion || null,
         String(remitente).trim(),
         String(asunto).trim(),
         s(domicilio),

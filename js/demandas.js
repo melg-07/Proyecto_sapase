@@ -91,8 +91,8 @@ async function saveDemanda() {
   const cleanTel1= (tel1.match(/\d/g) || []).join('');
   const cleanTel2= (tel2.match(/\d/g) || []).join('');
 
-  if (!remitente || !area_id || !tipo_peticion || !asunto || !domicilio || !colonia || !cleanTel1) {
-    showToast('Rellene los campos obligatorios', 'error');
+  if (!remitente || !area_id || !asunto || !domicilio || !colonia || !cleanTel1) {
+    showToast('Capture Área, Nombre, Asunto, Domicilio, Colonia y Teléfono Principal', 'error');
     return;
   }
 
