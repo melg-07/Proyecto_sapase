@@ -16,12 +16,6 @@ function buildCurrentUser(u) {
 }
 
 async function bootApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display          = 'block';
-  document.getElementById('user-name').textContent      = currentUser.name.split(' ')[0];
-  document.getElementById('user-avatar').textContent    = getInitials(currentUser.name);
-  document.getElementById('user-rol-top').textContent   = currentUser.rol;
-
   const [areas, areasParaPeticion, rawDemandas] = await Promise.all([
     apiGetAreas(),
     apiGetAreasParaPeticion(),
@@ -31,10 +25,15 @@ async function bootApp() {
   _peticionAreasCache = areasParaPeticion.map(normalizeArea);
   demandas    = rawDemandas.map(normalizeDemanda);
 
+  document.getElementById('user-name').textContent      = currentUser.name.split(' ')[0];
+  document.getElementById('user-avatar').textContent    = getInitials(currentUser.name);
+  document.getElementById('user-rol-top').textContent   = currentUser.rol;
   populateAllSelects();
   updateStats();
   renderDashboard();
   renderAreasGrid();
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display          = 'block';
 
   const defaultPage = isAdminLevel(currentUser.rol)                    ? 'dashboard'
                      : currentUser.rol === 'Consulta'                  ? 'archivos'
@@ -59,8 +58,21 @@ async function doLogin() {
     const resp = await apiLogin(u, p);
     setTokenForCurrentPage(resp.token);
     currentUser = buildCurrentUser(resp.user);
+    sessionStorage.removeItem('sapase_page');
+    demandas = [];
+    _areasCache = [];
+    _peticionAreasCache = [];
+    _usersCache = [];
+    filteredDemandas = [];
+    selectedArea = null;
+    _reportesPendientes = 0;
     await bootApp();
   } catch (err) {
+    apiLogout();
+    currentUser = null;
+    clearTokenForCurrentPage();
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
     errEl.textContent   = err.message || 'Usuario o contraseña incorrectos.';
     errEl.style.display = 'block';
   }
@@ -75,20 +87,24 @@ async function restoreSession() {
     await bootApp();
   } catch (err) {
     clearTokenForCurrentPage();
+    currentUser = null;
   }
 }
 
 // Logout
 function doLogout() {
-  if (getToken()) {
-    apiLogout(); // invalida solo el token activo de esta pestaña
-  }
+  apiLogout();
   currentUser      = null;
   demandas         = [];
   _areasCache      = [];
+  _peticionAreasCache = [];
   _usersCache      = [];
   filteredDemandas = [];
+  selectedArea     = null;
+  _reportesPendientes = 0;
+  _currentPage     = null;
   sessionStorage.removeItem('sapase_page');
+  clearTokenForCurrentPage();
 
   document.getElementById('app').style.display          = 'none';
   document.getElementById('login-screen').style.display = 'flex';

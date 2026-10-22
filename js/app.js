@@ -416,28 +416,14 @@ async function changePrioridadArea(id, prioridad, selectEl) {
 }
 
 async function changeEstadoArea(id, estado, selectEl) {
-  if (estado === 'En proceso' || estado === 'Atendida') {
-    _pendingEstadoId  = id;
-    _pendingEstadoVal = estado;
-    _pendingEstadoSel = selectEl;
-    document.getElementById('cambio-estado-titulo').textContent = `Cambiar estado a: ${estado}`;
-    _clearEstadoFile();
-    document.getElementById('cambio-estado-nota').value = '';
-    document.getElementById('modal-cambio-estado').classList.add('open');
-    return;
-  }
-  try {
-    await apiEditarDemanda(id, { estado });
-    const d = demandas.find(x => x.id === id);
-    if (d) { d.estado = estado; }
-    if (selectEl) selectEl.dataset.prev = estado;
-    updateStats();
-    renderDashboard();
-    if (selectedArea) _updateAreaInfoPanel(selectedArea);
-  } catch (err) {
-    showToast(err.message || 'Error al cambiar estado', 'error');
-    if (selectEl && selectEl.dataset.prev) selectEl.value = selectEl.dataset.prev;
-  }
+  _pendingEstadoId  = id;
+  _pendingEstadoVal = estado;
+  _pendingEstadoSel = selectEl;
+  _pendingEditEstadoPayload = null;
+  document.getElementById('cambio-estado-titulo').textContent = `Adjunta un documento para cambiar el estado a: ${estado}`;
+  _clearEstadoFile();
+  document.getElementById('cambio-estado-nota').value = '';
+  document.getElementById('modal-cambio-estado').classList.add('open');
 }
 
 function handleEstadoDrop(event) {
@@ -465,12 +451,15 @@ function _clearEstadoFile() {
 }
 
 function cancelCambioEstado() {
+  const reopenEdit = !!_pendingEditEstadoPayload;
   if (_pendingEstadoSel && _pendingEstadoSel.dataset.prev !== undefined) {
     _pendingEstadoSel.value = _pendingEstadoSel.dataset.prev;
   }
   _clearEstadoFile();
   closeModal('modal-cambio-estado');
   _pendingEstadoId = _pendingEstadoVal = _pendingEstadoSel = null;
+  _pendingEditEstadoPayload = null;
+  if (reopenEdit) document.getElementById('modal-edit-demanda').classList.add('open');
 }
 
 async function confirmCambioEstado() {
@@ -478,11 +467,24 @@ async function confirmCambioEstado() {
     showToast('Debes adjuntar un archivo para continuar', 'error');
     return;
   }
+  let editChangesSaved = false;
   try {
     const nota    = document.getElementById('cambio-estado-nota')?.value.trim() || '';
-    const updated = await apiCambiarEstado(_pendingEstadoId, _pendingEstadoVal, _pendingEstadoFile, nota);
+    const id = _pendingEstadoId;
+    if (_pendingEditEstadoPayload) {
+      const editPayload = _pendingEditEstadoPayload;
+      const editResult = await apiEditarDemanda(id, editPayload);
+      _pendingEditEstadoPayload = null;
+      const editNorm = normalizeDemanda(editResult);
+      const editIdx = demandas.findIndex(x => x.id === id);
+      if (editIdx >= 0) demandas[editIdx] = editNorm;
+      editChangesSaved = true;
+      filterArchivos();
+      if (selectedArea) filterAreaDetail();
+    }
+    const updated = await apiCambiarEstado(id, _pendingEstadoVal, _pendingEstadoFile, nota);
     const norm    = normalizeDemanda(updated);
-    const idx     = demandas.findIndex(x => x.id === _pendingEstadoId);
+    const idx     = demandas.findIndex(x => x.id === id);
     if (idx >= 0) demandas[idx] = norm;
     if (_pendingEstadoSel) _pendingEstadoSel.dataset.prev = _pendingEstadoVal;
     filterArchivos();
@@ -494,8 +496,15 @@ async function confirmCambioEstado() {
     _clearEstadoFile();
     closeModal('modal-cambio-estado');
     _pendingEstadoId = _pendingEstadoVal = _pendingEstadoSel = null;
+    _pendingEditEstadoPayload = null;
   } catch (err) {
-    showToast(err.message || 'Error al cambiar estado', 'error');
+    const errorMessage = err.message || 'Error al cambiar estado';
+    showToast(
+      editChangesSaved
+        ? 'Los demás cambios se guardaron, pero el estado no cambió: ' + errorMessage
+        : errorMessage,
+      'error'
+    );
     if (_pendingEstadoSel && _pendingEstadoSel.dataset.prev !== undefined) {
       _pendingEstadoSel.value = _pendingEstadoSel.dataset.prev;
     }

@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS demandas (
   folio_ref        VARCHAR(100),
   folio_ref2       VARCHAR(100),
   area_id          INT UNSIGNED,
+  tipo_peticion    VARCHAR(200),
   subarea_id       INT UNSIGNED,
   remitente        VARCHAR(300) NOT NULL,
   asunto           VARCHAR(500) NOT NULL,
@@ -189,6 +190,16 @@ SET @sql = IF(@col_exists = 0,
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+-- Migracion: agrega el tipo de peticion si la tabla ya existia sin esa columna
+SET @col_exists = (
+  SELECT COUNT(*) FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'demandas' AND column_name = 'tipo_peticion'
+);
+SET @sql = IF(@col_exists = 0,
+  'ALTER TABLE demandas ADD COLUMN tipo_peticion VARCHAR(200) NULL AFTER area_id',
+  'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 -- ============================================================
 -- VISTA UTIL: demandas con nombre de area y usuario
 -- ============================================================
@@ -202,6 +213,7 @@ SELECT
   d.folio_ref2       AS ref2,
   a.id               AS area_id,
   a.nombre           AS area,
+  d.tipo_peticion,
   sa.id              AS subarea_id,
   sa.nombre          AS subarea,
   d.remitente,

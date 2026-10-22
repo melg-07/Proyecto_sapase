@@ -13,7 +13,7 @@ function getSessionStorageKey() {
 
 function setTokenForCurrentPage(t) {
   setToken(t);
-  sessionStorage.setItem(getSessionStorageKey(), t);
+  sessionStorage.removeItem(getSessionStorageKey());
 }
 
 function clearTokenForCurrentPage() {
@@ -23,8 +23,8 @@ function clearTokenForCurrentPage() {
 
 async function apiFetch(endpoint, options = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  const currentToken = sessionStorage.getItem(getSessionStorageKey()) || _token;
-  if (currentToken) headers['Authorization'] = 'Bearer ' + currentToken;
+  const requestToken = endpoint === '/auth/login' ? null : _token;
+  if (requestToken) headers['Authorization'] = 'Bearer ' + requestToken;
 
   const res = await fetch(API_BASE + endpoint, {
     ...options,
@@ -39,7 +39,7 @@ async function apiFetch(endpoint, options = {}) {
   }
 
   if (!res.ok) {
-    if (res.status === 401) {
+    if (res.status === 401 && requestToken && requestToken === _token) {
       clearTokenForCurrentPage();
       doLogout();
     }
@@ -59,8 +59,14 @@ async function apiLogin(usuario, password) {
 }
 
 async function apiLogout() {
-  try { await apiFetch('/auth/logout', { method: 'POST' }); } catch(e) {}
-  clearToken();
+  const token = getToken();
+  if (!token) return;
+  try {
+    await fetch(API_BASE + '/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+    });
+  } catch (_) {}
 }
 
 // Áreas

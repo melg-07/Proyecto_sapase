@@ -17,6 +17,7 @@ function exportToExcel(list, nombre) {
     'Folio Referencia': d.ref           || '',
     'Otro Folio':       d.ref2          || '',
     'Area':             d.area,
+    'Tipo de petición': d.tipo_peticion || '',
     'Remitente':        d.remitente,
     'Asunto':           d.asunto,
     'Domicilio':        d.domicilio     || '',
@@ -34,7 +35,7 @@ function exportToExcel(list, nombre) {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [
-    {wch:24},{wch:14},{wch:14},{wch:22},{wch:22},{wch:40},{wch:32},{wch:36},
+    {wch:24},{wch:14},{wch:14},{wch:22},{wch:22},{wch:40},{wch:48},{wch:32},{wch:36},
     {wch:26},{wch:22},{wch:14},{wch:14},{wch:60},{wch:40},{wch:22},{wch:12},{wch:12},{wch:22}
   ];
   XLSX.utils.book_append_sheet(wb, ws, 'Demandas');

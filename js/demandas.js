@@ -19,6 +19,7 @@ function clearForm() {
     document.getElementById(id).value = '';
   });
   document.getElementById('f-area').value = '';
+  document.getElementById('f-tipo-peticion').value = '';
   _pendingUploadedDocs.forEach(item => {
     if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
   });
@@ -80,6 +81,7 @@ function formatDateInput(val) {
 async function saveDemanda() {
   const area     = document.getElementById('f-area').value;
   const area_id  = getAreaId(area);
+  const tipo_peticion = document.getElementById('f-tipo-peticion').value;
   const remitente= document.getElementById('f-remitente').value.trim();
   const asunto   = document.getElementById('f-asunto').value.trim();
   const domicilio= document.getElementById('f-domicilio').value.trim();
@@ -89,7 +91,7 @@ async function saveDemanda() {
   const cleanTel1= (tel1.match(/\d/g) || []).join('');
   const cleanTel2= (tel2.match(/\d/g) || []).join('');
 
-  if (!remitente || !area_id || !asunto || !domicilio || !colonia || !cleanTel1) {
+  if (!remitente || !area_id || !tipo_peticion || !asunto || !domicilio || !colonia || !cleanTel1) {
     showToast('Rellene los campos obligatorios', 'error');
     return;
   }
@@ -108,6 +110,7 @@ async function saveDemanda() {
     ref:           document.getElementById('f-ref').value.trim(),
     ref2:          document.getElementById('f-ref2').value.trim(),
     area_id,
+    tipo_peticion,
     remitente,
     asunto,
     domicilio,
@@ -351,6 +354,7 @@ function _renderViewModal(d) {
       ${field2('Folio Petición', d.ref || '—')}
       ${field2('Folio Recepción', d.ref2 || '—')}
       ${field2('Area',              d.area)}
+      ${field2('Tipo de petición', d.tipo_peticion || '—')}
       ${d.subarea ? field2('Subarea', d.subarea) : ''}
       ${field2col('Remitente',      d.remitente)}
       ${field2col('Descripcion',    d.asunto)}
@@ -373,7 +377,7 @@ function _renderViewModal(d) {
 
   const btnTransferir = document.getElementById('btn-transferir-demanda');
   if (btnTransferir) {
-    const canTransfer = currentUser && (isFullAdmin(currentUser.rol) || (currentUser.rol === 'area_usuario' && isDireccionGeneralArea(currentUser.area)));
+    const canTransfer = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
     btnTransferir.style.display = canTransfer ? '' : 'none';
   }
 
@@ -486,6 +490,8 @@ function historialHTML(historial) {
 }
 
 /* ---------- Editar petición ---------- */
+let _pendingEditEstadoPayload = null;
+
 function openEditDemanda(id) {
   if (!currentUser || currentUser.rol === 'Consulta') {
     showToast('El usuario de consulta solo puede ver e imprimir', 'error');
@@ -528,6 +534,7 @@ function openEditDemanda(id) {
   document.getElementById('ed-demanda').value       = d.demanda      || '';
   document.getElementById('ed-observaciones').value = d.observaciones|| '';
   document.getElementById('ed-concepto').value      = d.concepto     || '';
+  document.getElementById('ed-tipo-peticion').value = d.tipo_peticion || '';
   document.getElementById('ed-estado').value        = d.estado       || 'Pendiente';
   document.getElementById('ed-prioridad').value     = d.prioridad    || 'Media';
 
@@ -541,6 +548,7 @@ async function saveEditDemanda() {
   const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
   const isAreaUser    = currentUser && isAreaUsuario(currentUser.rol);
   const isJefeAreaUser = currentUser && isJefeArea(currentUser.rol);
+  const demandaActual = demandas.find(x => x.id === currentViewId);
 
   const payload = {
     ref:           document.getElementById('ed-ref').value.trim(),
@@ -554,10 +562,26 @@ async function saveEditDemanda() {
     demanda:       document.getElementById('ed-demanda').value.trim(),
     observaciones: document.getElementById('ed-observaciones').value.trim(),
     concepto:      document.getElementById('ed-concepto').value.trim(),
+    tipo_peticion: document.getElementById('ed-tipo-peticion').value,
     fecha_demanda: document.getElementById('ed-fecha-demanda').value,
   };
-  if (isAdmin || isJefeAreaUser) payload.estado = document.getElementById('ed-estado').value;
+  const estadoNuevo = (isAdmin || isJefeAreaUser)
+    ? document.getElementById('ed-estado').value
+    : demandaActual?.estado;
   if (isAdmin || isAreaUser || isJefeAreaUser) payload.prioridad = document.getElementById('ed-prioridad').value;
+
+  if (demandaActual && estadoNuevo !== demandaActual.estado) {
+    _pendingEstadoId = currentViewId;
+    _pendingEstadoVal = estadoNuevo;
+    _pendingEstadoSel = null;
+    _pendingEditEstadoPayload = payload;
+    document.getElementById('cambio-estado-titulo').textContent = `Adjunta un documento para cambiar el estado a: ${estadoNuevo}`;
+    _clearEstadoFile();
+    document.getElementById('cambio-estado-nota').value = '';
+    closeModal('modal-edit-demanda');
+    document.getElementById('modal-cambio-estado').classList.add('open');
+    return;
+  }
 
   try {
     const updated = await apiEditarDemanda(currentViewId, payload);
@@ -593,9 +617,9 @@ async function deleteDemanda(id) {
 
 /* ---------- Transferir ---------- */
 function openTransferModal(id) {
-  const canTransfer = currentUser && (isFullAdmin(currentUser.rol) || (currentUser.rol === 'area_usuario' && isDireccionGeneralArea(currentUser.area)));
+  const canTransfer = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
   if (!canTransfer) {
-    showToast('No tienes permiso para enviar a otra área', 'error');
+    showToast('Solo el jefe de área de Dirección General puede enviar peticiones a otras áreas', 'error');
     return;
   }
   transferId = id;

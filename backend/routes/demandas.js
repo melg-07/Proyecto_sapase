@@ -46,6 +46,18 @@ router.use(subareaUsuarioGuard);
 
 
 const s = v => (v === undefined || v === '') ? null : v;
+const tiposPeticion = new Set([
+  'Cambio de poliducto',
+  'Malacateo',
+  'Desazolve o vactor',
+  'Socavón o hundimiento',
+  'Reparación de la red de agua o drenaje',
+  'Pipa para escuelas o usuarios',
+  'Inspección para conexión de red de agua y drenaje',
+  'Baja ISSEMYM por defunción o por renuncia del trabajador',
+  'Factibilidad doméstica o comercial',
+  'Constancia de no servicio',
+]);
 
 // Acepta dd/mm/yyyy y yyyy-mm-dd
 function parseFecha(str) {
@@ -151,7 +163,8 @@ async function loadDemandaDetails(id) {
 router.get('/', async (req, res) => {
   try {
     const { area, estado, prioridad, q } = req.query;
-    let sql    = `SELECT v.*, d.folio_ref2 AS folio_ref2
+    let sql    = `SELECT v.*, d.folio_ref2 AS folio_ref2_actual,
+                         d.tipo_peticion AS tipo_peticion_actual
                   FROM v_demandas v
                   LEFT JOIN demandas d ON d.id = v.id
                   WHERE 1=1`;
@@ -159,21 +172,23 @@ router.get('/', async (req, res) => {
 
     const scope    = scopeArea(req);
     const subScope = scopeSubarea(req);
-    if (scope)     { sql += ' AND area_id = ?';    params.push(scope); }
-    if (subScope)  { sql += ' AND subarea_id = ?'; params.push(subScope); }
-    if (area)      { sql += ' AND area = ?';      params.push(area); }
-    if (estado)    { sql += ' AND estado = ?';    params.push(estado); }
-    if (prioridad) { sql += ' AND prioridad = ?'; params.push(prioridad); }
+    if (scope)     { sql += ' AND v.area_id = ?';    params.push(scope); }
+    if (subScope)  { sql += ' AND v.subarea_id = ?'; params.push(subScope); }
+    if (area)      { sql += ' AND v.area = ?';       params.push(area); }
+    if (estado)    { sql += ' AND v.estado = ?';     params.push(estado); }
+    if (prioridad) { sql += ' AND v.prioridad = ?';  params.push(prioridad); }
     if (q) {
-      sql += ' AND (folio LIKE ? OR remitente LIKE ? OR asunto LIKE ?)';
+      sql += ' AND (v.folio LIKE ? OR v.remitente LIKE ? OR v.asunto LIKE ?)';
       const like = `%${q}%`;
       params.push(like, like, like);
     }
-    sql += ' ORDER BY creado_en DESC';
+    sql += ' ORDER BY v.creado_en DESC';
 
     const [rows] = await db.execute(sql, params);
     const data = await Promise.all(rows.map(async row => ({
       ...row,
+      ref2: row.folio_ref2_actual || row.ref2 || '',
+      tipo_peticion: row.tipo_peticion_actual || row.tipo_peticion || '',
       ...(await loadDemandaDetails(row.id)),
     })));
     res.json({ ok: true, data });
@@ -341,7 +356,8 @@ router.get('/:id/adjuntos', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await db.execute(
-      `SELECT v.*, d.folio_ref2 AS folio_ref2
+      `SELECT v.*, d.folio_ref2 AS folio_ref2_actual,
+              d.tipo_peticion AS tipo_peticion_actual
        FROM v_demandas v
        LEFT JOIN demandas d ON d.id = v.id
        WHERE v.id = ?`,
@@ -359,7 +375,15 @@ router.get('/:id', async (req, res) => {
     }
 
     const details = await loadDemandaDetails(req.params.id);
-    res.json({ ok: true, data: { ...rows[0], ...details } });
+    res.json({
+      ok: true,
+      data: {
+        ...rows[0],
+        ref2: rows[0].folio_ref2_actual || rows[0].ref2 || '',
+        tipo_peticion: rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '',
+        ...details,
+      },
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -373,13 +397,13 @@ router.post('/', noConsulta, async (req, res) => {
     }
 
     const {
-      ref, ref2, area_id, remitente, asunto,
+      ref, ref2, area_id, tipo_peticion, remitente, asunto,
       domicilio, colonia, tel1, tel2,
       demanda, observaciones, concepto, fecha_demanda
     } = req.body;
 
-    if (!remitente || !asunto) {
-      return res.status(400).json({ ok: false, error: 'Remitente y asunto son requeridos' });
+    if (!remitente || !asunto || !tiposPeticion.has(tipo_peticion)) {
+      return res.status(400).json({ ok: false, error: 'Remitente, asunto y un tipo de petición válido son requeridos' });
     }
 
     const id    = 'D-' + Date.now();
@@ -390,10 +414,10 @@ router.post('/', noConsulta, async (req, res) => {
 
     await db.execute(
       `INSERT INTO demandas
-        (id, folio, fecha_captura, fecha_demanda, folio_ref, folio_ref2, area_id,
+        (id, folio, fecha_captura, fecha_demanda, folio_ref, folio_ref2, area_id, tipo_peticion,
          remitente, asunto, domicilio, colonia, tel_principal, tel_secundario,
          descripcion, observaciones, concepto, estado, creado_por)
-       VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?)`,
+       VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pendiente', ?)`,
       [
         id,
         folio,
@@ -401,6 +425,7 @@ router.post('/', noConsulta, async (req, res) => {
         s(ref),
         s(ref2),
         areaIdVal,
+        tipo_peticion,
         String(remitente).trim(),
         String(asunto).trim(),
         s(domicilio),
@@ -414,7 +439,14 @@ router.post('/', noConsulta, async (req, res) => {
       ]
     );
 
-    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [id]);
+    const [rows] = await db.execute(
+      `SELECT v.*, d.tipo_peticion AS tipo_peticion_actual
+       FROM v_demandas v
+       JOIN demandas d ON d.id = v.id
+       WHERE v.id = ?`,
+      [id]
+    );
+    if (rows[0]) rows[0].tipo_peticion = rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '';
     res.status(201).json({ ok: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -439,6 +471,9 @@ router.put('/:id', noConsulta, async (req, res) => {
     if ('prioridad' in body && !['Administrador', 'Subadmin', 'area_usuario', 'jefe_area'].includes(req.user.rol)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para modificar la prioridad' });
     }
+    if ('tipo_peticion' in body && body.tipo_peticion && !tiposPeticion.has(body.tipo_peticion)) {
+      return res.status(400).json({ ok: false, error: 'Tipo de petición no válido' });
+    }
 
     const [current] = await db.execute('SELECT * FROM demandas WHERE id = ?', [req.params.id]);
     if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -451,6 +486,9 @@ router.put('/:id', noConsulta, async (req, res) => {
     }
     if (subScope && Number(before.subarea_id) !== Number(subScope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+    if ('estado' in body && body.estado !== before.estado) {
+      return res.status(400).json({ ok: false, error: 'Para cambiar el estado debes adjuntar un documento usando el flujo de cambio de estado' });
     }
 
     const fields = [];
@@ -467,6 +505,7 @@ router.put('/:id', noConsulta, async (req, res) => {
       demanda:       'descripcion',
       observaciones: 'observaciones',
       concepto:      'concepto',
+      tipo_peticion: 'tipo_peticion',
       estado:        'estado',
       prioridad:     'prioridad',
     };
@@ -495,8 +534,15 @@ router.put('/:id', noConsulta, async (req, res) => {
     vals.push(req.params.id);
     await db.execute(`UPDATE demandas SET ${fields.join(', ')} WHERE id = ?`, vals);
 
-    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(
+      `SELECT v.*, d.tipo_peticion AS tipo_peticion_actual
+       FROM v_demandas v
+       JOIN demandas d ON d.id = v.id
+       WHERE v.id = ?`,
+      [req.params.id]
+    );
     if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    rows[0].tipo_peticion = rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '';
 
     const labelMap = {
       folio_ref:      'Folio Referencia',
@@ -509,6 +555,7 @@ router.put('/:id', noConsulta, async (req, res) => {
       descripcion:    'Demanda',
       observaciones:  'Observaciones',
       concepto:       'Concepto',
+      tipo_peticion:  'Tipo de petición',
       estado:         'Estado',
       prioridad:      'Prioridad',
       area_id:        'Area',
@@ -517,7 +564,8 @@ router.put('/:id', noConsulta, async (req, res) => {
       ref: 'folio_ref', remitente: 'remitente', asunto: 'asunto',
       domicilio: 'domicilio', colonia: 'colonia', tel1: 'tel_principal',
       tel2: 'tel_secundario', demanda: 'descripcion', observaciones: 'observaciones',
-      concepto: 'concepto', estado: 'estado', prioridad: 'prioridad', area_id: 'area_id',
+      concepto: 'concepto', tipo_peticion: 'tipo_peticion',
+      estado: 'estado', prioridad: 'prioridad', area_id: 'area_id',
     };
 
     const changes = {};
@@ -562,7 +610,7 @@ router.delete('/:id', adminOSubadmin, async (req, res) => {
   }
 });
 
-// Cambiar estado con archivo obligatorio (En proceso / Atendida)
+// Cambiar estado con archivo obligatorio
 router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
   upload.single('archivo')(req, res, (err) => {
     if (err) return res.status(400).json({ ok: false, error: err.message });
@@ -578,7 +626,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
     const { estado } = req.body;
     const comentario = s(req.body.comentario);
 
-    if (!['En proceso', 'Atendida'].includes(estado)) {
+    if (!['Pendiente', 'En proceso', 'Atendida'].includes(estado)) {
       if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ ok: false, error: 'Estado no válido para este endpoint' });
     }
@@ -590,6 +638,10 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
     if (!dem.length) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+    if (dem[0].estado === estado) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ ok: false, error: 'La petición ya tiene ese estado' });
     }
 
     const scope    = scopeArea(req);
@@ -615,7 +667,14 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
       [req.params.id, dem[0].estado, estado, req.file.originalname, archivoRuta, comentario, req.user.id]
     );
 
-    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(
+      `SELECT v.*, d.tipo_peticion AS tipo_peticion_actual
+       FROM v_demandas v
+       JOIN demandas d ON d.id = v.id
+       WHERE v.id = ?`,
+      [req.params.id]
+    );
+    if (rows[0]) rows[0].tipo_peticion = rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '';
     res.json({ ok: true, data: rows[0] });
   } catch (err) {
     if (req.file) {
@@ -668,26 +727,42 @@ function isDireccionGeneralAreaName(name) {
 // Transferir
 router.post('/:id/transferir', noConsulta, async (req, res) => {
   try {
+    if (req.user?.rol !== 'jefe_area' || !req.user?.area_id) {
+      return res.status(403).json({ ok: false, error: 'Solo el jefe de área de Dirección General puede enviar peticiones a otras áreas' });
+    }
+
+    const [areasOrigen] = await db.execute(
+      'SELECT nombre FROM areas WHERE id = ? LIMIT 1',
+      [req.user.area_id]
+    );
+    if (!areasOrigen.length || !isDireccionGeneralAreaName(areasOrigen[0].nombre)) {
+      return res.status(403).json({ ok: false, error: 'Solo el jefe de área de Dirección General puede enviar peticiones a otras áreas' });
+    }
+
     const area_destino_id = req.body.area_destino_id;
     const comentario      = s(req.body.comentario);
-
-    const isAdmin = req.user?.rol === 'Administrador';
-    if (!isAdmin) {
-      if (req.user?.rol !== 'area_usuario' || !req.user?.area_id) {
-        return res.status(403).json({ ok: false, error: 'No tienes permisos suficientes para transferir esta demanda' });
-      }
-      const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ? LIMIT 1', [req.user.area_id]);
-      if (!areas.length || !isDireccionGeneralAreaName(areas[0].nombre)) {
-        return res.status(403).json({ ok: false, error: 'No tienes permisos suficientes para transferir esta demanda' });
-      }
-    }
 
     if (!area_destino_id) {
       return res.status(400).json({ ok: false, error: 'area_destino_id requerido' });
     }
 
+    if (Number(area_destino_id) === Number(req.user.area_id)) {
+      return res.status(400).json({ ok: false, error: 'Selecciona un área distinta a Dirección General' });
+    }
+
     const [dem] = await db.execute('SELECT area_id FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    if (Number(dem[0].area_id) !== Number(req.user.area_id)) {
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    const [areasDestino] = await db.execute(
+      'SELECT id FROM areas WHERE id = ? AND activa = 1 LIMIT 1',
+      [Number(area_destino_id)]
+    );
+    if (!areasDestino.length) {
+      return res.status(400).json({ ok: false, error: 'El área destino no existe o está inactiva' });
+    }
 
     await db.execute(
       `INSERT INTO transferencias (demanda_id, area_origen_id, area_destino_id, comentario, transferido_por)
@@ -739,7 +814,14 @@ router.post('/:id/enviar-subarea', async (req, res) => {
       [req.params.id, req.user.id, JSON.stringify({ Subarea: { antes: dem[0].subarea_id || '', despues: sub[0].nombre } })]
     );
 
-    const [rows] = await db.execute('SELECT * FROM v_demandas WHERE id = ?', [req.params.id]);
+    const [rows] = await db.execute(
+      `SELECT v.*, d.tipo_peticion AS tipo_peticion_actual
+       FROM v_demandas v
+       JOIN demandas d ON d.id = v.id
+       WHERE v.id = ?`,
+      [req.params.id]
+    );
+    if (rows[0]) rows[0].tipo_peticion = rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '';
     res.json({ ok: true, data: rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
