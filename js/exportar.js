@@ -337,9 +337,13 @@ function formatInformeFechaTexto(filters, tipo) {
     return filters.anio || 'Sin año';
   }
   if (filters.fechaDesde && filters.fechaHasta) {
-    return formatDateForReport(filters.fechaDesde);
+    return `${formatDateForReport(filters.fechaDesde)} al ${formatDateForReport(filters.fechaHasta)}`;
   }
-  return filters.fechaDesde || filters.fechaHasta || 'Sin fecha';
+  return filters.fechaDesde
+    ? formatDateForReport(filters.fechaDesde)
+    : filters.fechaHasta
+      ? formatDateForReport(filters.fechaHasta)
+      : 'Sin fecha';
 }
 
 function exportInformePDF(tipo) {
