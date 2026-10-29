@@ -759,7 +759,7 @@ router.post('/:id/transferir', noConsulta, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Selecciona un área distinta a Dirección General' });
     }
 
-    const [dem] = await db.execute('SELECT area_id FROM demandas WHERE id = ?', [req.params.id]);
+    const [dem] = await db.execute('SELECT area_id, estado FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     if (Number(dem[0].area_id) !== Number(req.user.area_id)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -780,8 +780,8 @@ router.post('/:id/transferir', noConsulta, async (req, res) => {
     );
 
     await db.execute(
-      "UPDATE demandas SET area_id = ?, subarea_id = NULL, estado = 'En proceso' WHERE id = ?",
-      [Number(area_destino_id), req.params.id]
+      "UPDATE demandas SET area_id = ?, subarea_id = NULL, estado = ? WHERE id = ?",
+      [Number(area_destino_id), dem[0].estado, req.params.id]
     );
 
     res.json({ ok: true });

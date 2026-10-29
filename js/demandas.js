@@ -348,6 +348,15 @@ async function viewDemanda(id) {
 }
 
 function _renderViewModal(d) {
+  const canChangePriority = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
+  const prioridadHTML = canChangePriority
+    ? `<select aria-label="Prioridad" style="width:100%; padding:10px 12px; border:1px solid #d5e0fb; border-radius:8px; background:#eef4ff; color:var(--gray-dark);"
+               onchange="changePrioridadView(currentViewId, this)">
+         <option value="Alta" ${d.prioridad === 'Alta' ? 'selected' : ''}>Alta</option>
+         <option value="Media" ${d.prioridad === 'Media' ? 'selected' : ''}>Media</option>
+         <option value="Baja" ${d.prioridad === 'Baja' ? 'selected' : ''}>Baja</option>
+       </select>`
+    : `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`;
   document.getElementById('modal-ver-content').innerHTML = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px;">
       ${field2('Folio',             `<strong style="color:var(--guinda);">${d.folio}</strong>`)}
@@ -365,11 +374,11 @@ function _renderViewModal(d) {
       ${field2('Tel. Principal',    d.tel1 || '—')}
       ${field2('Tel. Secundario',   d.tel2 || '—')}
       ${field2col('Demanda',         `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
-      ${d.observaciones ? field2col('Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
+      ${d.observaciones ? field2col('Anexos y Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
       ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" rel="noopener" style="color:#1565c0;">${a.nombre}</a></div>`).join('')}</div>`) : ''}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
-      ${field2('Prioridad', `<span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span>`)}
+      ${field2('Prioridad', prioridadHTML)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
       ${d.historialEstados && d.historialEstados.length ? historialEstadosHTML(d.historialEstados) : ''}
       ${d.historialEdiciones && d.historialEdiciones.length ? historialEdicionesHTML(d.historialEdiciones) : ''}
@@ -382,8 +391,29 @@ function _renderViewModal(d) {
     const canTransfer = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
     btnTransferir.style.display = canTransfer ? '' : 'none';
   }
-
   document.getElementById('modal-ver').classList.add('open');
+}
+
+async function changePrioridadView(id, selectEl) {
+  const canChangePriority = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
+  const demanda = demandas.find(item => item.id === id);
+  const prioridad = selectEl.value;
+  if (!canChangePriority || !demanda || !['Alta', 'Media', 'Baja'].includes(prioridad)) {
+    showToast('No se pudo cambiar la prioridad de esta petición', 'error');
+    if (demanda) selectEl.value = demanda.prioridad || 'Media';
+    return;
+  }
+
+  try {
+    await apiEditarDemanda(id, { prioridad });
+    demanda.prioridad = prioridad;
+    filterArchivos();
+    if (selectedArea) filterAreaDetail();
+    showToast('Prioridad actualizada', 'success');
+  } catch (err) {
+    selectEl.value = demanda.prioridad || 'Media';
+    showToast(err.message || 'Error al cambiar la prioridad', 'error');
+  }
 }
 
 function field2(label, val) {
@@ -648,7 +678,6 @@ async function confirmTransfer() {
       d.historial = d.historial || [];
       d.historial.push({ fecha: fechaHoy(), area: areaName, comentario, de: d.area });
       d.area   = areaName;
-      d.estado = 'En proceso';
     }
     filterArchivos();
     renderAreasGrid();
