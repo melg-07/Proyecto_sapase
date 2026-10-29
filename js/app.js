@@ -356,7 +356,11 @@ function filterAreaDetail() {
   const isAdmin = currentUser && isAdminLevel(currentUser.rol);
   const list    = demandas.filter(d =>
     d.area === selectedArea &&
-    (!q  || d.folio.toLowerCase().includes(q) || d.remitente.toLowerCase().includes(q) || d.asunto.toLowerCase().includes(q)) &&
+    (!q  || d.folio.toLowerCase().includes(q) ||
+      String(d.ref || '').toLowerCase().includes(q) ||
+      String(d.ref2 || '').toLowerCase().includes(q) ||
+      d.remitente.toLowerCase().includes(q) ||
+      d.asunto.toLowerCase().includes(q)) &&
     (!fs || d.estado    === fs) &&
     (!fp || d.prioridad === fp)
   );
