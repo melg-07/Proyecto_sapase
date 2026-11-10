@@ -50,7 +50,24 @@ function exportToExcel(list, nombre) {
 function openExportarInformeModal() {
   populateAreaSelect('export-area', true);
   const exportArea = document.getElementById('export-area');
-  if (exportArea && exportArea.options[0]) exportArea.options[0].textContent = 'Todas las áreas';
+  const isAdmin = currentUser && isAdminLevel(currentUser.rol);
+  const areaScope = getExportInformeAreaScope();
+
+  if (exportArea) {
+    exportArea.disabled = false;
+    if (isAdmin && exportArea.options[0]) {
+      exportArea.options[0].textContent = 'Todas las áreas';
+    } else if (areaScope !== null) {
+      const area = document.createElement('option');
+      area.value = areaScope;
+      area.textContent = areaScope === '__sin_area_asignada__' ? 'Área no asignada' : areaScope;
+      exportArea.innerHTML = '';
+      exportArea.appendChild(area);
+      exportArea.disabled = true;
+    } else if (exportArea.options[0]) {
+      exportArea.options[0].textContent = 'Todas las áreas';
+    }
+  }
   document.getElementById('export-status').value = '';
   document.getElementById('export-prioridad').value = '';
   document.getElementById('export-date-from').value = '';
@@ -61,6 +78,13 @@ function openExportarInformeModal() {
   document.getElementById('export-report-type').value = 'semanal';
   setExportInformeTipo('semanal');
   document.getElementById('modal-exportar-informe').classList.add('open');
+}
+
+function getExportInformeAreaScope() {
+  if (!currentUser || isAdminLevel(currentUser.rol)) return null;
+  if (!(isAreaUsuario(currentUser.rol) || isJefeArea(currentUser.rol) || isSubareaUsuario(currentUser.rol))) return null;
+  const area = _areasCache.find(a => String(a.id) === String(currentUser.area_id));
+  return area?.nombre || currentUser.area || '__sin_area_asignada__';
 }
 
 function setExportInformeTipo(tipo) {
@@ -84,7 +108,7 @@ function setExportInformeTipo(tipo) {
 function getExportInformeFilters() {
   return {
     tipo: document.getElementById('export-report-type')?.value || 'semanal',
-    area: document.getElementById('export-area')?.value || '',
+    area: getExportInformeAreaScope() ?? (document.getElementById('export-area')?.value || ''),
     estado: document.getElementById('export-status')?.value || '',
     prioridad: document.getElementById('export-prioridad')?.value || '',
     fechaDesde: document.getElementById('export-date-from')?.value || '',
@@ -258,8 +282,8 @@ function drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, M
 }
 
 function drawInformeTable(doc, rows, startY, pageW, pageH, ML, MR, title, subtitle, pageNumber) {
-  const headers = ['Folio', 'Fecha', 'Remitente', 'Área', 'Asunto', 'Estado', 'Prioridad'];
-  const widths = [14, 16, 24, 30, 70, 18, 18];
+  const headers = ['Folio', 'Folio Recepción', 'Fecha', 'Remitente', 'Área', 'Asunto', 'Estado', 'Prioridad'];
+  const widths = [14, 21, 17, 22, 27, 58, 18, 18];
   const xPositions = [];
   let x = ML;
   widths.forEach((width) => {
@@ -387,10 +411,11 @@ function exportInformePDF(tipo) {
         : 'Sin fecha';
       const cells = [
         { value: d.folio || '-', lines: doc.splitTextToSize(String(d.folio || '-'), 13) },
+        { value: d.ref2 || '-', lines: doc.splitTextToSize(String(d.ref2 || '-'), 19) },
         { value: fechaTexto, lines: doc.splitTextToSize(fechaTexto, 15) },
-        { value: d.remitente || '-', lines: doc.splitTextToSize(String(d.remitente || '-'), 23) },
-        { value: d.area || '-', lines: doc.splitTextToSize(String(d.area || '-'), 29) },
-        { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 82) },
+        { value: d.remitente || '-', lines: doc.splitTextToSize(String(d.remitente || '-'), 20) },
+        { value: d.area || '-', lines: doc.splitTextToSize(String(d.area || '-'), 25) },
+        { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 56) },
         { value: d.estado || '-', lines: doc.splitTextToSize(String(d.estado || '-'), 17) },
         { value: d.prioridad || '-', lines: doc.splitTextToSize(String(d.prioridad || '-'), 17) }
       ];
