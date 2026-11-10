@@ -44,6 +44,28 @@ router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 router.use(subareaUsuarioGuard);
 
+async function jefeConsultaGlobalGuard(req, res, next) {
+  if (req.user?.rol !== 'jefe_area' || !req.user.area_id) {
+    return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar todas las áreas' });
+  }
+  try {
+    const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ?', [req.user.area_id]);
+    const area = String(areas[0]?.nombre || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+    if (![
+      'DIRECCION GENERAL',
+      'CONTACT CENTER',
+      'CONTAC CENTER',
+      'DEPARTAMENTO DE CONTACT CENTER',
+      'DEPARTAMENTO DE CONTAC CENTER',
+    ].includes(area)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar todas las áreas' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 
 const s = v => (v === undefined || v === '') ? null : v;
 const tiposPeticion = new Set([
@@ -97,6 +119,30 @@ function renombrarConFolio(filename, folio) {
     log('ERROR', `[renombrarConFolio] No se pudo renombrar ${filename} -> ${nuevoNom}: ${err.message}`);
   }
   return filename;
+}
+
+function soloJefeArea(req, res, next) {
+  if (req.user?.rol !== 'jefe_area') {
+    return res.status(403).json({ ok: false, error: 'Solo los jefes de área pueden agregar documentos a una petición existente' });
+  }
+  next();
+}
+
+function autorizarAdjuntos(req, res, next) {
+  if (req.get('X-Adjunto-Existente') === 'true') {
+    return soloJefeArea(req, res, next);
+  }
+  noConsulta(req, res, next);
+}
+
+function uploadAdjuntos(req, res, next) {
+  upload.array('archivo', 20)(req, res, (err) => {
+    if (err) {
+      console.error('[adjuntos] Error de multer al subir archivo(s):', err.message);
+      return res.status(400).json({ ok: false, error: err.message || 'No se pudo subir el archivo' });
+    }
+    next();
+  });
 }
 
 async function loadDemandaDetails(id) {
@@ -160,7 +206,7 @@ async function loadDemandaDetails(id) {
 }
 
 // Listar
-router.get('/', async (req, res) => {
+async function listarDemandas(req, res, consultaGlobal = false) {
   try {
     const { area, estado, prioridad, q } = req.query;
     let sql    = `SELECT v.*, d.folio_ref2 AS folio_ref2_actual,
@@ -170,8 +216,8 @@ router.get('/', async (req, res) => {
                   WHERE 1=1`;
     const params = [];
 
-    const scope    = scopeArea(req);
-    const subScope = scopeSubarea(req);
+    const scope    = consultaGlobal ? null : scopeArea(req);
+    const subScope = consultaGlobal ? null : scopeSubarea(req);
     if (scope)     { sql += ' AND v.area_id = ?';    params.push(scope); }
     if (subScope)  { sql += ' AND v.subarea_id = ?'; params.push(subScope); }
     if (area)      { sql += ' AND v.area = ?';       params.push(area); }
@@ -195,7 +241,51 @@ router.get('/', async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
-});
+}
+
+router.get('/consulta/global', jefeConsultaGlobalGuard, (req, res) => listarDemandas(req, res, true));
+router.get('/', (req, res) => listarDemandas(req, res));
+
+async function obtenerDemanda(req, res, consultaGlobal = false) {
+  try {
+    const [rows] = await db.execute(
+      `SELECT v.*, d.folio_ref2 AS folio_ref2_actual,
+              d.tipo_peticion AS tipo_peticion_actual
+       FROM v_demandas v
+       LEFT JOIN demandas d ON d.id = v.id
+       WHERE v.id = ?`,
+      [req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    if (!consultaGlobal) {
+      const scope    = scopeArea(req);
+      const subScope = scopeSubarea(req);
+      if (scope && Number(rows[0].area_id) !== Number(scope)) {
+        return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+      }
+      if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
+        return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+      }
+    }
+
+    const details = await loadDemandaDetails(req.params.id);
+    res.json({
+      ok: true,
+      data: {
+        ...rows[0],
+        ref2: rows[0].folio_ref2_actual || rows[0].ref2 || '',
+        tipo_peticion: rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '',
+        ...details,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+}
+
+router.get('/consulta/global/:id', jefeConsultaGlobalGuard, (req, res) => obtenerDemanda(req, res, true));
+router.get('/:id', (req, res) => obtenerDemanda(req, res));
 
 // Peticiones con observaciones 
 router.get('/reportes/lista', async (req, res) => {
@@ -264,15 +354,7 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
 });
 
 // Adjuntar documentos a una petición
-router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
-  upload.array('archivo', 20)(req, res, (err) => {
-    if (err) {
-      console.error('[adjuntos] Error de multer al subir archivo(s):', err.message);
-      return res.status(400).json({ ok: false, error: err.message || 'No se pudo subir el archivo' });
-    }
-    next();
-  });
-}, async (req, res) => {
+async function guardarAdjuntos(req, res) {
   try {
     const demandaId = req.params.id;
     const [dem] = await db.execute('SELECT id, area_id, folio FROM demandas WHERE id = ?', [demandaId]);
@@ -341,49 +423,14 @@ router.post('/:id/adjuntos', noConsulta, (req, res, next) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message || 'Error al adjuntar documentos' });
   }
-});
+}
+
+router.post('/:id/adjuntos', autorizarAdjuntos, uploadAdjuntos, guardarAdjuntos);
 
 router.get('/:id/adjuntos', async (req, res) => {
   try {
     const [rows] = await db.execute('SELECT id, nombre, ruta, tipo, creado_en FROM demanda_archivos WHERE demanda_id = ? ORDER BY creado_en ASC', [req.params.id]);
     res.json({ ok: true, data: rows });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// Detalle
-router.get('/:id', async (req, res) => {
-  try {
-    const [rows] = await db.execute(
-      `SELECT v.*, d.folio_ref2 AS folio_ref2_actual,
-              d.tipo_peticion AS tipo_peticion_actual
-       FROM v_demandas v
-       LEFT JOIN demandas d ON d.id = v.id
-       WHERE v.id = ?`,
-      [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
-
-    const scope    = scopeArea(req);
-    const subScope = scopeSubarea(req);
-    if (scope && Number(rows[0].area_id) !== Number(scope)) {
-      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
-    }
-    if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
-      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
-    }
-
-    const details = await loadDemandaDetails(req.params.id);
-    res.json({
-      ok: true,
-      data: {
-        ...rows[0],
-        ref2: rows[0].folio_ref2_actual || rows[0].ref2 || '',
-        tipo_peticion: rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '',
-        ...details,
-      },
-    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

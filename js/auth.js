@@ -60,6 +60,7 @@ async function doLogin() {
     currentUser = buildCurrentUser(resp.user);
     sessionStorage.removeItem('sapase_page');
     demandas = [];
+    _consultaDemandas = [];
     _areasCache = [];
     _peticionAreasCache = [];
     _usersCache = [];
@@ -96,6 +97,7 @@ function doLogout() {
   apiLogout();
   currentUser      = null;
   demandas         = [];
+  _consultaDemandas = [];
   _areasCache      = [];
   _peticionAreasCache = [];
   _usersCache      = [];
@@ -118,6 +120,7 @@ function renderSidebar(activePage) {
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
   const isJefe      = currentUser && isJefeArea(currentUser.rol);
+  const puedeConsultaGlobal = puedeConsultarTodasLasAreas();
   const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefe);
   let html = '';
 
@@ -144,6 +147,7 @@ function renderSidebar(activePage) {
     html += navItem('archivos',      'Archivos',      activePage);
     html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
     html += navItem('subareas',      'Subáreas',      activePage);
+    if (puedeConsultaGlobal) html += navItem('consulta', 'Consulta', activePage);
   } else if (isAreaUser) {
     html += navSection('Gestión');
     html += navItem('archivos', 'Archivos', activePage);
@@ -177,6 +181,7 @@ function showPage(name) {
   const isAdminLvl  = currentUser && isAdminLevel(currentUser.rol);
   const isConsulta  = currentUser && currentUser.rol === 'Consulta';
   const isJefe      = currentUser && isJefeArea(currentUser.rol);
+  const puedeConsultaGlobal = puedeConsultarTodasLasAreas();
   const isAreaUser  = currentUser && (isAreaUsuario(currentUser.rol) || isSubareaUsuario(currentUser.rol) || isJefe);
 
   if (isConsulta) {
@@ -185,7 +190,9 @@ function showPage(name) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
     if (['subareas'].includes(name)) name = 'gestion-subareas';
   } else if (isJefe) {
-    if (!['areas', 'archivos', 'observaciones', 'subareas'].includes(name)) name = 'areas';
+    const paginasJefe = ['areas', 'archivos', 'observaciones', 'subareas'];
+    if (puedeConsultaGlobal) paginasJefe.push('consulta');
+    if (!paginasJefe.includes(name)) name = 'areas';
   } else if (isAreaUser) {
     if (name !== 'archivos') name = 'archivos';
   } else if (!['formulario', 'archivos'].includes(name)) {
@@ -218,6 +225,7 @@ function showPage(name) {
   }
 
   if (name === 'archivos')  { renderArchivos(); }
+  if (name === 'consulta') { renderConsultaGlobal(); }
   if (name === 'areas')     {
     renderAreasGrid();
     if (isJefe && currentUser.area) showAreaDetail(currentUser.area);

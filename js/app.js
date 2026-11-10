@@ -517,6 +517,7 @@ async function confirmCambioEstado() {
 
 // Subir Documentos en Formulario
 let _subirDocumentosStaged = [];
+let _subirDocumentosDemandaId = null;
 
 function _escapeFileName(value) {
   return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -573,12 +574,41 @@ function _clearSubirDocumentosFile() {
 
 function cancelSubirDocumentos() {
   _clearSubirDocumentosFile();
+  _subirDocumentosDemandaId = null;
+  document.getElementById('subir-documentos-title').textContent = 'Subir Documentos';
+  document.getElementById('subir-documentos-description').textContent = 'Adjunta los documentos que deseas incluir en esta petición.';
+  document.getElementById('subir-documentos-confirm').textContent = 'Agregar Documento(s)';
   closeModal('modal-subir-documentos');
 }
 
 async function confirmSubirDocumentos() {
   if (!_subirDocumentosStaged.length) {
     showToast('Debes adjuntar al menos un archivo', 'error');
+    return;
+  }
+
+  if (_subirDocumentosDemandaId) {
+    if (!currentUser || !isJefeArea(currentUser.rol)) {
+      showToast('Solo los jefes de área pueden agregar documentos a una petición existente', 'error');
+      return;
+    }
+    try {
+      const demandaId = _subirDocumentosDemandaId;
+      const guardados = await apiGuardarAdjuntosDemandaJefe(
+        demandaId,
+        _subirDocumentosStaged.map(({ file }) => ({ name: file.name, file }))
+      );
+      const demanda = demandas.find(item => String(item.id) === String(demandaId));
+      if (demanda) {
+        demanda.adjuntos = [...(demanda.adjuntos || []), ...guardados];
+        _renderViewModal(demanda);
+      }
+      const total = guardados.length;
+      cancelSubirDocumentos();
+      showToast(`${total} documento(s) agregado(s) a la petición`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Error al agregar documentos a la petición', 'error');
+    }
     return;
   }
 

@@ -3,8 +3,10 @@ let _peticionAreasCache = [];
 let _usersCache    = [];
 
 let demandas         = [];
+let _consultaDemandas = [];
 let currentUser      = null;
 let currentViewId    = null;
+let _viewReadOnly    = false;
 let transferId       = null;
 let selectedArea     = null;
 let filteredDemandas = [];
@@ -194,6 +196,17 @@ function normalizeAreaName(area) {
 
 function isDireccionGeneralArea(area) {
   return normalizeAreaName(area) === 'DIRECCION GENERAL';
+}
+
+function puedeConsultarTodasLasAreas(user = currentUser) {
+  if (!user || !isJefeArea(user.rol)) return false;
+  return [
+    'DIRECCION GENERAL',
+    'CONTACT CENTER',
+    'CONTAC CENTER',
+    'DEPARTAMENTO DE CONTACT CENTER',
+    'DEPARTAMENTO DE CONTAC CENTER',
+  ].includes(normalizeAreaName(user.area));
 }
 
 function isAreaUsuario(rol) {

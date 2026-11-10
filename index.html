@@ -274,6 +274,48 @@
       </div>
     </div>
 
+    <!-- CONSULTA GLOBAL (jefes autorizados, solo lectura) -->
+    <div id="page-consulta" class="page">
+      <div class="section-header">
+        <div class="section-title">
+          <h2>Consulta de Peticiones</h2>
+          <p>Consulta de peticiones de todas las áreas (solo lectura)</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Búsqueda y filtros</div>
+        <div class="search-bar">
+          <input class="search-input" id="consulta-search-input" placeholder="Buscar por folio, folio de petición o recepción, nombre, asunto..." oninput="filterConsultaGlobal()">
+          <select id="consulta-filter-area" onchange="filterConsultaGlobal()">
+            <option value="">Todas las áreas</option>
+          </select>
+          <select id="consulta-filter-status" onchange="filterConsultaGlobal()">
+            <option value="">Todos los estados</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Atendida">Atendida</option>
+            <option value="En proceso">En proceso</option>
+          </select>
+          <select id="consulta-filter-prioridad" onchange="filterConsultaGlobal()">
+            <option value="">Todas las prioridades</option>
+            <option value="Alta">Alta</option>
+            <option value="Media">Media</option>
+            <option value="Baja">Baja</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Peticiones de todas las áreas</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Folio</th><th>Fecha</th><th>Remitente</th><th>Área</th><th>Asunto</th><th>Estado</th><th>Prioridad</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="consulta-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ÁREAS -->
     <div id="page-areas" class="page">
       <div class="section-header">
@@ -558,6 +600,7 @@
     <div id="modal-ver-content"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF(currentViewId)">Imprimir</button>
+      <button class="btn btn-outline btn-sm" id="btn-agregar-adjuntos" onclick="openSubirDocumentos(currentViewId)" style="display:none;">Agregar documentos</button>
       <button class="btn btn-blue btn-sm" id="btn-transferir-demanda" onclick="openTransferModal(currentViewId)">Enviar a otra Área</button>
     </div>
   </div>
@@ -965,10 +1008,10 @@
 <div class="modal-overlay" id="modal-subir-documentos">
   <div class="modal" style="width:480px;">
     <div class="modal-header">
-      <div class="modal-title">Subir Documentos</div>
+      <div class="modal-title" id="subir-documentos-title">Subir Documentos</div>
       <button class="modal-close" onclick="cancelSubirDocumentos()">x</button>
     </div>
-    <p style="font-size:13px; color:var(--gray); margin:0 0 16px;">
+    <p id="subir-documentos-description" style="font-size:13px; color:var(--gray); margin:0 0 16px;">
       Adjunta los documentos que deseas incluir en esta petición.
     </p>
     <div id="subir-documentos-dropzone"
@@ -987,7 +1030,7 @@
     <ul id="subir-documentos-preview-list"
         style="list-style:none; margin:12px 0 0; padding:0; max-height:220px; overflow-y:auto;"></ul>
     <div class="btn-row" style="margin-top:20px;">
-      <button class="btn btn-guinda" onclick="confirmSubirDocumentos()">Agregar Documento(s)</button>
+      <button class="btn btn-guinda" id="subir-documentos-confirm" onclick="confirmSubirDocumentos()">Agregar Documento(s)</button>
       <button class="btn btn-outline" onclick="cancelSubirDocumentos()">Cancelar</button>
     </div>
   </div>
@@ -1039,13 +1082,13 @@
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="js/api.js?v=20.4"></script>
-<script src="js/data.js?v=20.4"></script>
-<script src="js/auth.js?v=20.4"></script>
+<script src="js/api.js?v=20.5"></script>
+<script src="js/data.js?v=20.5"></script>
+<script src="js/auth.js?v=20.5"></script>
 <script src="js/app.js?v=14.6"></script>
-<script src="js/demandas.js?v=14.9"></script>
+<script src="js/demandas.js?v=15.1"></script>
 <script src="js/usuarios.js?v=14.3"></script>
 <script src="js/configuracion.js?v=14.3"></script>
-<script src="js/exportar.js?v=14.11"></script>
+<script src="js/exportar.js?v=14.12"></script>
 </body>
 </html>

@@ -438,7 +438,8 @@ function exportInformePDF(tipo) {
    ============================================================ */
 
 function exportSinglePDF(id) {
-  const d = demandas.find(x => x.id === id);
+  const d = demandas.find(x => String(x.id) === String(id))
+    || _consultaDemandas.find(x => String(x.id) === String(id));
   if (!d) return;
 
   const { jsPDF } = window.jspdf;

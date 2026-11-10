@@ -53,8 +53,22 @@ function removePendingUploadedDoc(idx) {
   renderUploadedDocs();
 }
 
-function openSubirDocumentos() {
+function openSubirDocumentos(demandaId = null) {
+  if (demandaId && (!currentUser || !isJefeArea(currentUser.rol))) {
+    showToast('Solo los jefes de área pueden agregar documentos a una petición existente', 'error');
+    return;
+  }
+  _subirDocumentosDemandaId = demandaId;
   _clearSubirDocumentosFile();
+  document.getElementById('subir-documentos-title').textContent = demandaId
+    ? 'Agregar documentos a la petición'
+    : 'Subir Documentos';
+  document.getElementById('subir-documentos-description').textContent = demandaId
+    ? 'Adjunta documentos a esta petición.'
+    : 'Adjunta los documentos que deseas incluir en esta petición.';
+  document.getElementById('subir-documentos-confirm').textContent = demandaId
+    ? 'Guardar documentos'
+    : 'Agregar Documento(s)';
   document.getElementById('modal-subir-documentos').classList.add('open');
 }
 
@@ -184,6 +198,61 @@ function filterArchivos() {
   });
 
   renderArchivosTable(filteredDemandas);
+}
+
+async function renderConsultaGlobal() {
+  const tbody = document.getElementById('consulta-table');
+  if (!puedeConsultarTodasLasAreas()) {
+    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px;">No tienes permiso para consultar todas las áreas</td></tr>';
+    return;
+  }
+  try {
+    _consultaDemandas = (await apiGetDemandasConsultaGlobal()).map(normalizeDemanda);
+    const areaSelect = document.getElementById('consulta-filter-area');
+    const selectedArea = areaSelect.value;
+    areaSelect.innerHTML = '<option value="">Todas las áreas</option>';
+    [...new Set(_consultaDemandas.map(d => d.area).filter(Boolean))].sort().forEach(area => {
+      const option = document.createElement('option');
+      option.value = area;
+      option.textContent = area;
+      areaSelect.appendChild(option);
+    });
+    areaSelect.value = selectedArea;
+    filterConsultaGlobal();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px;">${_escapeFileName(err.message || 'Error al cargar las peticiones')}</td></tr>`;
+  }
+}
+
+function filterConsultaGlobal() {
+  const query = (document.getElementById('consulta-search-input')?.value || '').trim().toLowerCase();
+  const area = document.getElementById('consulta-filter-area')?.value || '';
+  const estado = document.getElementById('consulta-filter-status')?.value || '';
+  const prioridad = document.getElementById('consulta-filter-prioridad')?.value || '';
+  const list = _consultaDemandas.filter(d => {
+    const matchesQuery = !query || [d.folio, d.ref, d.ref2, d.remitente, d.asunto]
+      .some(value => String(value || '').toLowerCase().includes(query));
+    return matchesQuery
+      && (!area || d.area === area)
+      && (!estado || d.estado === estado)
+      && (!prioridad || d.prioridad === prioridad);
+  });
+  const tbody = document.getElementById('consulta-table');
+  tbody.innerHTML = list.map(d => `
+    <tr>
+      <td><span class="folio-cell">${d.folio}</span></td>
+      <td>${d.fecha}</td>
+      <td>${d.remitente}</td>
+      <td><small>${d.area}</small></td>
+      <td>${d.asunto}</td>
+      <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
+      <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
+      <td><div style="display:flex; gap:4px; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}', true)">Ver</button>
+        <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF('${d.id}')">Imprimir</button>
+      </div></td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
 }
 
 function tieneObservacionesPendientes(d) {
@@ -321,15 +390,18 @@ async function confirmResolverObservacion() {
 }
 
 /* ---------- Ver detalle ---------- */
-async function viewDemanda(id) {
+async function viewDemanda(id, soloLectura = false) {
   currentViewId = id;
+  _viewReadOnly = soloLectura;
   const local = demandas.find(x => x.id === id);
-  if (local) _renderViewModal(local); // mostrar inmediatamente con datos locales
+  const consultaLocal = soloLectura ? _consultaDemandas.find(x => String(x.id) === String(id)) : null;
+  if (consultaLocal) _renderViewModal(consultaLocal);
+  else if (local) _renderViewModal(local); // mostrar inmediatamente con datos locales
 
   try {
-    const raw = await apiGetDemanda(id);
+    const raw = soloLectura ? await apiGetDemandaConsultaGlobal(id) : await apiGetDemanda(id);
     const fresh = normalizeDemanda(raw);
-    const base = local || {};
+    const base = consultaLocal || local || {};
     const d = {
       ...base,
       ...fresh,
@@ -339,8 +411,10 @@ async function viewDemanda(id) {
       reportes: fresh.reportes?.length ? fresh.reportes : (base.reportes || []),
       adjuntos: fresh.adjuntos?.length ? fresh.adjuntos : (base.adjuntos || []),
     };
-    const idx = demandas.findIndex(x => x.id === id);
+    const idx = demandas.findIndex(x => String(x.id) === String(id));
     if (idx >= 0) demandas[idx] = d;
+    const consultaIdx = _consultaDemandas.findIndex(x => String(x.id) === String(id));
+    if (consultaIdx >= 0) _consultaDemandas[consultaIdx] = d;
     _renderViewModal(d); // actualizar con historial
   } catch (err) {
     if (!local) showToast(err.message || 'Error al cargar demanda', 'error');
@@ -348,7 +422,7 @@ async function viewDemanda(id) {
 }
 
 function _renderViewModal(d) {
-  const canChangePriority = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
+  const canChangePriority = !_viewReadOnly && currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
   const prioridadHTML = canChangePriority
     ? `<select aria-label="Prioridad" style="width:100%; padding:10px 12px; border:1px solid #d5e0fb; border-radius:8px; background:#eef4ff; color:var(--gray-dark);"
                onchange="changePrioridadView(currentViewId, this)">
@@ -388,9 +462,13 @@ function _renderViewModal(d) {
 
   const btnTransferir = document.getElementById('btn-transferir-demanda');
   if (btnTransferir) {
-    const canTransfer = currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
+    const canTransfer = !_viewReadOnly && currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
     btnTransferir.style.display = canTransfer ? '' : 'none';
   }
+  const btnAdjuntar = document.getElementById('btn-agregar-adjuntos');
+  if (btnAdjuntar) btnAdjuntar.style.display = !_viewReadOnly && currentUser && isJefeArea(currentUser.rol) ? '' : 'none';
+  const btnImprimir = document.querySelector('#modal-ver .btn-row > button:first-child');
+  if (btnImprimir) btnImprimir.style.display = '';
   document.getElementById('modal-ver').classList.add('open');
 }
 

@@ -172,8 +172,18 @@ async function apiGetDemandas(filtros = {}) {
   return res.data;
 }
 
+async function apiGetDemandasConsultaGlobal() {
+  const res = await apiFetch('/demandas/consulta/global');
+  return res.data;
+}
+
 async function apiGetDemanda(id) {
   const res = await apiFetch('/demandas/' + id);
+  return res.data;
+}
+
+async function apiGetDemandaConsultaGlobal(id) {
+  const res = await apiFetch('/demandas/consulta/global/' + id);
   return res.data;
 }
 
@@ -186,7 +196,15 @@ async function apiCrearDemanda(data) {
 }
 
 async function apiGuardarAdjuntosDemanda(id, archivos) {
+  return apiPostAdjuntosDemanda(id, archivos, false);
+}
 
+async function apiGuardarAdjuntosDemandaJefe(id, archivos) {
+  return apiPostAdjuntosDemanda(id, archivos, true);
+}
+
+async function apiPostAdjuntosDemanda(id, archivos, esAdjuntoExistente) {
+  const endpoint = '/demandas/' + id + '/adjuntos';
   const fd = new FormData();
   let hasFiles = false;
   (archivos || []).forEach(item => {
@@ -197,17 +215,21 @@ async function apiGuardarAdjuntosDemanda(id, archivos) {
   });
 
   if (!hasFiles) {
-    const res = await apiFetch('/demandas/' + id + '/adjuntos', {
+    const res = await apiFetch(endpoint, {
       method: 'POST',
       body: JSON.stringify({ archivos }),
+      headers: esAdjuntoExistente ? { 'X-Adjunto-Existente': 'true' } : {},
     });
     return res.data;
   }
 
   const currentToken = sessionStorage.getItem(getSessionStorageKey()) || _token;
-  const res = await fetch(API_BASE + '/demandas/' + id + '/adjuntos', {
+  const res = await fetch(API_BASE + endpoint, {
     method: 'POST',
-    headers: currentToken ? { 'Authorization': 'Bearer ' + currentToken } : {},
+    headers: {
+      ...(currentToken ? { 'Authorization': 'Bearer ' + currentToken } : {}),
+      ...(esAdjuntoExistente ? { 'X-Adjunto-Existente': 'true' } : {}),
+    },
     body: fd,
   });
 
