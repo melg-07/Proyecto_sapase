@@ -211,11 +211,15 @@ async function renderConsultaGlobal() {
     return;
   }
   try {
-    _consultaDemandas = (await apiGetDemandasConsultaGlobal()).map(normalizeDemanda);
+    const [rawDemandas, rawAreas] = await Promise.all([
+      apiGetDemandasConsultaGlobal(),
+      apiGetAreas(),
+    ]);
+    _consultaDemandas = rawDemandas.map(normalizeDemanda);
     const areaSelect = document.getElementById('consulta-filter-area');
     const selectedArea = areaSelect.value;
     areaSelect.innerHTML = '<option value="">Todas las áreas</option>';
-    _areasCache.map(area => area.nombre).filter(Boolean).sort().forEach(area => {
+    rawAreas.map(area => area.nombre).filter(Boolean).sort((a, b) => a.localeCompare(b, 'es')).forEach(area => {
       const option = document.createElement('option');
       option.value = area;
       option.textContent = area;
