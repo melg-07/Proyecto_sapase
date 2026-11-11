@@ -215,7 +215,7 @@ async function renderConsultaGlobal() {
     const areaSelect = document.getElementById('consulta-filter-area');
     const selectedArea = areaSelect.value;
     areaSelect.innerHTML = '<option value="">Todas las áreas</option>';
-    [...new Set(_consultaDemandas.map(d => d.area).filter(Boolean))].sort().forEach(area => {
+    _areasCache.map(area => area.nombre).filter(Boolean).sort().forEach(area => {
       const option = document.createElement('option');
       option.value = area;
       option.textContent = area;

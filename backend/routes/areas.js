@@ -5,11 +5,15 @@ const { authMiddleware, adminOSubadmin, areaUsuarioGuard, scopeArea } = require(
 router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 
-const direccionGeneralMatcher = /DIRECCI[OÓ]N GENERAL/i;
+const consultaGlobalAreaMatcher = /^(?:DIRECCION GENERAL|(?:DEPARTAMENTO DE )?CONTAC(?:T)? CENTER(?: Y ATENCION CIUDADANA)?)$/;
 const areasParaPeticion = new Set(['DIRECCION GENERAL', 'COORDINACION JURIDICA']);
 
 function normalizeAreaName(nombre) {
   return String(nombre || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+}
+
+function puedeConsultarTodasLasAreas(area) {
+  return consultaGlobalAreaMatcher.test(normalizeAreaName(area));
 }
 
 router.get('/para-peticion', async (req, res) => {
@@ -33,9 +37,7 @@ router.get('/', async (req, res) => {
     if (scope) {
       const [areaRows] = await db.execute('SELECT nombre FROM areas WHERE id = ? LIMIT 1', [scope]);
       const areaName = areaRows[0]?.nombre || '';
-      const isDireccionGeneralUser = direccionGeneralMatcher.test(areaName);
-
-      if (!isDireccionGeneralUser) {
+      if (!puedeConsultarTodasLasAreas(areaName)) {
         query = 'SELECT id, nombre, jefe_area, activa FROM areas WHERE id = ? ORDER BY id ASC';
         params = [scope];
       }
