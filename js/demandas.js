@@ -14,7 +14,7 @@ function initForm() {
 }
 
 function clearForm() {
-  ['f-ref','f-ref2','f-remitente','f-asunto','f-domicilio','f-colonia',
+  ['f-ref','f-remitente','f-asunto','f-domicilio','f-colonia',
    'f-tel1','f-tel2','f-demanda','f-observaciones','f-concepto'].forEach(id => {
     document.getElementById(id).value = '';
   });
@@ -122,7 +122,6 @@ async function saveDemanda() {
 
   const payload = {
     ref:           document.getElementById('f-ref').value.trim(),
-    ref2:          document.getElementById('f-ref2').value.trim(),
     area_id,
     tipo_peticion,
     remitente,
