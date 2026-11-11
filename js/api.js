@@ -199,12 +199,14 @@ async function apiGuardarAdjuntosDemanda(id, archivos) {
   return apiPostAdjuntosDemanda(id, archivos, false);
 }
 
-async function apiGuardarAdjuntosDemandaJefe(id, archivos) {
-  return apiPostAdjuntosDemanda(id, archivos, true);
+async function apiGuardarAdjuntosDemandaJefe(id, archivos, consultaGlobal = false) {
+  return apiPostAdjuntosDemanda(id, archivos, true, consultaGlobal);
 }
 
-async function apiPostAdjuntosDemanda(id, archivos, esAdjuntoExistente) {
-  const endpoint = '/demandas/' + id + '/adjuntos';
+async function apiPostAdjuntosDemanda(id, archivos, esAdjuntoExistente, consultaGlobal = false) {
+  const endpoint = consultaGlobal
+    ? '/demandas/consulta/global/' + id + '/adjuntos'
+    : '/demandas/' + id + '/adjuntos';
   const fd = new FormData();
   let hasFiles = false;
   (archivos || []).forEach(item => {

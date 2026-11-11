@@ -518,6 +518,7 @@ async function confirmCambioEstado() {
 // Subir Documentos en Formulario
 let _subirDocumentosStaged = [];
 let _subirDocumentosDemandaId = null;
+let _subirDocumentosConsultaGlobal = false;
 
 function _escapeFileName(value) {
   return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -575,6 +576,7 @@ function _clearSubirDocumentosFile() {
 function cancelSubirDocumentos() {
   _clearSubirDocumentosFile();
   _subirDocumentosDemandaId = null;
+  _subirDocumentosConsultaGlobal = false;
   document.getElementById('subir-documentos-title').textContent = 'Subir Documentos';
   document.getElementById('subir-documentos-description').textContent = 'Adjunta los documentos que deseas incluir en esta petición.';
   document.getElementById('subir-documentos-confirm').textContent = 'Agregar Documento(s)';
@@ -588,7 +590,8 @@ async function confirmSubirDocumentos() {
   }
 
   if (_subirDocumentosDemandaId) {
-    if (!currentUser || !isJefeArea(currentUser.rol)) {
+    if (!currentUser || !isJefeArea(currentUser.rol) ||
+        (_subirDocumentosConsultaGlobal && !puedeAgregarAdjuntosConsultaGlobal())) {
       showToast('Solo los jefes de área pueden agregar documentos a una petición existente', 'error');
       return;
     }
@@ -596,9 +599,11 @@ async function confirmSubirDocumentos() {
       const demandaId = _subirDocumentosDemandaId;
       const guardados = await apiGuardarAdjuntosDemandaJefe(
         demandaId,
-        _subirDocumentosStaged.map(({ file }) => ({ name: file.name, file }))
+        _subirDocumentosStaged.map(({ file }) => ({ name: file.name, file })),
+        _subirDocumentosConsultaGlobal
       );
-      const demanda = demandas.find(item => String(item.id) === String(demandaId));
+      const demanda = _consultaDemandas.find(item => String(item.id) === String(demandaId))
+        || demandas.find(item => String(item.id) === String(demandaId));
       if (demanda) {
         demanda.adjuntos = [...(demanda.adjuntos || []), ...guardados];
         _renderViewModal(demanda);

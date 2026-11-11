@@ -12,6 +12,11 @@ const { execFile } = require('child_process');
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
+function isContactCenterAreaName(name) {
+  const area = String(name || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+  return /^(?:DEPARTAMENTO DE )?CONTAC(?:T)? CENTER(?: Y ATENCION CIUDADANA)?$/.test(area);
+}
+
 const logsDir = path.join(__dirname, '..', 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 function log(level, msg) {
@@ -51,14 +56,23 @@ async function jefeConsultaGlobalGuard(req, res, next) {
   try {
     const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ?', [req.user.area_id]);
     const area = String(areas[0]?.nombre || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
-    if (![
-      'DIRECCION GENERAL',
-      'CONTACT CENTER',
-      'CONTAC CENTER',
-      'DEPARTAMENTO DE CONTACT CENTER',
-      'DEPARTAMENTO DE CONTAC CENTER',
-    ].includes(area)) {
+    if (area !== 'DIRECCION GENERAL' && !isContactCenterAreaName(area)) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar todas las áreas' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function jefeContactCenterConsultaAdjuntosGuard(req, res, next) {
+  if (req.user?.rol !== 'jefe_area' || !req.user.area_id) {
+    return res.status(403).json({ ok: false, error: 'No tienes permiso para agregar documentos desde Consulta' });
+  }
+  try {
+    const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ?', [req.user.area_id]);
+    if (!isContactCenterAreaName(areas[0]?.nombre)) {
+      return res.status(403).json({ ok: false, error: 'Solo el jefe de área de Contact Center puede agregar documentos desde Consulta' });
     }
     next();
   } catch (err) {
@@ -354,13 +368,13 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
 });
 
 // Adjuntar documentos a una petición
-async function guardarAdjuntos(req, res) {
+async function guardarAdjuntos(req, res, consultaGlobal = false) {
   try {
     const demandaId = req.params.id;
     const [dem] = await db.execute('SELECT id, area_id, folio FROM demandas WHERE id = ?', [demandaId]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
-    const scope = scopeArea(req);
+    const scope = consultaGlobal ? null : scopeArea(req);
     if (scope && Number(dem[0].area_id) !== Number(scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
@@ -426,6 +440,12 @@ async function guardarAdjuntos(req, res) {
 }
 
 router.post('/:id/adjuntos', autorizarAdjuntos, uploadAdjuntos, guardarAdjuntos);
+router.post(
+  '/consulta/global/:id/adjuntos',
+  jefeContactCenterConsultaAdjuntosGuard,
+  uploadAdjuntos,
+  (req, res) => guardarAdjuntos(req, res, true)
+);
 
 router.get('/:id/adjuntos', async (req, res) => {
   try {

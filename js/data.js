@@ -198,15 +198,17 @@ function isDireccionGeneralArea(area) {
   return normalizeAreaName(area) === 'DIRECCION GENERAL';
 }
 
+function isContactCenterArea(area) {
+  return /^(?:DEPARTAMENTO DE )?CONTAC(?:T)? CENTER(?: Y ATENCION CIUDADANA)?$/.test(normalizeAreaName(area));
+}
+
 function puedeConsultarTodasLasAreas(user = currentUser) {
   if (!user || !isJefeArea(user.rol)) return false;
-  return [
-    'DIRECCION GENERAL',
-    'CONTACT CENTER',
-    'CONTAC CENTER',
-    'DEPARTAMENTO DE CONTACT CENTER',
-    'DEPARTAMENTO DE CONTAC CENTER',
-  ].includes(normalizeAreaName(user.area));
+  return isDireccionGeneralArea(user.area) || isContactCenterArea(user.area);
+}
+
+function puedeAgregarAdjuntosConsultaGlobal(user = currentUser) {
+  return !!user && isJefeArea(user.rol) && isContactCenterArea(user.area);
 }
 
 function isAreaUsuario(rol) {

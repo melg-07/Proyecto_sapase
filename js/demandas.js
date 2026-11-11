@@ -53,12 +53,17 @@ function removePendingUploadedDoc(idx) {
   renderUploadedDocs();
 }
 
-function openSubirDocumentos(demandaId = null) {
+function openSubirDocumentos(demandaId = null, consultaGlobal = false) {
   if (demandaId && (!currentUser || !isJefeArea(currentUser.rol))) {
     showToast('Solo los jefes de área pueden agregar documentos a una petición existente', 'error');
     return;
   }
+  if (consultaGlobal && (!demandaId || !puedeAgregarAdjuntosConsultaGlobal())) {
+    showToast('No tienes permiso para agregar documentos desde Consulta', 'error');
+    return;
+  }
   _subirDocumentosDemandaId = demandaId;
+  _subirDocumentosConsultaGlobal = !!consultaGlobal;
   _clearSubirDocumentosFile();
   document.getElementById('subir-documentos-title').textContent = demandaId
     ? 'Agregar documentos a la petición'
@@ -465,7 +470,11 @@ function _renderViewModal(d) {
     btnTransferir.style.display = canTransfer ? '' : 'none';
   }
   const btnAdjuntar = document.getElementById('btn-agregar-adjuntos');
-  if (btnAdjuntar) btnAdjuntar.style.display = !_viewReadOnly && currentUser && isJefeArea(currentUser.rol) ? '' : 'none';
+  if (btnAdjuntar) {
+    const canAttach = currentUser && isJefeArea(currentUser.rol)
+      && (!_viewReadOnly || puedeAgregarAdjuntosConsultaGlobal());
+    btnAdjuntar.style.display = canAttach ? '' : 'none';
+  }
   const btnImprimir = document.querySelector('#modal-ver .btn-row > button:first-child');
   if (btnImprimir) btnImprimir.style.display = '';
   document.getElementById('modal-ver').classList.add('open');
