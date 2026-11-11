@@ -273,10 +273,14 @@ function populateAreaSelect(selId, addEmpty) {
 }
 
 function populateAllSelects() {
-  ['f-area', 'filter-area', 'transfer-area', 'ed-area', 'eu-area', 'nu-area'].forEach(id => {
-    const addEmpty = ['f-area', 'filter-area', 'transfer-area'].includes(id);
+  ['f-area', 'filter-area', 'consulta-filter-area', 'transfer-area', 'ed-area', 'eu-area', 'nu-area'].forEach(id => {
+    const addEmpty = ['f-area', 'filter-area', 'consulta-filter-area', 'transfer-area'].includes(id);
     populateAreaSelect(id, addEmpty);
   });
   const fa = document.getElementById('filter-area');
   if (fa && fa.options[0] && fa.options[0].value === '') fa.options[0].textContent = 'Todas las areas';
+  const consultaArea = document.getElementById('consulta-filter-area');
+  if (consultaArea && consultaArea.options[0] && consultaArea.options[0].value === '') {
+    consultaArea.options[0].textContent = 'Todas las áreas';
+  }
 }

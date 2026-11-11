@@ -211,21 +211,7 @@ async function renderConsultaGlobal() {
     return;
   }
   try {
-    const [rawDemandas, rawAreas] = await Promise.all([
-      apiGetDemandasConsultaGlobal(),
-      apiGetAreas(),
-    ]);
-    _consultaDemandas = rawDemandas.map(normalizeDemanda);
-    const areaSelect = document.getElementById('consulta-filter-area');
-    const selectedArea = areaSelect.value;
-    areaSelect.innerHTML = '<option value="">Todas las áreas</option>';
-    rawAreas.map(area => area.nombre).filter(Boolean).sort((a, b) => a.localeCompare(b, 'es')).forEach(area => {
-      const option = document.createElement('option');
-      option.value = area;
-      option.textContent = area;
-      areaSelect.appendChild(option);
-    });
-    areaSelect.value = selectedArea;
+    _consultaDemandas = (await apiGetDemandasConsultaGlobal()).map(normalizeDemanda);
     filterConsultaGlobal();
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px;">${_escapeFileName(err.message || 'Error al cargar las peticiones')}</td></tr>`;
