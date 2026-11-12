@@ -159,6 +159,23 @@ function uploadAdjuntos(req, res, next) {
   });
 }
 
+function limpiarArchivosSubidos(files, rutasExtra = []) {
+  const rutas = new Set([
+    ...(files || []).map(file => file.filename),
+    ...rutasExtra,
+  ]);
+  for (const ruta of rutas) {
+    const filePath = path.join(uploadsDir, path.basename(ruta));
+    try {
+      fs.unlinkSync(filePath);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        log('ERROR', `[crear] No se pudo eliminar el archivo temporal ${filePath}: ${err.message}`);
+      }
+    }
+  }
+}
+
 async function loadDemandaDetails(id) {
   const [hist] = await db.execute(
     `SELECT t.transferido_en, ao.nombre AS area_origen, ad.nombre AS area_destino,
@@ -457,10 +474,18 @@ router.get('/:id/adjuntos', async (req, res) => {
 });
 
 // Crear
-router.post('/', noConsulta, async (req, res) => {
+router.post('/', noConsulta, uploadAdjuntos, async (req, res) => {
+  const files = req.files || [];
+  const archivosEnDisco = new Set();
+  let connection;
   try {
     if (req.user.rol === 'subarea_usuario') {
+      limpiarArchivosSubidos(files);
       return res.status(403).json({ ok: false, error: 'Los usuarios de subarea no pueden crear peticiones' });
+    }
+
+    if (!files.length) {
+      return res.status(400).json({ ok: false, error: 'Debes subir o escanear al menos un documento para guardar la petición' });
     }
 
     const {
@@ -479,6 +504,7 @@ router.post('/', noConsulta, async (req, res) => {
         !String(domicilio || '').trim() || !String(colonia || '').trim() ||
         telPrincipal.length !== 10 ||
         (tipoPeticion && !tiposPeticion.has(tipoPeticion))) {
+      limpiarArchivosSubidos(files);
       return res.status(400).json({
         ok: false,
         error: 'Área, remitente, asunto, domicilio, colonia y teléfono principal de 10 dígitos son requeridos; el tipo de petición es opcional',
@@ -488,7 +514,9 @@ router.post('/', noConsulta, async (req, res) => {
     const id    = 'D-' + Date.now();
     const folio = await siguienteFolio();
 
-    await db.execute(
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    await connection.execute(
       `INSERT INTO demandas
         (id, folio, fecha_captura, fecha_demanda, folio_ref, folio_ref2, area_id, tipo_peticion,
          remitente, asunto, domicilio, colonia, tel_principal, tel_secundario,
@@ -515,7 +543,22 @@ router.post('/', noConsulta, async (req, res) => {
       ]
     );
 
-    const [rows] = await db.execute(
+    const adjuntos = [];
+    for (const file of files) {
+      let ruta = renombrarConFolio(file.filename, folio);
+      archivosEnDisco.add(ruta);
+      const rutaCompleta = path.join(uploadsDir, ruta);
+      if (!fs.existsSync(rutaCompleta)) {
+        throw new Error(`El archivo "${file.originalname}" no quedó guardado en el servidor`);
+      }
+      await connection.execute(
+        'INSERT INTO demanda_archivos (demanda_id, nombre, ruta, tipo) VALUES (?, ?, ?, ?)',
+        [id, file.originalname, ruta, 'documento']
+      );
+      adjuntos.push({ nombre: file.originalname, ruta });
+    }
+
+    const [rows] = await connection.execute(
       `SELECT v.*, d.tipo_peticion AS tipo_peticion_actual
        FROM v_demandas v
        JOIN demandas d ON d.id = v.id
@@ -523,9 +566,20 @@ router.post('/', noConsulta, async (req, res) => {
       [id]
     );
     if (rows[0]) rows[0].tipo_peticion = rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '';
-    res.status(201).json({ ok: true, data: rows[0] });
+    await connection.commit();
+    res.status(201).json({ ok: true, data: { ...rows[0], adjuntos } });
   } catch (err) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        log('ERROR', `[crear] No se pudo revertir la transacción: ${rollbackErr.message}`);
+      }
+    }
+    limpiarArchivosSubidos(files, [...archivosEnDisco]);
     res.status(500).json({ ok: false, error: err.message });
+  } finally {
+    if (connection) connection.release();
   }
 });
 

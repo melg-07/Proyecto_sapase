@@ -98,8 +98,13 @@ function formatDateInput(val) {
 
 /* ---------- Guardar nueva petición ---------- */
 async function saveDemanda() {
-  const area     = document.getElementById('f-area').value;
-  const area_id  = getAreaId(area);
+  if (!_pendingUploadedDocs.length) {
+    showToast('Debes subir o escanear al menos un documento antes de guardar la petición', 'error');
+    return;
+  }
+
+  const areaValue = document.getElementById('f-area').value;
+  const area_id  = areaValue ? Number(areaValue) : null;
   const tipo_peticion = document.getElementById('f-tipo-peticion').value;
   const remitente= document.getElementById('f-remitente').value.trim();
   const asunto   = document.getElementById('f-asunto').value.trim();
@@ -142,27 +147,14 @@ async function saveDemanda() {
   };
 
   try {
-    const rec = await apiCrearDemanda(payload);
+    const rec = await apiCrearDemanda(payload, _pendingUploadedDocs);
     const created = normalizeDemanda(rec);
+    created.adjuntos = Array.isArray(rec.adjuntos) ? rec.adjuntos : [];
     demandas.unshift(created);
     updateStats();
     renderDashboard();
 
-    if (_pendingUploadedDocs.length) {
-      try {
-        const guardados = await apiGuardarAdjuntosDemanda(created.id, _pendingUploadedDocs);
-        created.adjuntos = Array.isArray(guardados) && guardados.length
-          ? guardados.map(item => ({ nombre: item.nombre || item.name || '', ruta: item.ruta || item.path || '' }))
-          : [];
-        const idx = demandas.findIndex(x => x.id === created.id);
-        if (idx >= 0) demandas[idx] = created;
-        showToast('Demanda guardada y documentos adjuntados', 'success');
-      } catch (err) {
-        showToast('Demanda guardada, pero no se pudieron adjuntar los documentos', 'error');
-      }
-    } else {
-      showToast('Demanda guardada: ' + rec.folio, 'success');
-    }
+    showToast('Petición guardada y documentos adjuntados', 'success');
 
     clearForm();
     showPage('archivos');

@@ -187,12 +187,33 @@ async function apiGetDemandaConsultaGlobal(id) {
   return res.data;
 }
 
-async function apiCrearDemanda(data) {
-  const res = await apiFetch('/demandas', {
-    method: 'POST',
-    body: JSON.stringify(data),
+async function apiCrearDemanda(data, archivos) {
+  const fd = new FormData();
+  Object.entries(data).forEach(([key, value]) => fd.append(key, value == null ? '' : value));
+  (archivos || []).forEach(item => {
+    if (item && item.file instanceof File) {
+      fd.append('archivo', item.file, item.name || item.file.name);
+    }
   });
-  return res.data;
+
+  const currentToken = sessionStorage.getItem(getSessionStorageKey()) || _token;
+  const res = await fetch(API_BASE + '/demandas', {
+    method: 'POST',
+    headers: currentToken ? { 'Authorization': 'Bearer ' + currentToken } : {},
+    body: fd,
+  });
+
+  let result;
+  try {
+    result = await res.json();
+  } catch (_) {
+    throw new Error(`Error del servidor (${res.status})`);
+  }
+  if (!res.ok) {
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
+    throw new Error(result.error || 'Error en la solicitud');
+  }
+  return result.data;
 }
 
 async function apiGuardarAdjuntosDemanda(id, archivos) {

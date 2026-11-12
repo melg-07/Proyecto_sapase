@@ -156,7 +156,7 @@ function getAreasActivasParaPeticion() {
       areas.set(a.id, a);
     }
   });
-  return [...areas.values()].filter(a => a.activa).map(a => a.nombre);
+  return [...areas.values()].filter(a => a.activa);
 }
 
 function getAreaId(nombre) {
@@ -266,7 +266,8 @@ function populateAreaSelect(selId, addEmpty) {
   const areas = selId === 'f-area' ? getAreasActivasParaPeticion() : getAreasActivas();
   areas.forEach(a => {
     const opt = document.createElement('option');
-    opt.value = a; opt.textContent = a;
+    opt.value = selId === 'f-area' ? String(a.id) : a;
+    opt.textContent = selId === 'f-area' ? a.nombre : a;
     sel.appendChild(opt);
   });
   if (prev) sel.value = prev;
