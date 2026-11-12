@@ -154,7 +154,10 @@ async function saveDemanda() {
     updateStats();
     renderDashboard();
 
-    showToast('Petición guardada y documentos adjuntados', 'success');
+    showToast(
+      `Petición guardada y documentos adjuntados${created.fechaHoraCaptura ? ` (${created.fechaHoraCaptura})` : ''}`,
+      'success'
+    );
 
     clearForm();
     showPage('archivos');
@@ -198,6 +201,12 @@ function filterArchivos() {
 
 async function renderConsultaGlobal() {
   const tbody = document.getElementById('consulta-table');
+  const subtitle = document.getElementById('consulta-subtitle');
+  if (subtitle) {
+    subtitle.textContent = puedeEditarConsultaGlobal()
+      ? 'Consulta de peticiones de todas las áreas; puedes editar peticiones'
+      : 'Consulta de peticiones de todas las áreas (solo lectura)';
+  }
   if (!puedeConsultarTodasLasAreas()) {
     if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:20px;">No tienes permiso para consultar todas las áreas</td></tr>';
     return;
@@ -224,10 +233,11 @@ function filterConsultaGlobal() {
       && (!prioridad || d.prioridad === prioridad);
   });
   const tbody = document.getElementById('consulta-table');
+  const puedeEditar = puedeEditarConsultaGlobal();
   tbody.innerHTML = list.map(d => `
     <tr>
       <td><span class="folio-cell">${d.folio}</span></td>
-      <td>${d.fecha}</td>
+      <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
@@ -236,6 +246,7 @@ function filterConsultaGlobal() {
       <td><div style="display:flex; gap:4px; flex-wrap:wrap;">
         <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}', true)">Ver</button>
         <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF('${d.id}')">Imprimir</button>
+        ${puedeEditar ? `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}', true)">Editar</button>` : ''}
       </div></td>
     </tr>
   `).join('') || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
@@ -256,7 +267,7 @@ function renderArchivosTable(list) {
   const rowHtml = d => `
     <tr>
       <td><span class="folio-cell">${d.folio}</span></td>
-      <td>${d.fecha}</td>
+      <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
@@ -420,10 +431,9 @@ function _renderViewModal(d) {
   document.getElementById('modal-ver-content').innerHTML = `
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:13px;">
       ${field2('Folio',             `<strong style="color:var(--guinda);">${d.folio}</strong>`)}
-      ${field2('Fecha de Captura',  d.fecha)}
+      ${field2('Fecha de Captura',  d.fechaHoraCaptura || d.fecha)}
       ${field2('Fecha de Demanda',  d.fechaDemanda || '—')}
       ${field2('Folio Petición', d.ref || '—')}
-      ${field2('Folio Recepción', d.ref2 || '—')}
       ${field2('Area',              d.area)}
       ${field2('Tipo de petición', d.tipo_peticion || '—')}
       ${d.subarea ? field2('Subarea', d.subarea) : ''}
@@ -591,9 +601,11 @@ function historialHTML(historial) {
 
 /* ---------- Editar petición ---------- */
 let _pendingEditEstadoPayload = null;
+let _editDemandaConsultaGlobal = false;
 
-function openEditDemanda(id) {
-  if (!currentUser || currentUser.rol === 'Consulta') {
+function openEditDemanda(id, consultaGlobal = false) {
+  if (!currentUser || currentUser.rol === 'Consulta' ||
+      (consultaGlobal && !puedeEditarConsultaGlobal())) {
     showToast('El usuario de consulta solo puede ver e imprimir', 'error');
     return;
   }
@@ -601,9 +613,12 @@ function openEditDemanda(id) {
     showToast('Los usuarios de subarea solo pueden cambiar el estado', 'error');
     return;
   }
-  const d = demandas.find(x => x.id === id);
+  const d = consultaGlobal
+    ? _consultaDemandas.find(x => String(x.id) === String(id))
+    : demandas.find(x => String(x.id) === String(id));
   if (!d) return;
   currentViewId  = id;
+  _editDemandaConsultaGlobal = consultaGlobal;
 
   // Estado: Administrador/Subadmin y el jefe de area. Prioridad: ademas, el usuario de area
   const isAdmin       = isAdminLevel(currentUser.rol);
@@ -611,11 +626,21 @@ function openEditDemanda(id) {
   const isJefeAreaUser = isJefeArea(currentUser.rol);
   const estadoGroup   = document.getElementById('ed-estado-group');
   const prioridadGroup = document.getElementById('ed-prioridad-group');
-  if (estadoGroup)    estadoGroup.style.display    = (isAdmin || isJefeAreaUser) ? '' : 'none';
+  if (estadoGroup)    estadoGroup.style.display    = !consultaGlobal && (isAdmin || isJefeAreaUser) ? '' : 'none';
   if (prioridadGroup) prioridadGroup.style.display = (isAdmin || isAreaUser || isJefeAreaUser) ? '' : 'none';
 
+  const areaSelect = document.getElementById('ed-area');
+  if (areaSelect) {
+    areaSelect.disabled = false;
+    if (d.area && !Array.from(areaSelect.options).some(option => option.value === d.area)) {
+      const option = document.createElement('option');
+      option.value = d.area;
+      option.textContent = d.area;
+      areaSelect.appendChild(option);
+    }
+  }
   document.getElementById('ed-folio').value         = d.folio;
-  document.getElementById('ed-fecha').value         = d.fecha;
+  document.getElementById('ed-fecha').value         = d.fechaHoraCaptura || d.fecha;
   const fdRaw = d.fechaDemanda || '';
   if (fdRaw && fdRaw.includes('/')) {
     const [dd2, mm2, yy2] = fdRaw.split('/');
@@ -645,10 +670,15 @@ function openEditDemanda(id) {
 async function saveEditDemanda() {
   const areaName   = document.getElementById('ed-area').value;
   const area_id    = getAreaId(areaName);
+  if (!area_id) {
+    showToast('Seleccione un área válida', 'error');
+    return;
+  }
   const isAdmin       = currentUser && isAdminLevel(currentUser.rol);
   const isAreaUser    = currentUser && isAreaUsuario(currentUser.rol);
   const isJefeAreaUser = currentUser && isJefeArea(currentUser.rol);
-  const demandaActual = demandas.find(x => x.id === currentViewId);
+  const demandaActual = (_editDemandaConsultaGlobal ? _consultaDemandas : demandas)
+    .find(x => String(x.id) === String(currentViewId));
 
   const payload = {
     ref:           document.getElementById('ed-ref').value.trim(),
@@ -665,9 +695,10 @@ async function saveEditDemanda() {
     tipo_peticion: document.getElementById('ed-tipo-peticion').value,
     fecha_demanda: document.getElementById('ed-fecha-demanda').value,
   };
-  const estadoNuevo = (isAdmin || isJefeAreaUser)
-    ? document.getElementById('ed-estado').value
-    : demandaActual?.estado;
+  let estadoNuevo = demandaActual?.estado;
+  if (!_editDemandaConsultaGlobal && (isAdmin || isJefeAreaUser)) {
+    estadoNuevo = document.getElementById('ed-estado').value;
+  }
   if (isAdmin || isAreaUser || isJefeAreaUser) payload.prioridad = document.getElementById('ed-prioridad').value;
 
   if (demandaActual && estadoNuevo !== demandaActual.estado) {
@@ -684,10 +715,17 @@ async function saveEditDemanda() {
   }
 
   try {
-    const updated = await apiEditarDemanda(currentViewId, payload);
+    const updated = _editDemandaConsultaGlobal
+      ? await apiEditarDemandaConsultaGlobal(currentViewId, payload)
+      : await apiEditarDemanda(currentViewId, payload);
     const norm    = normalizeDemanda(updated);
     const idx     = demandas.findIndex(x => x.id === currentViewId);
     if (idx >= 0) demandas[idx] = norm;
+    if (_editDemandaConsultaGlobal) {
+      const consultaIdx = _consultaDemandas.findIndex(x => String(x.id) === String(currentViewId));
+      if (consultaIdx >= 0) _consultaDemandas[consultaIdx] = norm;
+      filterConsultaGlobal();
+    }
     filterArchivos();
     if (selectedArea) { filterAreaDetail(); _updateAreaInfoPanel(selectedArea); }
     updateStats();

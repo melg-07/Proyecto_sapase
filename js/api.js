@@ -278,6 +278,15 @@ async function apiEditarDemanda(id, data) {
   return res.data;
 }
 
+async function apiEditarDemandaConsultaGlobal(id, data) {
+  const res = await apiFetch('/demandas/' + id, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: { 'X-Consulta-Global': 'true' },
+  });
+  return res.data;
+}
+
 async function apiEliminarDemanda(id) {
   await apiFetch('/demandas/' + id, { method: 'DELETE' });
 }

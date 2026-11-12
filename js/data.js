@@ -49,7 +49,7 @@ function normalizeHistorial(h) {
   if (!h) return [];
   return h.map(item => ({
     fecha:      item.transferido_en
-      ? new Date(item.transferido_en).toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' })
+      ? new Date(item.transferido_en).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
       : (item.fecha || ''),
     area:       item.area_destino || item.area || '',
     comentario: item.comentario   || '',
@@ -61,7 +61,7 @@ function normalizeHistorialEstados(h) {
   if (!h) return [];
   return h.map(item => ({
     fecha:         item.creado_en
-      ? new Date(item.creado_en).toLocaleDateString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric' })
+      ? new Date(item.creado_en).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
       : '',
     estadoAnterior: item.estado_anterior || '',
     estadoNuevo:   item.estado_nuevo    || '',
@@ -102,6 +102,20 @@ function normalizeHistorialEdiciones(h) {
   }));
 }
 
+function formatFechaHoraMX(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('es-MX', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Mexico_City',
+  });
+}
+
 function normalizeDemanda(d) {
   const historial = d.historial ?? d.historiales ?? [];
   const historialEstados = d.historial_estados ?? d.historialEstados ?? [];
@@ -112,6 +126,7 @@ function normalizeDemanda(d) {
     id:            d.id,
     folio:         d.folio         || '',
     fecha:         d.fecha         || '',
+    fechaHoraCaptura: formatFechaHoraMX(d.creado_en) || d.fecha || '',
     fechaDemanda:  d.fecha_demanda || d.fechaDemanda || '',
     ref:           d.ref           || '',
     ref2:          d.ref2          || d.folio_ref2_actual || d.folio_ref2 || '',
@@ -208,6 +223,10 @@ function puedeConsultarTodasLasAreas(user = currentUser) {
 }
 
 function puedeAgregarAdjuntosConsultaGlobal(user = currentUser) {
+  return !!user && isJefeArea(user.rol) && isContactCenterArea(user.area);
+}
+
+function puedeEditarConsultaGlobal(user = currentUser) {
   return !!user && isJefeArea(user.rol) && isContactCenterArea(user.area);
 }
 

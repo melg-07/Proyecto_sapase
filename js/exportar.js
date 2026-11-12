@@ -12,7 +12,7 @@ function exportarTodoExcel() {
 function exportToExcel(list, nombre) {
   const rows = list.map(d => ({
     'Folio':            d.folio,
-    'Fecha Captura':    d.fecha,
+    'Fecha Captura':    d.fechaHoraCaptura || d.fecha,
     'Fecha Demanda':    d.fechaDemanda  || '',
     'Folio Referencia': d.ref           || '',
     'Otro Folio':       d.ref2          || '',
@@ -282,8 +282,8 @@ function drawInformeHeader(doc, title, subtitle, pageNumber, pageW, pageH, ML, M
 }
 
 function drawInformeTable(doc, rows, startY, pageW, pageH, ML, MR, title, subtitle, pageNumber) {
-  const headers = ['Folio', 'Folio Recepción', 'Fecha', 'Remitente', 'Área', 'Asunto', 'Estado', 'Prioridad'];
-  const widths = [14, 21, 17, 22, 27, 58, 18, 18];
+  const headers = ['Folio', 'Fecha', 'Remitente', 'Área', 'Asunto', 'Estado', 'Prioridad'];
+  const widths = [16, 20, 25, 30, 64, 20, 20];
   const xPositions = [];
   let x = ML;
   widths.forEach((width) => {
@@ -410,14 +410,13 @@ function exportInformePDF(tipo) {
         ? getDemandDateForReport(d).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
         : 'Sin fecha';
       const cells = [
-        { value: d.folio || '-', lines: doc.splitTextToSize(String(d.folio || '-'), 13) },
-        { value: d.ref2 || '-', lines: doc.splitTextToSize(String(d.ref2 || '-'), 19) },
-        { value: fechaTexto, lines: doc.splitTextToSize(fechaTexto, 15) },
-        { value: d.remitente || '-', lines: doc.splitTextToSize(String(d.remitente || '-'), 20) },
-        { value: d.area || '-', lines: doc.splitTextToSize(String(d.area || '-'), 25) },
-        { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 56) },
-        { value: d.estado || '-', lines: doc.splitTextToSize(String(d.estado || '-'), 17) },
-        { value: d.prioridad || '-', lines: doc.splitTextToSize(String(d.prioridad || '-'), 17) }
+        { value: d.folio || '-', lines: doc.splitTextToSize(String(d.folio || '-'), 14) },
+        { value: fechaTexto, lines: doc.splitTextToSize(fechaTexto, 18) },
+        { value: d.remitente || '-', lines: doc.splitTextToSize(String(d.remitente || '-'), 23) },
+        { value: d.area || '-', lines: doc.splitTextToSize(String(d.area || '-'), 28) },
+        { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 61) },
+        { value: d.estado || '-', lines: doc.splitTextToSize(String(d.estado || '-'), 18) },
+        { value: d.prioridad || '-', lines: doc.splitTextToSize(String(d.prioridad || '-'), 18) }
       ];
       return { cells };
     });
@@ -528,7 +527,7 @@ function exportSinglePDF(id) {
   const f1_folio  = f1_fecha  + HGAP + 52; // x2 de Folio    = 132
   const f1_oficio = PW - MR;            // x2 de No.Oficio = 205.9
 
-  field('Fecha',      d.fecha,     ML,              f1_fecha);
+  field('Fecha',      d.fechaHoraCaptura || d.fecha, ML,              f1_fecha);
   field('Folio',      d.folio,     f1_fecha + HGAP, f1_folio);
   field('Folio de Demanda', d.ref || '', f1_folio + HGAP, f1_oficio);
   nextRow();

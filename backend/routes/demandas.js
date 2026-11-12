@@ -80,6 +80,21 @@ async function jefeContactCenterConsultaAdjuntosGuard(req, res, next) {
   }
 }
 
+async function jefeContactCenterConsultaEditGuard(req, res, next) {
+  if (req.user?.rol !== 'jefe_area' || !req.user.area_id) {
+    return res.status(403).json({ ok: false, error: 'No tienes permiso para editar peticiones desde Consulta' });
+  }
+  try {
+    const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ?', [req.user.area_id]);
+    if (!isContactCenterAreaName(areas[0]?.nombre)) {
+      return res.status(403).json({ ok: false, error: 'Solo la jefa de área de Contact Center puede editar peticiones desde Consulta' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
 
 const s = v => (v === undefined || v === '') ? null : v;
 const tiposPeticion = new Set([
@@ -584,7 +599,7 @@ router.post('/', noConsulta, uploadAdjuntos, async (req, res) => {
 });
 
 // Editar
-router.put('/:id', noConsulta, async (req, res) => {
+async function editarDemanda(req, res, consultaGlobal = false) {
   try {
     const body = req.body;
 
@@ -609,7 +624,7 @@ router.put('/:id', noConsulta, async (req, res) => {
     if (!current.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     const before = current[0];
 
-    const scope    = scopeArea(req);
+    const scope    = consultaGlobal ? null : scopeArea(req);
     const subScope = scopeSubarea(req);
     if (scope && Number(before.area_id) !== Number(scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -727,6 +742,13 @@ router.put('/:id', noConsulta, async (req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
+}
+
+router.put('/:id', (req, res, next) => {
+  if (req.get('X-Consulta-Global') === 'true') {
+    return jefeContactCenterConsultaEditGuard(req, res, () => editarDemanda(req, res, true));
+  }
+  return noConsulta(req, res, () => editarDemanda(req, res));
 });
 
 // Eliminar

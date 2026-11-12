@@ -28,7 +28,7 @@ function renderDashboard() {
   tbody.innerHTML = list.map(d => `
     <tr>
       <td><span class="folio-cell">${d.folio}</span></td>
-      <td>${d.fecha}</td>
+      <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
@@ -368,7 +368,7 @@ function filterAreaDetail() {
   tbody.innerHTML = list.map(d => `
     <tr>
       <td><span class="folio-cell">${d.folio}</span></td>
-      <td>${d.fecha}</td>
+      <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
       <td>${d.asunto}</td>
       <td>
