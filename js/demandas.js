@@ -54,8 +54,8 @@ function removePendingUploadedDoc(idx) {
 }
 
 function openSubirDocumentos(demandaId = null, consultaGlobal = false) {
-  if (demandaId && (!currentUser || !isJefeArea(currentUser.rol))) {
-    showToast('Solo los jefes de área pueden agregar documentos a una petición existente', 'error');
+  if (demandaId && !puedeAgregarAdjuntosConsultaGlobal()) {
+    showToast('Solo la jefa de área de Contact Center puede agregar documentos a una petición existente', 'error');
     return;
   }
   if (consultaGlobal && (!demandaId || !puedeAgregarAdjuntosConsultaGlobal())) {
@@ -264,14 +264,19 @@ function renderArchivosTable(list) {
   const isAreaUser      = isAreaUsuarioRol || isJefeRol;
   const isSubareaUser   = currentUser && isSubareaUsuario(currentUser.rol);
 
-  const rowHtml = d => `
+  const rowHtml = d => {
+    const puedeCambiarEstado = isSubareaUser
+      && Number(d.subarea_id) === Number(currentUser.subarea_id);
+    const puedeEnviarEstaDemanda = isAreaUser || (puedeEnviarDesdeCoordinacion()
+      && Number(d.subarea_id) === Number(currentUser.subarea_id));
+    return `
     <tr>
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
       <td><small>${d.area}</small></td>
       <td>${d.asunto}</td>
-      <td>${isSubareaUser ? `
+      <td>${puedeCambiarEstado ? `
         <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
                 onfocus="this.dataset.prev=this.value"
                 onchange="changeEstadoArea('${d.id}', this.value, this)">
@@ -294,12 +299,13 @@ function renderArchivosTable(list) {
           <button class="btn btn-guinda btn-sm"  onclick="exportSinglePDF('${d.id}')">Imprimir</button>
           ${isAreaUsuarioRol ? `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>` : ''}
           ${isAreaUsuarioRol ? `<button class="btn btn-outline btn-sm" onclick="openReportarProblema('${d.id}')">Observaciones</button>` : ''}
-          ${isAreaUser ? `<button class="btn btn-outline btn-sm" onclick="openEnviarSubarea('${d.id}')">Enviar a Subarea</button>` : ''}
+          ${puedeEnviarEstaDemanda ? `<button class="btn btn-outline btn-sm" onclick="openEnviarSubarea('${d.id}')">Enviar a Subarea</button>` : ''}
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}
         </div>
       </td>
     </tr>
   `;
+  };
 
   const esPendienteEnvio = d =>
     (!d.subarea_id && d.estado === 'Pendiente') || tieneObservacionesPendientes(d);
@@ -446,7 +452,7 @@ function _renderViewModal(d) {
       ${field2col('Demanda',         `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.demanda || '—'}</div>`)}
       ${d.observaciones ? field2col('Anexos y Observaciones', `<div style="background:var(--cream); padding:8px 10px; border-radius:6px;">${d.observaciones}</div>`) : ''}
       ${field2('Concepto', d.concepto || '—')}
-      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${a.ruta}" target="_blank" rel="noopener" style="color:#1565c0;">${a.nombre}</a></div>`).join('')}</div>`) : ''}
+      ${d.adjuntos && d.adjuntos.length ? field2col('Documentos adjuntos', `<div>${d.adjuntos.map(a => `<div style="margin-bottom:6px;"><a href="/uploads/${_escapeFileName(a.ruta)}" target="_blank" rel="noopener" style="color:#1565c0;">${_escapeFileName(a.nombre)}</a></div>`).join('')}</div>`) : ''}
       ${field2('Estado',   `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`)}
       ${field2('Prioridad', prioridadHTML)}
       ${d.historial && d.historial.length ? historialHTML(d.historial) : ''}
@@ -460,12 +466,6 @@ function _renderViewModal(d) {
   if (btnTransferir) {
     const canTransfer = !_viewReadOnly && currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
     btnTransferir.style.display = canTransfer ? '' : 'none';
-  }
-  const btnAdjuntar = document.getElementById('btn-agregar-adjuntos');
-  if (btnAdjuntar) {
-    const canAttach = currentUser && isJefeArea(currentUser.rol)
-      && (!_viewReadOnly || puedeAgregarAdjuntosConsultaGlobal());
-    btnAdjuntar.style.display = canAttach ? '' : 'none';
   }
   const btnImprimir = document.querySelector('#modal-ver .btn-row > button:first-child');
   if (btnImprimir) btnImprimir.style.display = '';
@@ -565,17 +565,17 @@ function historialEdicionesHTML(historial) {
   const items = historial.map(h => {
     const cambios = Object.entries(h.campos).map(([campo, vals]) =>
       `<div style="margin-top:4px; padding-left:8px; border-left:2px solid var(--guinda); font-size:11px;">
-        <span style="font-weight:600;">${campo}:</span>
-        <span style="color:#999; text-decoration:line-through; margin:0 5px;">${vals.antes || '—'}</span>
+        <span style="font-weight:600;">${_escapeFileName(campo)}:</span>
+        <span style="color:#999; text-decoration:line-through; margin:0 5px;">${_escapeFileName(vals.antes || '—')}</span>
         <span style="color:var(--gray);">→</span>
-        <span style="margin-left:5px;">${vals.despues || '—'}</span>
+        <span style="margin-left:5px;">${_escapeFileName(vals.despues || '—')}</span>
       </div>`
     ).join('');
     return `
       <div style="background:var(--cream); padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:12px;">
         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-          <strong>${h.fecha}</strong>
-          ${h.editadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${h.editadoPor}</span>` : ''}
+          <strong>${_escapeFileName(h.fecha)}</strong>
+          ${h.editadoPor ? `<span style="color:var(--gray); font-size:11px;">por ${_escapeFileName(h.editadoPor)}</span>` : ''}
         </div>
         ${cambios}
       </div>`;
@@ -626,6 +626,8 @@ function openEditDemanda(id, consultaGlobal = false) {
   const isJefeAreaUser = isJefeArea(currentUser.rol);
   const estadoGroup   = document.getElementById('ed-estado-group');
   const prioridadGroup = document.getElementById('ed-prioridad-group');
+  const btnAdjuntar = document.getElementById('btn-ed-agregar-adjuntos');
+  if (btnAdjuntar) btnAdjuntar.style.display = puedeAgregarAdjuntosConsultaGlobal() ? '' : 'none';
   if (estadoGroup)    estadoGroup.style.display    = !consultaGlobal && (isAdmin || isJefeAreaUser) ? '' : 'none';
   if (prioridadGroup) prioridadGroup.style.display = (isAdmin || isAreaUser || isJefeAreaUser) ? '' : 'none';
 
@@ -829,8 +831,11 @@ async function openEnviarSubarea(id) {
 
   try {
     const list = await apiGetSubareas(currentUser.area_id);
-    sel._subareas = list;
-    sel.innerHTML = list.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')
+    const destinos = puedeEnviarDesdeCoordinacion()
+      ? list.filter(s => /^SECTOR [1-5]$/.test(normalizeAreaName(s.nombre)))
+      : list;
+    sel._subareas = destinos;
+    sel.innerHTML = destinos.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')
       || '<option value="">Sin subareas</option>';
   } catch (err) {
     sel.innerHTML = '<option value="">Error al cargar</option>';

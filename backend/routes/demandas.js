@@ -17,6 +17,26 @@ function isContactCenterAreaName(name) {
   return /^(?:DEPARTAMENTO DE )?CONTAC(?:T)? CENTER(?: Y ATENCION CIUDADANA)?$/.test(area);
 }
 
+function normalizeLocationName(name) {
+  return String(name || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
+}
+
+async function getCoordinacionOperativa(req) {
+  if (req.user?.rol !== 'subarea_usuario') return null;
+  const [rows] = await db.execute(
+    `SELECT sa.id AS subarea_id, sa.area_id, sa.nombre AS subarea_nombre
+     FROM usuarios u
+     JOIN subareas sa ON sa.id = u.subarea_id
+     WHERE u.id = ? AND u.activo = 1 AND u.rol = 'subarea_usuario'`,
+    [req.user.id]
+  );
+  const userSubarea = rows[0];
+  return userSubarea
+    && normalizeLocationName(userSubarea.subarea_nombre) === 'COORDINACION OPERATIVA'
+    ? userSubarea
+    : null;
+}
+
 const logsDir = path.join(__dirname, '..', 'logs');
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 function log(level, msg) {
@@ -65,14 +85,14 @@ async function jefeConsultaGlobalGuard(req, res, next) {
   }
 }
 
-async function jefeContactCenterConsultaAdjuntosGuard(req, res, next) {
+async function jefeContactCenterAdjuntosGuard(req, res, next) {
   if (req.user?.rol !== 'jefe_area' || !req.user.area_id) {
-    return res.status(403).json({ ok: false, error: 'No tienes permiso para agregar documentos desde Consulta' });
+    return res.status(403).json({ ok: false, error: 'No tienes permiso para agregar documentos a una petición existente' });
   }
   try {
     const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ?', [req.user.area_id]);
     if (!isContactCenterAreaName(areas[0]?.nombre)) {
-      return res.status(403).json({ ok: false, error: 'Solo el jefe de área de Contact Center puede agregar documentos desde Consulta' });
+      return res.status(403).json({ ok: false, error: 'Solo la jefa de área de Contact Center puede agregar documentos a una petición existente' });
     }
     next();
   } catch (err) {
@@ -150,16 +170,9 @@ function renombrarConFolio(filename, folio) {
   return filename;
 }
 
-function soloJefeArea(req, res, next) {
-  if (req.user?.rol !== 'jefe_area') {
-    return res.status(403).json({ ok: false, error: 'Solo los jefes de área pueden agregar documentos a una petición existente' });
-  }
-  next();
-}
-
 function autorizarAdjuntos(req, res, next) {
   if (req.get('X-Adjunto-Existente') === 'true') {
-    return soloJefeArea(req, res, next);
+    return jefeContactCenterAdjuntosGuard(req, res, next);
   }
   noConsulta(req, res, next);
 }
@@ -401,6 +414,8 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
 
 // Adjuntar documentos a una petición
 async function guardarAdjuntos(req, res, consultaGlobal = false) {
+  let connection;
+  const archivosEnDisco = new Set();
   try {
     const demandaId = req.params.id;
     const [dem] = await db.execute('SELECT id, area_id, folio FROM demandas WHERE id = ?', [demandaId]);
@@ -433,6 +448,8 @@ async function guardarAdjuntos(req, res, consultaGlobal = false) {
 
     const inserted = [];
     const fallidos = [];
+    connection = await db.getConnection();
+    await connection.beginTransaction();
     for (const item of items) {
       const nombre = String(item.name || item.nombre || path.basename(item.path || '')).trim();
       let ruta     = String(item.path || item.ruta || '').trim();
@@ -448,15 +465,30 @@ async function guardarAdjuntos(req, res, consultaGlobal = false) {
         }
         // ⬇️ Renombramos con el folio ANTES de guardar en BD
         ruta = renombrarConFolio(ruta, folio);
+        archivosEnDisco.add(ruta);
       }
 
-      await db.execute(
+      await connection.execute(
         'INSERT INTO demanda_archivos (demanda_id, nombre, ruta, tipo) VALUES (?, ?, ?, ?)',
         [demandaId, nombre, ruta, 'documento']
       );
       inserted.push({ nombre, ruta });
     }
 
+    if (inserted.length) {
+      await connection.execute(
+        'INSERT INTO historial_ediciones (demanda_id, editado_por, campos_editados) VALUES (?, ?, ?)',
+        [
+          demandaId,
+          req.user.id,
+          JSON.stringify({
+            'Documentos agregados': { antes: '—', despues: inserted.map(item => item.nombre).join(', ') },
+          }),
+        ]
+      );
+    }
+
+    await connection.commit();
     if (fallidos.length) {
       return res.status(207).json({
         ok: true,
@@ -467,14 +499,24 @@ async function guardarAdjuntos(req, res, consultaGlobal = false) {
 
     res.json({ ok: true, data: inserted });
   } catch (err) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        log('ERROR', `[adjuntos] No se pudo revertir la transacción: ${rollbackErr.message}`);
+      }
+    }
+    limpiarArchivosSubidos(req.files, [...archivosEnDisco]);
     res.status(500).json({ ok: false, error: err.message || 'Error al adjuntar documentos' });
+  } finally {
+    if (connection) connection.release();
   }
 }
 
 router.post('/:id/adjuntos', autorizarAdjuntos, uploadAdjuntos, guardarAdjuntos);
 router.post(
   '/consulta/global/:id/adjuntos',
-  jefeContactCenterConsultaAdjuntosGuard,
+  jefeContactCenterAdjuntosGuard,
   uploadAdjuntos,
   (req, res) => guardarAdjuntos(req, res, true)
 );
@@ -936,7 +978,9 @@ router.post('/:id/transferir', noConsulta, async (req, res) => {
 // Enviar a una subarea de la propia area
 router.post('/:id/enviar-subarea', async (req, res) => {
   try {
-    if (!['area_usuario', 'jefe_area', 'Administrador', 'Subadmin'].includes(req.user.rol)) {
+    const esCoordinacionOperativa = req.user.rol === 'subarea_usuario';
+    if (!['area_usuario', 'jefe_area', 'Administrador', 'Subadmin'].includes(req.user.rol)
+        && !esCoordinacionOperativa) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para esta accion' });
     }
 
@@ -948,15 +992,30 @@ router.post('/:id/enviar-subarea', async (req, res) => {
     const [dem] = await db.execute('SELECT area_id, subarea_id FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
-    const scope = scopeArea(req);
-    if (scope && Number(dem[0].area_id) !== Number(scope)) {
-      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    if (esCoordinacionOperativa) {
+      const coordinacion = await getCoordinacionOperativa(req);
+      if (!coordinacion) {
+        return res.status(403).json({ ok: false, error: 'No tienes permiso para enviar a estas subareas' });
+      }
+      if (Number(dem[0].area_id) !== Number(coordinacion.area_id)
+          || Number(dem[0].subarea_id) !== Number(coordinacion.subarea_id)) {
+        return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+      }
+    } else {
+      const scope = scopeArea(req);
+      if (scope && Number(dem[0].area_id) !== Number(scope)) {
+        return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+      }
     }
 
     const [sub] = await db.execute('SELECT id, area_id, nombre FROM subareas WHERE id = ?', [subarea_id]);
     if (!sub.length) return res.status(404).json({ ok: false, error: 'Subarea no encontrada' });
     if (Number(sub[0].area_id) !== Number(dem[0].area_id)) {
       return res.status(400).json({ ok: false, error: 'La subarea no pertenece a esta area' });
+    }
+    if (esCoordinacionOperativa
+        && !/^SECTOR [1-5]$/.test(normalizeLocationName(sub[0].nombre))) {
+      return res.status(403).json({ ok: false, error: 'Coordinación operativa solo puede enviar a Sector 1, Sector 2, Sector 3, Sector 4 o Sector 5' });
     }
 
     await db.execute('UPDATE demandas SET subarea_id = ? WHERE id = ?', [subarea_id, req.params.id]);

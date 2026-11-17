@@ -9,7 +9,17 @@ router.use(areaUsuarioGuard);
 router.get('/', async (req, res) => {
   try {
     const scope = scopeArea(req);
-    const areaId = scope || (req.query.area_id ? Number(req.query.area_id) : null);
+    let areaId = scope || (req.query.area_id ? Number(req.query.area_id) : null);
+    if (req.user?.rol === 'subarea_usuario') {
+      const [subareas] = await db.execute(
+        'SELECT area_id FROM subareas WHERE id = ?',
+        [req.user.subarea_id]
+      );
+      areaId = subareas[0]?.area_id || null;
+      if (req.query.area_id && Number(req.query.area_id) !== Number(areaId)) {
+        return res.status(403).json({ ok: false, error: 'No puedes ver subareas de otra area' });
+      }
+    }
 
     if (!areaId) {
       return res.status(400).json({ ok: false, error: 'area_id requerido' });

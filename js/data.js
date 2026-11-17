@@ -217,6 +217,11 @@ function isContactCenterArea(area) {
   return /^(?:DEPARTAMENTO DE )?CONTAC(?:T)? CENTER(?: Y ATENCION CIUDADANA)?$/.test(normalizeAreaName(area));
 }
 
+function puedeEnviarDesdeCoordinacion(user = currentUser) {
+  return !!user && isSubareaUsuario(user.rol)
+    && normalizeAreaName(user.subarea) === 'COORDINACION OPERATIVA';
+}
+
 function puedeConsultarTodasLasAreas(user = currentUser) {
   if (!user || !isJefeArea(user.rol)) return false;
   return isDireccionGeneralArea(user.area) || isContactCenterArea(user.area);

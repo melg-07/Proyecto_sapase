@@ -597,7 +597,6 @@
     <div id="modal-ver-content"></div>
     <div class="btn-row" style="margin-top:20px;">
       <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF(currentViewId)">Imprimir</button>
-      <button class="btn btn-outline btn-sm" id="btn-agregar-adjuntos" onclick="openSubirDocumentos(currentViewId, _viewReadOnly)" style="display:none;">Agregar documentos</button>
       <button class="btn btn-blue btn-sm" id="btn-transferir-demanda" onclick="openTransferModal(currentViewId)">Enviar a otra Área</button>
     </div>
   </div>
@@ -737,6 +736,7 @@
       </div>
     </div>
     <div class="btn-row" style="margin-top:18px;">
+      <button class="btn btn-outline" id="btn-ed-agregar-adjuntos" onclick="openSubirDocumentos(currentViewId, _editDemandaConsultaGlobal)" style="display:none;">Agregar documentos</button>
       <button class="btn btn-guinda" onclick="saveEditDemanda()">Guardar Cambios</button>
       <button class="btn btn-outline" onclick="closeModal('modal-edit-demanda')">Cancelar</button>
     </div>
@@ -1080,10 +1080,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/api.js?v=20.7"></script>
-<script src="js/data.js?v=20.7"></script>
-<script src="js/auth.js?v=20.5"></script>
-<script src="js/app.js?v=14.7"></script>
-<script src="js/demandas.js?v=15.4"></script>
+<script src="js/data.js?v=20.9"></script>
+<script src="js/auth.js?v=20.6"></script>
+<script src="js/app.js?v=14.8"></script>
+<script src="js/demandas.js?v=15.6"></script>
 <script src="js/usuarios.js?v=14.3"></script>
 <script src="js/configuracion.js?v=14.3"></script>
 <script src="js/exportar.js?v=14.13"></script>

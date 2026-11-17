@@ -590,9 +590,8 @@ async function confirmSubirDocumentos() {
   }
 
   if (_subirDocumentosDemandaId) {
-    if (!currentUser || !isJefeArea(currentUser.rol) ||
-        (_subirDocumentosConsultaGlobal && !puedeAgregarAdjuntosConsultaGlobal())) {
-      showToast('Solo los jefes de área pueden agregar documentos a una petición existente', 'error');
+    if (!puedeAgregarAdjuntosConsultaGlobal()) {
+      showToast('Solo la jefa de área de Contact Center puede agregar documentos a una petición existente', 'error');
       return;
     }
     try {
@@ -606,7 +605,6 @@ async function confirmSubirDocumentos() {
         || demandas.find(item => String(item.id) === String(demandaId));
       if (demanda) {
         demanda.adjuntos = [...(demanda.adjuntos || []), ...guardados];
-        _renderViewModal(demanda);
       }
       const total = guardados.length;
       cancelSubirDocumentos();
