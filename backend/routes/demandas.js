@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const db     = require('../db');
 const {
-  authMiddleware, adminOSubadmin, noConsulta,
+  authMiddleware, soloAdmin, adminOSubadmin, noConsulta,
   areaUsuarioGuard, subareaUsuarioGuard, scopeArea, scopeSubarea,
 } = require('../middleware/auth');
 const multer = require('multer');
@@ -21,30 +21,58 @@ function normalizeLocationName(name) {
   return String(name || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
 }
 
-function esDestinoPermitidoCoordinacion(nombre) {
-  const destino = normalizeLocationName(nombre);
-  return /^SECTOR [1-5]$/.test(destino) || destino === 'COORDINACION DE MAQUINARIA';
-}
+const destinosCoordinacionOperativa = [
+  'SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5',
+  'COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA',
+];
+const destinosCoordinacionConstruccion = [
+  'DEPARTAMENTO DE ESTUDIOS Y PROYECTOS',
+  'DEPARTAMENTO DE OBRAS',
+  'DEPARTAMENTO DE PLANTAS POTABILIZADORAS',
+  'DEPARTAMENTO DE ELECTROMECANICO',
+  'DEPARTAMENTO DE ELECTROMECÁNICO',
+];
 
-async function getCoordinacionOperativa(req) {
+async function getPerfilEnvioSubarea(req) {
   if (req.user?.rol !== 'subarea_usuario') return null;
   const [rows] = await db.execute(
-    `SELECT sa.id AS subarea_id, sa.area_id, sa.nombre AS subarea_nombre
+    `SELECT sa.id AS subarea_id, sa.area_id, sa.nombre AS subarea_nombre,
+            a.nombre AS area_nombre
      FROM usuarios u
      JOIN subareas sa ON sa.id = u.subarea_id
+     JOIN areas a ON a.id = sa.area_id
      WHERE u.id = ? AND u.activo = 1 AND u.rol = 'subarea_usuario'`,
     [req.user.id]
   );
   const userSubarea = rows[0];
-  return userSubarea
-    && normalizeLocationName(userSubarea.subarea_nombre) === 'COORDINACION OPERATIVA'
-    ? userSubarea
-    : null;
+  if (!userSubarea) return null;
+
+  const subarea = normalizeLocationName(userSubarea.subarea_nombre);
+  const area = normalizeLocationName(userSubarea.area_nombre);
+  let destinosPermitidos;
+  if (subarea === 'COORDINACION OPERATIVA') {
+    destinosPermitidos = destinosCoordinacionOperativa;
+  } else if (subarea === 'COORDINACION DE CONSTRUCCION'
+      && area === 'DIRECCION DE CONSTRUCCION Y OPERACION HIDRAULICA') {
+    destinosPermitidos = destinosCoordinacionConstruccion;
+  } else {
+    return null;
+  }
+
+  return {
+    ...userSubarea,
+    destinosSQL: destinosPermitidos,
+    destinosNormalizados: new Set(destinosPermitidos.map(normalizeLocationName)),
+  };
 }
 
-async function demandaEnviadaPorCoordinacion(demanda, coordinacion) {
-  if (!coordinacion
-      || Number(demanda.area_id) !== Number(coordinacion.area_id)
+function condicionDestinoPermitido(alias, perfil) {
+  return `UPPER(TRIM(${alias}.nombre)) IN (${perfil.destinosSQL.map(() => '?').join(', ')})`;
+}
+
+async function demandaEnviadaPorSubarea(demanda, perfil) {
+  if (!perfil
+      || Number(demanda.area_id) !== Number(perfil.area_id)
       || !demanda.subarea_id) {
     return false;
   }
@@ -54,10 +82,7 @@ async function demandaEnviadaPorCoordinacion(demanda, coordinacion) {
      FROM subareas destino
      WHERE destino.id = ?
        AND destino.area_id = ?
-       AND (
-         UPPER(TRIM(destino.nombre)) IN ('SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5')
-         OR UPPER(TRIM(destino.nombre)) IN ('COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA')
-       )
+       AND ${condicionDestinoPermitido('destino', perfil)}
        AND EXISTS (
          SELECT 1
          FROM historial_ediciones he
@@ -68,7 +93,10 @@ async function demandaEnviadaPorCoordinacion(demanda, coordinacion) {
            AND he.campos_editados LIKE ?
        )
      LIMIT 1`,
-    [demanda.subarea_id, coordinacion.area_id, demanda.id, coordinacion.subarea_id, '%"Subarea":%']
+    [
+      demanda.subarea_id, perfil.area_id, ...perfil.destinosSQL,
+      demanda.id, perfil.subarea_id, '%"Subarea":%',
+    ]
   );
   return rows.length > 0;
 }
@@ -313,9 +341,9 @@ async function listarDemandas(req, res, consultaGlobal = false) {
 
     const scope    = consultaGlobal ? null : scopeArea(req);
     const subScope = consultaGlobal ? null : scopeSubarea(req);
-    const coordinacion = subScope ? await getCoordinacionOperativa(req) : null;
+    const perfilEnvio = subScope ? await getPerfilEnvioSubarea(req) : null;
     if (scope)     { sql += ' AND v.area_id = ?';    params.push(scope); }
-    if (subScope && coordinacion) {
+    if (subScope && perfilEnvio) {
       sql += ` AND (
         v.subarea_id = ?
         OR (
@@ -325,10 +353,7 @@ async function listarDemandas(req, res, consultaGlobal = false) {
             FROM subareas destino
             WHERE destino.id = v.subarea_id
               AND destino.area_id = ?
-              AND (
-                UPPER(TRIM(destino.nombre)) IN ('SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5')
-                OR UPPER(TRIM(destino.nombre)) IN ('COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA')
-              )
+              AND ${condicionDestinoPermitido('destino', perfilEnvio)}
           )
           AND EXISTS (
             SELECT 1
@@ -341,7 +366,10 @@ async function listarDemandas(req, res, consultaGlobal = false) {
           )
         )
       )`;
-      params.push(subScope, coordinacion.area_id, coordinacion.area_id, coordinacion.subarea_id, '%"Subarea":%');
+      params.push(
+        subScope, perfilEnvio.area_id, perfilEnvio.area_id, ...perfilEnvio.destinosSQL,
+        perfilEnvio.subarea_id, '%"Subarea":%',
+      );
     } else if (subScope) {
       sql += ' AND v.subarea_id = ?';
       params.push(subScope);
@@ -391,8 +419,8 @@ async function obtenerDemanda(req, res, consultaGlobal = false) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
       if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
-        const coordinacion = await getCoordinacionOperativa(req);
-        if (!await demandaEnviadaPorCoordinacion(rows[0], coordinacion)) {
+        const perfilEnvio = await getPerfilEnvioSubarea(req);
+        if (!await demandaEnviadaPorSubarea(rows[0], perfilEnvio)) {
           return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
         }
       }
@@ -597,6 +625,45 @@ router.get('/:id/adjuntos', async (req, res) => {
     res.json({ ok: true, data: rows });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/:id/adjuntos/:adjuntoId', soloAdmin, async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, ruta FROM demanda_archivos WHERE id = ? AND demanda_id = ?',
+      [req.params.adjuntoId, req.params.id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ ok: false, error: 'Documento no encontrado en esta petición' });
+    }
+
+    const [result] = await db.execute(
+      'DELETE FROM demanda_archivos WHERE id = ? AND demanda_id = ?',
+      [req.params.adjuntoId, req.params.id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ ok: false, error: 'Documento no encontrado en esta petición' });
+    }
+
+    const fileName = path.basename(String(rows[0].ruta || ''));
+    if (fileName && fileName !== '.' && fileName !== '..') {
+      try {
+        fs.unlinkSync(path.join(uploadsDir, fileName));
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          log('ERROR', `[adjuntos] No se pudo eliminar ${fileName}: ${err.message}`);
+          return res.status(500).json({
+            ok: false,
+            error: 'El documento se quitó de la petición, pero no se pudo borrar el archivo del servidor',
+          });
+        }
+      }
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || 'Error al eliminar el documento' });
   }
 });
 
@@ -1048,10 +1115,15 @@ router.post('/:id/transferir', noConsulta, async (req, res) => {
 // Enviar a una subarea de la propia area
 router.post('/:id/enviar-subarea', async (req, res) => {
   try {
-    const esCoordinacionOperativa = req.user.rol === 'subarea_usuario';
+    const esUsuarioSubarea = req.user.rol === 'subarea_usuario';
     if (!['area_usuario', 'jefe_area', 'Administrador', 'Subadmin'].includes(req.user.rol)
-        && !esCoordinacionOperativa) {
+        && !esUsuarioSubarea) {
       return res.status(403).json({ ok: false, error: 'No tienes permiso para esta accion' });
+    }
+
+    const perfilEnvio = esUsuarioSubarea ? await getPerfilEnvioSubarea(req) : null;
+    if (esUsuarioSubarea && !perfilEnvio) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para enviar a estas subareas' });
     }
 
     const { subarea_id } = req.body;
@@ -1062,13 +1134,9 @@ router.post('/:id/enviar-subarea', async (req, res) => {
     const [dem] = await db.execute('SELECT area_id, subarea_id FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
-    if (esCoordinacionOperativa) {
-      const coordinacion = await getCoordinacionOperativa(req);
-      if (!coordinacion) {
-        return res.status(403).json({ ok: false, error: 'No tienes permiso para enviar a estas subareas' });
-      }
-      if (Number(dem[0].area_id) !== Number(coordinacion.area_id)
-          || Number(dem[0].subarea_id) !== Number(coordinacion.subarea_id)) {
+    if (perfilEnvio) {
+      if (Number(dem[0].area_id) !== Number(perfilEnvio.area_id)
+          || Number(dem[0].subarea_id) !== Number(perfilEnvio.subarea_id)) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
     } else {
@@ -1083,10 +1151,10 @@ router.post('/:id/enviar-subarea', async (req, res) => {
     if (Number(sub[0].area_id) !== Number(dem[0].area_id)) {
       return res.status(400).json({ ok: false, error: 'La subarea no pertenece a esta area' });
     }
-    if (esCoordinacionOperativa && !esDestinoPermitidoCoordinacion(sub[0].nombre)) {
+    if (perfilEnvio && !perfilEnvio.destinosNormalizados.has(normalizeLocationName(sub[0].nombre))) {
       return res.status(403).json({
         ok: false,
-        error: 'Coordinación operativa solo puede enviar a Sector 1, Sector 2, Sector 3, Sector 4, Sector 5 o Coordinación de Maquinaria',
+        error: 'Tu subarea no tiene permiso para enviar a este destino',
       });
     }
 

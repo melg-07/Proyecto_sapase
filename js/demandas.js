@@ -267,7 +267,7 @@ function renderArchivosTable(list) {
   const rowHtml = d => {
     const puedeCambiarEstado = isSubareaUser
       && Number(d.subarea_id) === Number(currentUser.subarea_id);
-    const puedeEnviarEstaDemanda = isAreaUser || (puedeEnviarDesdeCoordinacion()
+    const puedeEnviarEstaDemanda = isAreaUser || (puedeEnviarDesdeSubarea()
       && Number(d.subarea_id) === Number(currentUser.subarea_id));
     return `
     <tr>
@@ -310,10 +310,10 @@ function renderArchivosTable(list) {
   const esPendienteEnvio = d =>
     (!d.subarea_id && d.estado === 'Pendiente') || tieneObservacionesPendientes(d);
 
-  const isCoordinacionOperativa = puedeEnviarDesdeCoordinacion();
+  const puedeEnviarDesdeEstaSubarea = puedeEnviarDesdeSubarea();
   const esPendiente = d => {
     if (!isSubareaUser) return esPendienteEnvio(d);
-    if (isCoordinacionOperativa
+    if (puedeEnviarDesdeEstaSubarea
         && Number(d.subarea_id) !== Number(currentUser.subarea_id)) {
       return false;
     }
@@ -331,7 +331,7 @@ function renderArchivosTable(list) {
   `;
 
   let html = pendientesEnvio.map(rowHtml).join('');
-  if (isSubareaUser && isCoordinacionOperativa) {
+  if (isSubareaUser && puedeEnviarDesdeEstaSubarea) {
     const enviadasASubarea = enGestion.filter(d =>
       Number(d.subarea_id) !== Number(currentUser.subarea_id));
     const propiasEnGestion = enGestion.filter(d =>
@@ -693,7 +693,59 @@ function openEditDemanda(id, consultaGlobal = false) {
   document.getElementById('ed-prioridad').value     = d.prioridad    || 'Media';
 
   document.getElementById('ed-area').value = d.area || '';
+  renderEditAdjuntos(d);
   document.getElementById('modal-edit-demanda').classList.add('open');
+}
+
+function renderEditAdjuntos(demanda) {
+  const panel = document.getElementById('ed-adjuntos-panel');
+  const list = document.getElementById('ed-adjuntos-list');
+  const isFullAdmin = currentUser && currentUser.rol === 'Administrador';
+  if (!panel || !list) return;
+
+  panel.style.display = isFullAdmin ? '' : 'none';
+  list.innerHTML = '';
+  if (!isFullAdmin) return;
+
+  const adjuntos = Array.isArray(demanda.adjuntos) ? demanda.adjuntos : [];
+  list.innerHTML = adjuntos.map(adjunto => `
+    <div style="display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid #eee;">
+      <a href="/uploads/${_escapeFileName(encodeURIComponent(adjunto.ruta || ''))}"
+         target="_blank" rel="noopener" style="flex:1; min-width:0; color:#1565c0; overflow-wrap:anywhere;">
+        ${_escapeFileName(adjunto.nombre || 'Documento')}
+      </a>
+      <button type="button" class="btn btn-red btn-sm"
+              data-demanda-id="${_escapeFileName(demanda.id)}"
+              data-adjunto-id="${_escapeFileName(adjunto.id)}"
+              onclick="deleteDemandaAdjunto(this)">Eliminar</button>
+    </div>
+  `).join('') || '<div style="color:var(--gray); font-size:12px;">Sin documentos adjuntos</div>';
+}
+
+async function deleteDemandaAdjunto(button) {
+  if (!currentUser || currentUser.rol !== 'Administrador') {
+    showToast('Solo el administrador puede eliminar documentos', 'error');
+    return;
+  }
+  const demandaId = button.dataset.demandaId;
+  const adjuntoId = button.dataset.adjuntoId;
+  if (!confirm('¿Eliminar este documento de la petición? Esta acción no se puede deshacer.')) return;
+
+  button.disabled = true;
+  try {
+    await apiEliminarAdjuntoDemanda(demandaId, adjuntoId);
+    const demanda = demandas.find(item => String(item.id) === String(demandaId))
+      || _consultaDemandas.find(item => String(item.id) === String(demandaId));
+    if (demanda) {
+      demanda.adjuntos = (demanda.adjuntos || [])
+        .filter(adjunto => String(adjunto.id) !== String(adjuntoId));
+      renderEditAdjuntos(demanda);
+    }
+    showToast('Documento eliminado', 'success');
+  } catch (err) {
+    button.disabled = false;
+    showToast(err.message || 'Error al eliminar el documento', 'error');
+  }
 }
 
 async function saveEditDemanda() {
@@ -748,6 +800,7 @@ async function saveEditDemanda() {
       ? await apiEditarDemandaConsultaGlobal(currentViewId, payload)
       : await apiEditarDemanda(currentViewId, payload);
     const norm    = normalizeDemanda(updated);
+    norm.adjuntos = demandaActual?.adjuntos || [];
     const idx     = demandas.findIndex(x => x.id === currentViewId);
     if (idx >= 0) demandas[idx] = norm;
     if (_editDemandaConsultaGlobal) {
@@ -858,10 +911,19 @@ async function openEnviarSubarea(id) {
 
   try {
     const list = await apiGetSubareas(currentUser.area_id);
-    const destinos = puedeEnviarDesdeCoordinacion()
-      ? list.filter(s => /^SECTOR [1-5]$/.test(normalizeAreaName(s.nombre))
-        || normalizeAreaName(s.nombre) === 'COORDINACION DE MAQUINARIA')
-      : list;
+    let destinos = list;
+    if (puedeEnviarDesdeCoordinacion()) {
+      destinos = list.filter(s => /^SECTOR [1-5]$/.test(normalizeAreaName(s.nombre))
+        || normalizeAreaName(s.nombre) === 'COORDINACION DE MAQUINARIA');
+    } else if (puedeEnviarDesdeCoordinacionConstruccion()) {
+      const destinosPermitidos = new Set([
+        'DEPARTAMENTO DE ESTUDIOS Y PROYECTOS',
+        'DEPARTAMENTO DE OBRAS',
+        'DEPARTAMENTO DE PLANTAS POTABILIZADORAS',
+        'DEPARTAMENTO DE ELECTROMECANICO',
+      ]);
+      destinos = list.filter(s => destinosPermitidos.has(normalizeAreaName(s.nombre)));
+    }
     sel._subareas = destinos;
     sel.innerHTML = destinos.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')
       || '<option value="">Sin subareas</option>';

@@ -291,6 +291,12 @@ async function apiEliminarDemanda(id) {
   await apiFetch('/demandas/' + id, { method: 'DELETE' });
 }
 
+async function apiEliminarAdjuntoDemanda(demandaId, adjuntoId) {
+  await apiFetch('/demandas/' + encodeURIComponent(demandaId) + '/adjuntos/' + encodeURIComponent(adjuntoId), {
+    method: 'DELETE',
+  });
+}
+
 async function apiTransferirDemanda(id, area_destino_id, comentario) {
   await apiFetch('/demandas/' + id + '/transferir', {
     method: 'POST',

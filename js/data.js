@@ -222,6 +222,16 @@ function puedeEnviarDesdeCoordinacion(user = currentUser) {
     && normalizeAreaName(user.subarea) === 'COORDINACION OPERATIVA';
 }
 
+function puedeEnviarDesdeCoordinacionConstruccion(user = currentUser) {
+  return !!user && isSubareaUsuario(user.rol)
+    && normalizeAreaName(user.subarea) === 'COORDINACION DE CONSTRUCCION'
+    && normalizeAreaName(user.area) === 'DIRECCION DE CONSTRUCCION Y OPERACION HIDRAULICA';
+}
+
+function puedeEnviarDesdeSubarea(user = currentUser) {
+  return puedeEnviarDesdeCoordinacion(user) || puedeEnviarDesdeCoordinacionConstruccion(user);
+}
+
 function puedeConsultarTodasLasAreas(user = currentUser) {
   if (!user || !isJefeArea(user.rol)) return false;
   return isDireccionGeneralArea(user.area) || isContactCenterArea(user.area);
