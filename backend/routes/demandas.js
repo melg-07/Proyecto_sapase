@@ -21,6 +21,11 @@ function normalizeLocationName(name) {
   return String(name || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
 }
 
+function esDestinoPermitidoCoordinacion(nombre) {
+  const destino = normalizeLocationName(nombre);
+  return /^SECTOR [1-5]$/.test(destino) || destino === 'COORDINACION DE MAQUINARIA';
+}
+
 async function getCoordinacionOperativa(req) {
   if (req.user?.rol !== 'subarea_usuario') return null;
   const [rows] = await db.execute(
@@ -35,6 +40,37 @@ async function getCoordinacionOperativa(req) {
     && normalizeLocationName(userSubarea.subarea_nombre) === 'COORDINACION OPERATIVA'
     ? userSubarea
     : null;
+}
+
+async function demandaEnviadaPorCoordinacion(demanda, coordinacion) {
+  if (!coordinacion
+      || Number(demanda.area_id) !== Number(coordinacion.area_id)
+      || !demanda.subarea_id) {
+    return false;
+  }
+
+  const [rows] = await db.execute(
+    `SELECT 1
+     FROM subareas destino
+     WHERE destino.id = ?
+       AND destino.area_id = ?
+       AND (
+         UPPER(TRIM(destino.nombre)) IN ('SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5')
+         OR UPPER(TRIM(destino.nombre)) IN ('COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA')
+       )
+       AND EXISTS (
+         SELECT 1
+         FROM historial_ediciones he
+         JOIN usuarios emisor ON emisor.id = he.editado_por
+         WHERE he.demanda_id = ?
+           AND emisor.subarea_id = ?
+           AND emisor.rol = 'subarea_usuario'
+           AND he.campos_editados LIKE ?
+       )
+     LIMIT 1`,
+    [demanda.subarea_id, coordinacion.area_id, demanda.id, coordinacion.subarea_id, '%"Subarea":%']
+  );
+  return rows.length > 0;
 }
 
 const logsDir = path.join(__dirname, '..', 'logs');
@@ -277,8 +313,39 @@ async function listarDemandas(req, res, consultaGlobal = false) {
 
     const scope    = consultaGlobal ? null : scopeArea(req);
     const subScope = consultaGlobal ? null : scopeSubarea(req);
+    const coordinacion = subScope ? await getCoordinacionOperativa(req) : null;
     if (scope)     { sql += ' AND v.area_id = ?';    params.push(scope); }
-    if (subScope)  { sql += ' AND v.subarea_id = ?'; params.push(subScope); }
+    if (subScope && coordinacion) {
+      sql += ` AND (
+        v.subarea_id = ?
+        OR (
+          v.area_id = ?
+          AND EXISTS (
+            SELECT 1
+            FROM subareas destino
+            WHERE destino.id = v.subarea_id
+              AND destino.area_id = ?
+              AND (
+                UPPER(TRIM(destino.nombre)) IN ('SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5')
+                OR UPPER(TRIM(destino.nombre)) IN ('COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA')
+              )
+          )
+          AND EXISTS (
+            SELECT 1
+            FROM historial_ediciones he
+            JOIN usuarios emisor ON emisor.id = he.editado_por
+            WHERE he.demanda_id = v.id
+              AND emisor.subarea_id = ?
+              AND emisor.rol = 'subarea_usuario'
+              AND he.campos_editados LIKE ?
+          )
+        )
+      )`;
+      params.push(subScope, coordinacion.area_id, coordinacion.area_id, coordinacion.subarea_id, '%"Subarea":%');
+    } else if (subScope) {
+      sql += ' AND v.subarea_id = ?';
+      params.push(subScope);
+    }
     if (area)      { sql += ' AND v.area = ?';       params.push(area); }
     if (estado)    { sql += ' AND v.estado = ?';     params.push(estado); }
     if (prioridad) { sql += ' AND v.prioridad = ?';  params.push(prioridad); }
@@ -324,7 +391,10 @@ async function obtenerDemanda(req, res, consultaGlobal = false) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
       if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
-        return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+        const coordinacion = await getCoordinacionOperativa(req);
+        if (!await demandaEnviadaPorCoordinacion(rows[0], coordinacion)) {
+          return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+        }
       }
     }
 
@@ -1013,9 +1083,11 @@ router.post('/:id/enviar-subarea', async (req, res) => {
     if (Number(sub[0].area_id) !== Number(dem[0].area_id)) {
       return res.status(400).json({ ok: false, error: 'La subarea no pertenece a esta area' });
     }
-    if (esCoordinacionOperativa
-        && !/^SECTOR [1-5]$/.test(normalizeLocationName(sub[0].nombre))) {
-      return res.status(403).json({ ok: false, error: 'Coordinación operativa solo puede enviar a Sector 1, Sector 2, Sector 3, Sector 4 o Sector 5' });
+    if (esCoordinacionOperativa && !esDestinoPermitidoCoordinacion(sub[0].nombre)) {
+      return res.status(403).json({
+        ok: false,
+        error: 'Coordinación operativa solo puede enviar a Sector 1, Sector 2, Sector 3, Sector 4, Sector 5 o Coordinación de Maquinaria',
+      });
     }
 
     await db.execute('UPDATE demandas SET subarea_id = ? WHERE id = ?', [subarea_id, req.params.id]);

@@ -310,20 +310,47 @@ function renderArchivosTable(list) {
   const esPendienteEnvio = d =>
     (!d.subarea_id && d.estado === 'Pendiente') || tieneObservacionesPendientes(d);
 
-  const pendientesEnvio = list.filter(esPendienteEnvio);
-  const enGestion       = list.filter(d => !esPendienteEnvio(d));
+  const isCoordinacionOperativa = puedeEnviarDesdeCoordinacion();
+  const esPendiente = d => {
+    if (!isSubareaUser) return esPendienteEnvio(d);
+    if (isCoordinacionOperativa
+        && Number(d.subarea_id) !== Number(currentUser.subarea_id)) {
+      return false;
+    }
+    return d.estado === 'Pendiente' || tieneObservacionesPendientes(d);
+  };
 
-  const dividerHtml = `
+  const pendientesEnvio = list.filter(esPendiente);
+  const enGestion       = list.filter(d => !esPendiente(d));
+  const dividerHtml = label => `
     <tr class="archivos-group-divider">
       <td colspan="8" style="padding:8px 10px; background:var(--cream); border-top:2px solid var(--guinda-light); border-bottom:2px solid var(--guinda-light); font-size:11px; font-weight:700; color:var(--guinda); text-transform:uppercase; letter-spacing:.3px;">
-        Enviadas a subarea / En proceso / Atendidas
+        ${label}
       </td>
     </tr>
   `;
 
   let html = pendientesEnvio.map(rowHtml).join('');
-  if (pendientesEnvio.length && enGestion.length) html += dividerHtml;
-  html += enGestion.map(rowHtml).join('');
+  if (isSubareaUser && isCoordinacionOperativa) {
+    const enviadasASubarea = enGestion.filter(d =>
+      Number(d.subarea_id) !== Number(currentUser.subarea_id));
+    const propiasEnGestion = enGestion.filter(d =>
+      Number(d.subarea_id) === Number(currentUser.subarea_id));
+    if (propiasEnGestion.length) {
+      html += dividerHtml('En proceso / Atendidas') + propiasEnGestion.map(rowHtml).join('');
+    }
+    if (enviadasASubarea.length) {
+      html += dividerHtml('Enviadas a subarea') + enviadasASubarea.map(rowHtml).join('');
+    }
+  } else {
+    if (enGestion.length && (pendientesEnvio.length || isSubareaUser)) {
+      const label = isSubareaUser
+        ? 'En proceso / Atendidas'
+        : 'Enviadas a subarea / En proceso / Atendidas';
+      html += dividerHtml(label);
+    }
+    html += enGestion.map(rowHtml).join('');
+  }
 
   tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; color:var(--gray); padding:20px;">Sin resultados</td></tr>';
 }
@@ -832,7 +859,8 @@ async function openEnviarSubarea(id) {
   try {
     const list = await apiGetSubareas(currentUser.area_id);
     const destinos = puedeEnviarDesdeCoordinacion()
-      ? list.filter(s => /^SECTOR [1-5]$/.test(normalizeAreaName(s.nombre)))
+      ? list.filter(s => /^SECTOR [1-5]$/.test(normalizeAreaName(s.nombre))
+        || normalizeAreaName(s.nombre) === 'COORDINACION DE MAQUINARIA')
       : list;
     sel._subareas = destinos;
     sel.innerHTML = destinos.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('')
