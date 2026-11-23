@@ -41,6 +41,7 @@ async function bootApp() {
                      : isSubareaUsuario(currentUser.rol)                ? 'archivos'
                      : isJefeArea(currentUser.rol)                     ? 'areas'
                      : 'formulario';
+  await restorePendingNewDemand();
   const savedPage = sessionStorage.getItem('sapase_page');
   showPage(savedPage || defaultPage);
 
@@ -93,7 +94,12 @@ async function restoreSession() {
 }
 
 // Logout
-function doLogout() {
+function doLogout(force = false) {
+  if (_pendingNewDemand && !force) {
+    showToast('Adjunta al menos un documento a la petición actual antes de salir', 'error');
+    return;
+  }
+
   apiLogout();
   currentUser      = null;
   demandas         = [];
@@ -106,6 +112,8 @@ function doLogout() {
   _reportesPendientes = 0;
   _currentPage     = null;
   sessionStorage.removeItem('sapase_page');
+  if (!_pendingNewDemand) sessionStorage.removeItem(_pendingNewDemandStorageKey);
+  _pendingNewDemand = null;
   clearTokenForCurrentPage();
 
   document.getElementById('app').style.display          = 'none';
@@ -196,6 +204,11 @@ function showPage(name) {
   } else if (isAreaUser) {
     if (name !== 'archivos') name = 'archivos';
   } else if (!['formulario', 'archivos'].includes(name)) {
+    name = 'formulario';
+  }
+
+  if (_pendingNewDemand && name !== 'formulario') {
+    showToast('Adjunta al menos un documento a la petición actual antes de salir o crear otra', 'error');
     name = 'formulario';
   }
 

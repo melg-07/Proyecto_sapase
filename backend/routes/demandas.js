@@ -242,7 +242,7 @@ function autorizarAdjuntos(req, res, next) {
 }
 
 function uploadAdjuntos(req, res, next) {
-  upload.array('archivo', 20)(req, res, (err) => {
+  upload.array('archivo', 50)(req, res, (err) => {
     if (err) {
       console.error('[adjuntos] Error de multer al subir archivo(s):', err.message);
       return res.status(400).json({ ok: false, error: err.message || 'No se pudo subir el archivo' });
@@ -561,7 +561,7 @@ async function guardarAdjuntos(req, res, consultaGlobal = false) {
           fallidos.push(nombre);
           continue;
         }
-        // ⬇️ Renombramos con el folio ANTES de guardar en BD
+        
         ruta = renombrarConFolio(ruta, folio);
         archivosEnDisco.add(ruta);
       }
@@ -676,10 +676,6 @@ router.post('/', noConsulta, uploadAdjuntos, async (req, res) => {
     if (req.user.rol === 'subarea_usuario') {
       limpiarArchivosSubidos(files);
       return res.status(403).json({ ok: false, error: 'Los usuarios de subarea no pueden crear peticiones' });
-    }
-
-    if (!files.length) {
-      return res.status(400).json({ ok: false, error: 'Debes subir o escanear al menos un documento para guardar la petición' });
     }
 
     const {

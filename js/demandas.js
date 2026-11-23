@@ -2,8 +2,16 @@
    SAPASE – Gestion de Peticiones 
    ================================================ */
 
+let _pendingNewDemand = null;
+let _savingNewDemand = false;
+const _pendingNewDemandStorageKey = 'sapase_pending_new_demand';
+
 /* ---------- Formulario Nuevo ---------- */
 function initForm() {
+  if (_pendingNewDemand) {
+    renderPendingNewDemandState();
+    return;
+  }
   document.getElementById('f-folio').value = generarFolio();
   document.getElementById('f-fecha').value = fechaHoy();
   const hoy  = new Date();
@@ -11,9 +19,14 @@ function initForm() {
   const mm   = String(hoy.getMonth() + 1).padStart(2, '0');
   const dd   = String(hoy.getDate()).padStart(2, '0');
   document.getElementById('f-fecha-demanda').value = `${yyyy}-${mm}-${dd}`;
+  renderPendingNewDemandState();
 }
 
 function clearForm() {
+  if (_pendingNewDemand) {
+    showToast('Adjunta al menos un documento a la petición antes de salir o crear otra', 'error');
+    return;
+  }
   ['f-ref','f-remitente','f-asunto','f-domicilio','f-colonia',
    'f-tel1','f-tel2','f-demanda','f-observaciones','f-concepto'].forEach(id => {
     document.getElementById(id).value = '';
@@ -27,6 +40,127 @@ function clearForm() {
   renderUploadedDocs();
   initForm();
 }
+
+function renderPendingNewDemandState() {
+  const form = document.getElementById('page-formulario');
+  if (!form) return;
+
+  const isPending = !!_pendingNewDemand;
+  form.querySelectorAll('input, select, textarea').forEach(input => {
+    input.disabled = isPending;
+  });
+
+  const folioGroup = document.getElementById('f-folio-group');
+  if (folioGroup) folioGroup.style.display = isPending ? '' : 'none';
+
+  const status = document.getElementById('nueva-peticion-status');
+  if (status) {
+    status.style.display = isPending ? 'block' : 'none';
+    status.textContent = isPending
+      ? `Petición guardada exitosamente. Folio: ${_pendingNewDemand.folio || 'pendiente'}. Debes subir o escanear al menos un documento para poder salir o crear otra petición.`
+      : '';
+  }
+
+  const uploadButton = document.getElementById('btn-subir-documentos');
+  const scanButton = document.getElementById('btn-escanear-documentos');
+  const clearButton = document.getElementById('btn-limpiar-form');
+  const saveButton = document.getElementById('btn-guardar-peticion');
+  if (uploadButton) uploadButton.style.display = isPending ? '' : 'none';
+  if (scanButton) scanButton.style.display = isPending ? '' : 'none';
+  if (clearButton) clearButton.style.display = isPending ? 'none' : '';
+  if (saveButton) saveButton.style.display = isPending ? 'none' : '';
+}
+
+function populateNewDemandForm(demanda) {
+  const fields = {
+    'f-folio': demanda.folio,
+    'f-fecha': demanda.fechaHoraCaptura || demanda.fecha,
+    'f-ref': demanda.ref,
+    'f-area': demanda.area_id,
+    'f-tipo-peticion': demanda.tipo_peticion,
+    'f-remitente': demanda.remitente,
+    'f-asunto': demanda.asunto,
+    'f-domicilio': demanda.domicilio,
+    'f-colonia': demanda.colonia,
+    'f-tel1': demanda.tel1,
+    'f-tel2': demanda.tel2,
+    'f-demanda': demanda.demanda,
+    'f-observaciones': demanda.observaciones,
+    'f-concepto': demanda.concepto,
+  };
+  Object.entries(fields).forEach(([id, value]) => {
+    const field = document.getElementById(id);
+    if (field) field.value = value || '';
+  });
+
+  let fechaDemanda = demanda.fechaDemanda || '';
+  if (fechaDemanda.includes('/')) {
+    const [day, month, year] = fechaDemanda.split('/');
+    fechaDemanda = `${year}-${month}-${day}`;
+  } else if (fechaDemanda.includes('T')) {
+    fechaDemanda = fechaDemanda.slice(0, 10);
+  }
+  document.getElementById('f-fecha-demanda').value = fechaDemanda;
+}
+
+async function restorePendingNewDemand() {
+  const saved = sessionStorage.getItem(_pendingNewDemandStorageKey);
+  if (!saved) return;
+
+  let pending;
+  try {
+    pending = JSON.parse(saved);
+  } catch (err) {
+    sessionStorage.removeItem(_pendingNewDemandStorageKey);
+    showToast('No se pudo recuperar la petición pendiente de documentos', 'error');
+    return;
+  }
+  if (!pending || !pending.id) {
+    sessionStorage.removeItem(_pendingNewDemandStorageKey);
+    showToast('No se pudo recuperar la petición pendiente de documentos', 'error');
+    return;
+  }
+
+  try {
+    const demanda = normalizeDemanda(await apiGetDemanda(pending.id));
+    if (demanda.adjuntos.length) {
+      sessionStorage.removeItem(_pendingNewDemandStorageKey);
+      return;
+    }
+    _pendingNewDemand = demanda;
+    populateNewDemandForm(demanda);
+  } catch (err) {
+    _pendingNewDemand = { id: pending.id, folio: pending.folio || '', adjuntos: [] };
+    showToast(err.message || 'No se pudo verificar la petición pendiente', 'error');
+  }
+  renderPendingNewDemandState();
+}
+
+function finishNewDemandAfterDocuments(adjuntos) {
+  if (!_pendingNewDemand) return;
+  const demanda = _pendingNewDemand;
+  demanda.adjuntos = [...(demanda.adjuntos || []), ...(adjuntos || []).map(item => ({
+    id: item.id,
+    nombre: item.nombre || item.name || '',
+    ruta: item.ruta || item.path || '',
+  }))];
+  const index = demandas.findIndex(item => String(item.id) === String(demanda.id));
+  if (index >= 0) demandas[index] = demanda;
+
+  _pendingNewDemand = null;
+  sessionStorage.removeItem(_pendingNewDemandStorageKey);
+  clearForm();
+  updateStats();
+  renderDashboard();
+  showPage('archivos');
+  showToast(`Petición ${demanda.folio} lista; se agregó el documento`, 'success');
+}
+
+window.addEventListener('beforeunload', event => {
+  if (!_pendingNewDemand) return;
+  event.preventDefault();
+  event.returnValue = '';
+});
 
 function renderUploadedDocs() {
   const panel = document.getElementById('uploaded-files-panel');
@@ -54,24 +188,29 @@ function removePendingUploadedDoc(idx) {
 }
 
 function openSubirDocumentos(demandaId = null, consultaGlobal = false) {
-  if (demandaId && !puedeAgregarAdjuntosConsultaGlobal()) {
+  const targetId = demandaId || (_pendingNewDemand && _pendingNewDemand.id) || null;
+  const isPendingNewDemand = _pendingNewDemand
+    && String(targetId) === String(_pendingNewDemand.id);
+  if (targetId && !isPendingNewDemand && !puedeAgregarAdjuntosConsultaGlobal()) {
     showToast('Solo la jefa de área de Contact Center puede agregar documentos a una petición existente', 'error');
     return;
   }
-  if (consultaGlobal && (!demandaId || !puedeAgregarAdjuntosConsultaGlobal())) {
+  if (consultaGlobal && (!targetId || !puedeAgregarAdjuntosConsultaGlobal())) {
     showToast('No tienes permiso para agregar documentos desde Consulta', 'error');
     return;
   }
-  _subirDocumentosDemandaId = demandaId;
+  _subirDocumentosDemandaId = targetId;
   _subirDocumentosConsultaGlobal = !!consultaGlobal;
   _clearSubirDocumentosFile();
-  document.getElementById('subir-documentos-title').textContent = demandaId
+  document.getElementById('subir-documentos-title').textContent = targetId
     ? 'Agregar documentos a la petición'
     : 'Subir Documentos';
-  document.getElementById('subir-documentos-description').textContent = demandaId
+  document.getElementById('subir-documentos-description').textContent = isPendingNewDemand
+    ? `Adjunta al menos un documento a la petición ${_pendingNewDemand.folio || ''}.`
+    : targetId
     ? 'Adjunta documentos a esta petición.'
     : 'Adjunta los documentos que deseas incluir en esta petición.';
-  document.getElementById('subir-documentos-confirm').textContent = demandaId
+  document.getElementById('subir-documentos-confirm').textContent = targetId
     ? 'Guardar documentos'
     : 'Agregar Documento(s)';
   document.getElementById('modal-subir-documentos').classList.add('open');
@@ -98,10 +237,11 @@ function formatDateInput(val) {
 
 /* ---------- Guardar nueva petición ---------- */
 async function saveDemanda() {
-  if (!_pendingUploadedDocs.length) {
-    showToast('Debes subir o escanear al menos un documento antes de guardar la petición', 'error');
+  if (_pendingNewDemand) {
+    showToast('Adjunta al menos un documento a la petición actual antes de crear otra', 'error');
     return;
   }
+  if (_savingNewDemand) return;
 
   const areaValue = document.getElementById('f-area').value;
   const area_id  = areaValue ? Number(areaValue) : null;
@@ -146,23 +286,30 @@ async function saveDemanda() {
     fecha_demanda: document.getElementById('f-fecha-demanda').value,
   };
 
+  const saveButton = document.getElementById('btn-guardar-peticion');
+  _savingNewDemand = true;
+  if (saveButton) saveButton.disabled = true;
   try {
-    const rec = await apiCrearDemanda(payload, _pendingUploadedDocs);
+    const rec = await apiCrearDemanda(payload, []);
     const created = normalizeDemanda(rec);
     created.adjuntos = Array.isArray(rec.adjuntos) ? rec.adjuntos : [];
     demandas.unshift(created);
     updateStats();
     renderDashboard();
 
-    showToast(
-      `Petición guardada y documentos adjuntados${created.fechaHoraCaptura ? ` (${created.fechaHoraCaptura})` : ''}`,
-      'success'
-    );
-
-    clearForm();
-    showPage('archivos');
+    _pendingNewDemand = created;
+    document.getElementById('f-folio').value = created.folio;
+    sessionStorage.setItem(_pendingNewDemandStorageKey, JSON.stringify({
+      id: created.id,
+      folio: created.folio,
+    }));
+    renderPendingNewDemandState();
+    showToast(`Petición guardada exitosamente. Folio: ${created.folio}`, 'success');
   } catch (err) {
     showToast(err.message || 'Error al guardar demanda', 'error');
+  } finally {
+    _savingNewDemand = false;
+    if (saveButton) saveButton.disabled = false;
   }
 }
 

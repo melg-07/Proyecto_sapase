@@ -589,6 +589,25 @@ async function confirmSubirDocumentos() {
     return;
   }
 
+  if (_pendingNewDemand
+      && String(_subirDocumentosDemandaId) === String(_pendingNewDemand.id)) {
+    try {
+      const demandaId = _pendingNewDemand.id;
+      const guardados = await apiGuardarAdjuntosDemanda(
+        demandaId,
+        _subirDocumentosStaged.map(({ file }) => ({ name: file.name, file }))
+      );
+      if (!Array.isArray(guardados) || !guardados.length) {
+        throw new Error('No se guardó ningún documento; adjunta al menos uno para continuar');
+      }
+      cancelSubirDocumentos();
+      finishNewDemandAfterDocuments(guardados);
+    } catch (err) {
+      showToast(err.message || 'Error al agregar documentos a la petición', 'error');
+    }
+    return;
+  }
+
   if (_subirDocumentosDemandaId) {
     if (!puedeAgregarAdjuntosConsultaGlobal()) {
       showToast('Solo la jefa de área de Contact Center puede agregar documentos a una petición existente', 'error');
@@ -693,6 +712,18 @@ async function escanearDocumento() {
         throw new Error(`Scan2Form: ${unavailableReason}. Agente SAPASE: ${legacyError.message}`);
       }
       engineMessage = 'Documento escaneado con el agente SAPASE y agregado a la petición';
+    }
+
+    if (_pendingNewDemand) {
+      const demandaId = _pendingNewDemand.id;
+      const folio = _pendingNewDemand.folio;
+      const guardados = await apiGuardarAdjuntosDemanda(demandaId, [{ name: file.name, file }]);
+      if (!Array.isArray(guardados) || !guardados.length) {
+        throw new Error('No se guardó el documento escaneado; intenta subirlo de nuevo');
+      }
+      finishNewDemandAfterDocuments(guardados);
+      showToast(`Documento escaneado y agregado a la petición ${folio}`, 'success');
+      return;
     }
 
     _pendingUploadedDocs.push({

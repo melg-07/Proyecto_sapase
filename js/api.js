@@ -41,7 +41,7 @@ async function apiFetch(endpoint, options = {}) {
   if (!res.ok) {
     if (res.status === 401 && requestToken && requestToken === _token) {
       clearTokenForCurrentPage();
-      doLogout();
+      doLogout(true);
     }
     throw new Error(data.error || 'Error en la solicitud');
   }
@@ -210,7 +210,7 @@ async function apiCrearDemanda(data, archivos) {
     throw new Error(`Error del servidor (${res.status})`);
   }
   if (!res.ok) {
-    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(true); }
     throw new Error(result.error || 'Error en la solicitud');
   }
   return result.data;
@@ -263,7 +263,7 @@ async function apiPostAdjuntosDemanda(id, archivos, esAdjuntoExistente, consulta
     throw new Error(`Error del servidor (${res.status})`);
   }
   if (!res.ok) {
-    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(true); }
     throw new Error(data.error || 'Error en la solicitud');
   }
   if (data.error) showToast(data.error, 'error');
@@ -356,7 +356,7 @@ async function apiSubirLogo(key, file) {
     throw new Error(`Error del servidor (${res.status})`);
   }
   if (!res.ok) {
-    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(true); }
     throw new Error(data.error || 'Error al subir el logo');
   }
   return data.data;
@@ -380,7 +380,7 @@ async function apiCambiarEstado(id, estado, archivo, comentario) {
     throw new Error(`Error del servidor (${res.status})`);
   }
   if (!res.ok) {
-    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(); }
+    if (res.status === 401) { clearTokenForCurrentPage(); doLogout(true); }
     throw new Error(data.error || 'Error en la solicitud');
   }
   return data.data;
