@@ -1,6 +1,7 @@
 /* ================================================
    SAPASE – Gestion de Peticiones 
    ================================================ */
+   
 
 let _pendingNewDemand = null;
 let _savingNewDemand = false;
@@ -57,16 +58,21 @@ function renderPendingNewDemandState() {
   if (status) {
     status.style.display = isPending ? 'block' : 'none';
     status.textContent = isPending
-      ? `Petición guardada exitosamente. Folio: ${_pendingNewDemand.folio || 'pendiente'}. Debes subir o escanear al menos un documento para poder salir o crear otra petición.`
+      ? `Petición guardada. Folio: ${_pendingNewDemand.folio || 'pendiente'}. ${_pendingUploadedDocs.length} documento(s) listo(s). Puedes seguir escaneando o subir documentos y guardarlos cuando termines.`
       : '';
   }
 
   const uploadButton = document.getElementById('btn-subir-documentos');
   const scanButton = document.getElementById('btn-escanear-documentos');
+  const saveDocumentsButton = document.getElementById('btn-guardar-documentos-pendientes');
   const clearButton = document.getElementById('btn-limpiar-form');
   const saveButton = document.getElementById('btn-guardar-peticion');
   if (uploadButton) uploadButton.style.display = isPending ? '' : 'none';
   if (scanButton) scanButton.style.display = isPending ? '' : 'none';
+  if (saveDocumentsButton) {
+    saveDocumentsButton.style.display = isPending ? '' : 'none';
+    saveDocumentsButton.disabled = !_pendingUploadedDocs.length || _savingPendingDemandDocs;
+  }
   if (clearButton) clearButton.style.display = isPending ? 'none' : '';
   if (saveButton) saveButton.style.display = isPending ? 'none' : '';
 }
@@ -185,6 +191,7 @@ function removePendingUploadedDoc(idx) {
   if (_pendingUploadedDocs[idx]?.previewUrl) URL.revokeObjectURL(_pendingUploadedDocs[idx].previewUrl);
   _pendingUploadedDocs.splice(idx, 1);
   renderUploadedDocs();
+  renderPendingNewDemandState();
 }
 
 function openSubirDocumentos(demandaId = null, consultaGlobal = false) {

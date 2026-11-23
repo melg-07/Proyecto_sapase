@@ -519,6 +519,18 @@ async function confirmCambioEstado() {
 let _subirDocumentosStaged = [];
 let _subirDocumentosDemandaId = null;
 let _subirDocumentosConsultaGlobal = false;
+let _savingPendingDemandDocs = false;
+
+function addPendingUploadedDocument(file, previewUrl = null) {
+  _pendingUploadedDocs.push({
+    name: file.name,
+    path: file.name,
+    file,
+    previewUrl: previewUrl || URL.createObjectURL(file),
+  });
+  renderUploadedDocs();
+  renderPendingNewDemandState();
+}
 
 function _escapeFileName(value) {
   return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
@@ -591,20 +603,11 @@ async function confirmSubirDocumentos() {
 
   if (_pendingNewDemand
       && String(_subirDocumentosDemandaId) === String(_pendingNewDemand.id)) {
-    try {
-      const demandaId = _pendingNewDemand.id;
-      const guardados = await apiGuardarAdjuntosDemanda(
-        demandaId,
-        _subirDocumentosStaged.map(({ file }) => ({ name: file.name, file }))
-      );
-      if (!Array.isArray(guardados) || !guardados.length) {
-        throw new Error('No se guardó ningún documento; adjunta al menos uno para continuar');
-      }
-      cancelSubirDocumentos();
-      finishNewDemandAfterDocuments(guardados);
-    } catch (err) {
-      showToast(err.message || 'Error al agregar documentos a la petición', 'error');
-    }
+    const staged = _subirDocumentosStaged;
+    _subirDocumentosStaged = [];
+    staged.forEach(({ file, previewUrl }) => addPendingUploadedDocument(file, previewUrl));
+    cancelSubirDocumentos();
+    showToast(`${staged.length} documento(s) listo(s) para guardar en la petición`, 'success');
     return;
   }
 
@@ -634,23 +637,48 @@ async function confirmSubirDocumentos() {
     return;
   }
 
-  _subirDocumentosStaged.forEach(({ file, previewUrl }) => {
-    _pendingUploadedDocs.push({
-      name: file.name,
-      path: file.name,
-      file: file,
-      previewUrl,
-    });
-  });
-
-  const total = _subirDocumentosStaged.length;
-  renderUploadedDocs();
-  showToast(`${total} documento(s) agregado(s)`, 'success');
+  const staged = _subirDocumentosStaged;
   _subirDocumentosStaged = [];
+  staged.forEach(({ file, previewUrl }) => addPendingUploadedDocument(file, previewUrl));
+  showToast(`${staged.length} documento(s) agregado(s)`, 'success');
   const inp = document.getElementById('subir-documentos-file');
   if (inp) inp.value = '';
   _renderSubirDocumentosPreview();
   closeModal('modal-subir-documentos');
+}
+
+async function guardarDocumentosPendientes() {
+  if (!_pendingNewDemand || _savingPendingDemandDocs) return;
+  if (!_pendingUploadedDocs.length) {
+    showToast('Escanea o sube al menos un documento antes de guardar', 'error');
+    return;
+  }
+
+  const button = document.getElementById('btn-guardar-documentos-pendientes');
+  _savingPendingDemandDocs = true;
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Guardando documentos...';
+  }
+  renderPendingNewDemandState();
+
+  try {
+    const expectedCount = _pendingUploadedDocs.length;
+    const guardados = await apiGuardarAdjuntosDemanda(
+      _pendingNewDemand.id,
+      _pendingUploadedDocs.map(({ name, file }) => ({ name, file }))
+    );
+    if (!Array.isArray(guardados) || guardados.length !== expectedCount) {
+      throw new Error('No se pudieron guardar todos los documentos; revisa los archivos e intenta de nuevo');
+    }
+    finishNewDemandAfterDocuments(guardados);
+  } catch (err) {
+    showToast(err.message || 'Error al guardar los documentos de la petición', 'error');
+  } finally {
+    _savingPendingDemandDocs = false;
+    if (button) button.textContent = 'Guardar documentos';
+    renderPendingNewDemandState();
+  }
 }
 
 const SCANNER_AGENT_URL = (localStorage.getItem('sapase_scanner_agent_url') || 'http://127.0.0.1:5175').replace(/\/$/, '');
@@ -703,7 +731,7 @@ async function escanearDocumento() {
         throw new Error(result.error || 'Scan2Form no devolvió ningún documento.');
       }
       file = result.file;
-      engineMessage = 'Documento escaneado con Scan2Form y agregado a la petición';
+      engineMessage = 'Documento escaneado y agregado a la lista';
     } else {
       console.warn('[SAPASE] Scan2Form no está disponible; se usará el agente anterior:', unavailableReason);
       try {
@@ -711,28 +739,10 @@ async function escanearDocumento() {
       } catch (legacyError) {
         throw new Error(`Scan2Form: ${unavailableReason}. Agente SAPASE: ${legacyError.message}`);
       }
-      engineMessage = 'Documento escaneado con el agente SAPASE y agregado a la petición';
+      engineMessage = 'Documento escaneado y agregado a la lista';
     }
 
-    if (_pendingNewDemand) {
-      const demandaId = _pendingNewDemand.id;
-      const folio = _pendingNewDemand.folio;
-      const guardados = await apiGuardarAdjuntosDemanda(demandaId, [{ name: file.name, file }]);
-      if (!Array.isArray(guardados) || !guardados.length) {
-        throw new Error('No se guardó el documento escaneado; intenta subirlo de nuevo');
-      }
-      finishNewDemandAfterDocuments(guardados);
-      showToast(`Documento escaneado y agregado a la petición ${folio}`, 'success');
-      return;
-    }
-
-    _pendingUploadedDocs.push({
-      name: file.name,
-      path: file.name,
-      file: file,
-      previewUrl: URL.createObjectURL(file),
-    });
-    renderUploadedDocs();
+    addPendingUploadedDocument(file);
     showToast(engineMessage, 'success');
   } catch (err) {
     const errorMessage = err && err.message ? err.message : 'Error al escanear';
