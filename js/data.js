@@ -242,7 +242,8 @@ function puedeAgregarAdjuntosConsultaGlobal(user = currentUser) {
 }
 
 function puedeEditarConsultaGlobal(user = currentUser) {
-  return !!user && isJefeArea(user.rol) && isContactCenterArea(user.area);
+  return !!user && isJefeArea(user.rol)
+    && (isDireccionGeneralArea(user.area) || isContactCenterArea(user.area));
 }
 
 function isAreaUsuario(rol) {

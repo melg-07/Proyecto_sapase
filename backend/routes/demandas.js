@@ -170,8 +170,9 @@ async function jefeContactCenterConsultaEditGuard(req, res, next) {
   }
   try {
     const [areas] = await db.execute('SELECT nombre FROM areas WHERE id = ?', [req.user.area_id]);
-    if (!isContactCenterAreaName(areas[0]?.nombre)) {
-      return res.status(403).json({ ok: false, error: 'Solo la jefa de área de Contact Center puede editar peticiones desde Consulta' });
+    const area = normalizeLocationName(areas[0]?.nombre);
+    if (area !== 'DIRECCION GENERAL' && !isContactCenterAreaName(area)) {
+      return res.status(403).json({ ok: false, error: 'Solo la jefa de Dirección General o de Contact Center puede editar peticiones desde Consulta' });
     }
     next();
   } catch (err) {
