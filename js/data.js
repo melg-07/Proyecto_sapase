@@ -132,6 +132,9 @@ function normalizeDemanda(d) {
     ref2:          d.ref2          || d.folio_ref2_actual || d.folio_ref2 || '',
     area_id:       d.area_id       || null,
     area:          d.area          || '',
+    areasAsignadas: Array.isArray(d.areas_asignadas)
+      ? d.areas_asignadas.map(area => ({ id: area.id, nombre: area.nombre || '' }))
+      : [],
     tipo_peticion: d.tipo_peticion || d.tipo_peticion_actual || '',
     subarea_id:    d.subarea_id    || null,
     subarea:       d.subarea       || '',
@@ -174,6 +177,11 @@ function getAreasActivasParaPeticion() {
   return [...areas.values()].filter(a => a.activa);
 }
 
+function demandaPerteneceArea(demanda, areaNombre) {
+  return demanda.area === areaNombre
+    || (demanda.areasAsignadas || []).some(area => area.nombre === areaNombre);
+}
+
 function getAreaId(nombre) {
   const a = _areasCache.find(x => x.nombre === nombre)
     || _peticionAreasCache.find(x => x.nombre === nombre);
@@ -211,6 +219,14 @@ function normalizeAreaName(area) {
 
 function isDireccionGeneralArea(area) {
   return normalizeAreaName(area) === 'DIRECCION GENERAL';
+}
+
+function puedeAsignarAreasMultiples(user = currentUser) {
+  if (!user || !isJefeArea(user.rol)) return false;
+  return [
+    'DIRECCION GENERAL',
+    'DIRECCION DE CONSTRUCCION Y OPERACION HIDRAULICA',
+  ].includes(normalizeAreaName(user.area));
 }
 
 function isContactCenterArea(area) {

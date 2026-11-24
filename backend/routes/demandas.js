@@ -21,6 +21,42 @@ function normalizeLocationName(name) {
   return String(name || '').trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
 }
 
+const areasAutorizadasAsignacionMultiple = new Set([
+  'DIRECCION GENERAL',
+  'DIRECCION DE CONSTRUCCION Y OPERACION HIDRAULICA',
+]);
+
+async function jefePuedeAsignarAreas(req) {
+  if (req.user?.rol !== 'jefe_area' || !req.user.area_id) return false;
+  const [rows] = await db.execute(
+    `SELECT a.nombre
+     FROM usuarios u
+     JOIN areas a ON a.id = u.area_id
+     WHERE u.id = ? AND u.area_id = ? AND u.rol = 'jefe_area'
+       AND u.activo = 1 AND a.activa = 1`,
+    [req.user.id, req.user.area_id]
+  );
+  return areasAutorizadasAsignacionMultiple.has(normalizeLocationName(rows[0]?.nombre));
+}
+
+async function demandaDisponibleEnArea(demandaId, areaId) {
+  const [rows] = await db.execute(
+    `SELECT 1
+     FROM demandas d
+     WHERE d.id = ?
+       AND (
+         d.area_id = ?
+         OR EXISTS (
+           SELECT 1 FROM demanda_areas da
+           WHERE BINARY da.demanda_id = BINARY d.id AND da.area_id = ?
+         )
+       )
+     LIMIT 1`,
+    [demandaId, areaId, areaId]
+  );
+  return rows.length > 0;
+}
+
 const destinosCoordinacionOperativa = [
   'SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5',
   'COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA',
@@ -320,12 +356,27 @@ async function loadDemandaDetails(id) {
     [id]
   );
 
+  const [areasAsignadas] = await db.execute(
+    `SELECT a.id, a.nombre
+     FROM demandas d
+     JOIN areas a ON a.id = d.area_id
+     WHERE d.id = ?
+     UNION
+     SELECT a.id, a.nombre
+     FROM demanda_areas da
+     JOIN areas a ON a.id = da.area_id
+     WHERE da.demanda_id = ?
+     ORDER BY nombre ASC`,
+    [id, id]
+  );
+
   return {
     historial: hist,
     historial_estados: histEst,
     historial_ediciones: histEdit,
     reportes,
     adjuntos,
+    areas_asignadas: areasAsignadas,
   };
 }
 
@@ -343,7 +394,16 @@ async function listarDemandas(req, res, consultaGlobal = false) {
     const scope    = consultaGlobal ? null : scopeArea(req);
     const subScope = consultaGlobal ? null : scopeSubarea(req);
     const perfilEnvio = subScope ? await getPerfilEnvioSubarea(req) : null;
-    if (scope)     { sql += ' AND v.area_id = ?';    params.push(scope); }
+    if (scope) {
+      sql += ` AND (
+        v.area_id = ?
+        OR EXISTS (
+          SELECT 1 FROM demanda_areas da
+          WHERE BINARY da.demanda_id = BINARY v.id AND da.area_id = ?
+        )
+      )`;
+      params.push(scope, scope);
+    }
     if (subScope && perfilEnvio) {
       sql += ` AND (
         v.subarea_id = ?
@@ -401,6 +461,18 @@ async function listarDemandas(req, res, consultaGlobal = false) {
 router.get('/consulta/global', jefeConsultaGlobalGuard, (req, res) => listarDemandas(req, res, true));
 router.get('/', (req, res) => listarDemandas(req, res));
 
+router.get('/areas-asignables', async (req, res) => {
+  try {
+    if (!await jefePuedeAsignarAreas(req)) {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar áreas asignables' });
+    }
+    const [rows] = await db.execute('SELECT id, nombre, activa FROM areas WHERE activa = 1 ORDER BY nombre ASC');
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 async function obtenerDemanda(req, res, consultaGlobal = false) {
   try {
     const [rows] = await db.execute(
@@ -416,7 +488,7 @@ async function obtenerDemanda(req, res, consultaGlobal = false) {
     if (!consultaGlobal) {
       const scope    = scopeArea(req);
       const subScope = scopeSubarea(req);
-      if (scope && Number(rows[0].area_id) !== Number(scope)) {
+      if (scope && !await demandaDisponibleEnArea(req.params.id, scope)) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
       if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
@@ -464,7 +536,16 @@ router.get('/reportes/lista', async (req, res) => {
     const params = [];
 
     const scope = scopeArea(req);
-    if (scope) { sql += ' AND d.area_id = ?'; params.push(scope); }
+    if (scope) {
+      sql += ` AND (
+        d.area_id = ?
+        OR EXISTS (
+          SELECT 1 FROM demanda_areas da
+          WHERE BINARY da.demanda_id = BINARY d.id AND da.area_id = ?
+        )
+      )`;
+      params.push(scope, scope);
+    }
 
     sql += ' ORDER BY r.creado_en DESC';
 
@@ -485,7 +566,7 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
     const nota = s(req.body.nota);
 
     const [rep] = await db.execute(
-      `SELECT r.id, d.area_id
+      `SELECT r.id, r.demanda_id, d.area_id
        FROM reportes_problema r
        JOIN demandas d ON BINARY r.demanda_id = BINARY d.id
        WHERE r.id = ?`,
@@ -494,7 +575,7 @@ router.put('/reportes/:reporteId/resolver', noConsulta, async (req, res) => {
     if (!rep.length) return res.status(404).json({ ok: false, error: 'Observacion no encontrada' });
 
     const scope = scopeArea(req);
-    if (scope && Number(rep[0].area_id) !== Number(scope)) {
+    if (scope && !await demandaDisponibleEnArea(rep[0].demanda_id, scope)) {
       return res.status(404).json({ ok: false, error: 'Observacion no encontrada' });
     }
 
@@ -521,7 +602,7 @@ async function guardarAdjuntos(req, res, consultaGlobal = false) {
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
     const scope = consultaGlobal ? null : scopeArea(req);
-    if (scope && Number(dem[0].area_id) !== Number(scope)) {
+    if (scope && !await demandaDisponibleEnArea(demandaId, scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
@@ -802,7 +883,7 @@ async function editarDemanda(req, res, consultaGlobal = false) {
 
     const scope    = consultaGlobal ? null : scopeArea(req);
     const subScope = scopeSubarea(req);
-    if (scope && Number(before.area_id) !== Number(scope)) {
+    if (scope && !await demandaDisponibleEnArea(req.params.id, scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
     if (subScope && Number(before.subarea_id) !== Number(subScope)) {
@@ -974,7 +1055,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
 
     const scope    = scopeArea(req);
     const subScope = scopeSubarea(req);
-    if (scope && Number(dem[0].area_id) !== Number(scope)) {
+    if (scope && !await demandaDisponibleEnArea(req.params.id, scope)) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
@@ -1030,13 +1111,13 @@ router.post('/:id/reportar', noConsulta, async (req, res) => {
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
     const scope = scopeArea(req);
-    if (scope && Number(dem[0].area_id) !== Number(scope)) {
+    if (scope && !await demandaDisponibleEnArea(req.params.id, scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
 
     await db.execute(
       `INSERT INTO reportes_problema (demanda_id, area_id, usuario_id, nota) VALUES (?, ?, ?, ?)`,
-      [req.params.id, dem[0].area_id, req.user.id, nota]
+      [req.params.id, scope || dem[0].area_id, req.user.id, nota]
     );
 
     res.status(201).json({ ok: true });
@@ -1053,6 +1134,129 @@ function isDireccionGeneralAreaName(name) {
 }
 
 // Transferir
+router.post('/:id/asignar-areas', noConsulta, async (req, res) => {
+  let connection;
+  try {
+    if (!await jefePuedeAsignarAreas(req)) {
+      return res.status(403).json({
+        ok: false,
+        error: 'Solo las jefaturas de Dirección General y de Dirección de Construcción y Operación Hidráulica pueden asignar a varias áreas',
+      });
+    }
+
+    if (!Array.isArray(req.body.area_ids) || req.body.area_ids.length === 0) {
+      return res.status(400).json({ ok: false, error: 'Selecciona al menos un área destino' });
+    }
+
+    const areaIds = [...new Set(req.body.area_ids.map(Number))];
+    if (areaIds.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+      return res.status(400).json({ ok: false, error: 'La lista de áreas destino no es válida' });
+    }
+
+    const [dem] = await db.execute('SELECT id, area_id FROM demandas WHERE id = ?', [req.params.id]);
+    if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+
+    const [destinos] = await db.execute(
+      `SELECT id, nombre FROM areas
+       WHERE activa = 1 AND id IN (${areaIds.map(() => '?').join(', ')})`,
+      areaIds
+    );
+    if (destinos.length !== areaIds.length) {
+      return res.status(400).json({ ok: false, error: 'Una o más áreas destino no existen o están inactivas' });
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+    const [lockedDemand] = await connection.execute(
+      'SELECT area_id FROM demandas WHERE id = ? FOR UPDATE',
+      [req.params.id]
+    );
+    if (!lockedDemand.length) {
+      await connection.rollback();
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+
+    let demandaEnAreaDelUsuario = Number(lockedDemand[0].area_id) === Number(req.user.area_id);
+    if (!demandaEnAreaDelUsuario) {
+      const [asignacionUsuario] = await connection.execute(
+        `SELECT 1 FROM demanda_areas
+         WHERE BINARY demanda_id = BINARY ? AND area_id = ?
+         LIMIT 1`,
+        [req.params.id, req.user.area_id]
+      );
+      demandaEnAreaDelUsuario = asignacionUsuario.length > 0;
+    }
+    if (!demandaEnAreaDelUsuario) {
+      await connection.rollback();
+      return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
+    }
+    if (areaIds.includes(Number(req.user.area_id)) || areaIds.includes(Number(lockedDemand[0].area_id))) {
+      await connection.rollback();
+      return res.status(400).json({ ok: false, error: 'No selecciones tu propia área ni el área responsable como destino' });
+    }
+
+    const [existing] = await connection.execute(
+      `SELECT area_id FROM demanda_areas
+       WHERE demanda_id = ? AND area_id IN (${areaIds.map(() => '?').join(', ')})
+       FOR UPDATE`,
+      [req.params.id, ...areaIds]
+    );
+    const existingIds = new Set(existing.map(row => Number(row.area_id)));
+    const nuevasAreas = destinos.filter(area => !existingIds.has(Number(area.id)));
+
+    for (const area of nuevasAreas) {
+      await connection.execute(
+        'INSERT INTO demanda_areas (demanda_id, area_id, asignado_por) VALUES (?, ?, ?)',
+        [req.params.id, area.id, req.user.id]
+      );
+    }
+
+    if (nuevasAreas.length) {
+      await connection.execute(
+        `INSERT INTO historial_ediciones (demanda_id, editado_por, campos_editados)
+         VALUES (?, ?, ?)`,
+        [
+          req.params.id,
+          req.user.id,
+          JSON.stringify({
+            'Áreas asignadas': {
+              antes: '',
+              despues: nuevasAreas.map(area => area.nombre).join(', '),
+            },
+          }),
+        ]
+      );
+    }
+
+    const [areasAsignadas] = await connection.execute(
+      `SELECT a.id, a.nombre
+       FROM demandas d
+       JOIN areas a ON a.id = d.area_id
+       WHERE d.id = ?
+       UNION
+       SELECT a.id, a.nombre
+       FROM demanda_areas da
+       JOIN areas a ON a.id = da.area_id
+       WHERE da.demanda_id = ?
+       ORDER BY nombre ASC`,
+      [req.params.id, req.params.id]
+    );
+    await connection.commit();
+    res.json({ ok: true, data: { areas_asignadas: areasAsignadas } });
+  } catch (err) {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch (rollbackErr) {
+        log('ERROR', `[asignar-areas] No se pudo revertir la transacción: ${rollbackErr.message}`);
+      }
+    }
+    res.status(500).json({ ok: false, error: err.message });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
 router.post('/:id/transferir', noConsulta, async (req, res) => {
   try {
     if (req.user?.rol !== 'jefe_area' || !req.user?.area_id) {

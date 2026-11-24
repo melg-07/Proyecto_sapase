@@ -344,7 +344,7 @@ function filterArchivos() {
                    String(d.ref2 || '').toLowerCase().includes(q) ||
                    d.remitente.toLowerCase().includes(q)   ||
                    d.asunto.toLowerCase().includes(q);
-    const matchA = !fa || d.area      === fa;
+    const matchA = !fa || demandaPerteneceArea(d, fa);
     const matchS = !fs || d.estado    === fs;
     const matchP = !fp || d.prioridad === fp;
     return matchQ && matchA && matchS && matchP;
@@ -382,7 +382,7 @@ function filterConsultaGlobal() {
     const matchesQuery = !query || [d.folio, d.ref, d.ref2, d.remitente, d.asunto]
       .some(value => String(value || '').toLowerCase().includes(query));
     return matchesQuery
-      && (!area || d.area === area)
+      && (!area || demandaPerteneceArea(d, area))
       && (!estado || d.estado === estado)
       && (!prioridad || d.prioridad === prioridad);
   });
@@ -393,7 +393,7 @@ function filterConsultaGlobal() {
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
-      <td><small>${d.area}</small></td>
+      <td><small>${(d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area}</small></td>
       <td>${d.asunto}</td>
       <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
       <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
@@ -428,7 +428,7 @@ function renderArchivosTable(list) {
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
-      <td><small>${d.area}</small></td>
+      <td><small>${(d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area}</small></td>
       <td>${d.asunto}</td>
       <td>${puedeCambiarEstado ? `
         <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
@@ -621,7 +621,7 @@ function _renderViewModal(d) {
       ${field2('Fecha de Captura',  d.fechaHoraCaptura || d.fecha)}
       ${field2('Fecha de Demanda',  d.fechaDemanda || '—')}
       ${field2('Folio Petición', d.ref || '—')}
-      ${field2('Area',              d.area)}
+      ${field2('Áreas asignadas', (d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area)}
       ${field2('Tipo de petición', d.tipo_peticion || '—')}
       ${d.subarea ? field2('Subarea', d.subarea) : ''}
       ${field2col('Remitente',      d.remitente)}
@@ -647,6 +647,10 @@ function _renderViewModal(d) {
   if (btnTransferir) {
     const canTransfer = !_viewReadOnly && currentUser && isJefeArea(currentUser.rol) && isDireccionGeneralArea(currentUser.area);
     btnTransferir.style.display = canTransfer ? '' : 'none';
+  }
+  const btnAsignarAreas = document.getElementById('btn-asignar-areas');
+  if (btnAsignarAreas) {
+    btnAsignarAreas.style.display = !_viewReadOnly && puedeAsignarAreasMultiples() ? '' : 'none';
   }
   const btnImprimir = document.querySelector('#modal-ver .btn-row > button:first-child');
   if (btnImprimir) btnImprimir.style.display = '';
@@ -1001,6 +1005,78 @@ function openTransferModal(id) {
   document.getElementById('transfer-comment').value = '';
   populateAreaSelect('transfer-area', true);
   document.getElementById('modal-transfer').classList.add('open');
+}
+
+async function openAsignarAreasModal(id) {
+  if (!puedeAsignarAreasMultiples()) {
+    showToast('No tienes permiso para asignar peticiones a varias áreas', 'error');
+    return;
+  }
+
+  const demanda = demandas.find(item => String(item.id) === String(id));
+  if (!demanda) {
+    showToast('No se encontró la petición seleccionada', 'error');
+    return;
+  }
+
+  const select = document.getElementById('asignar-areas-select');
+  const yaAsignadas = new Set((demanda.areasAsignadas || []).map(area => Number(area.id)));
+  select.innerHTML = '';
+  let areas;
+  try {
+    areas = await apiGetAreasAsignables();
+  } catch (err) {
+    showToast(err.message || 'Error al cargar las áreas destino', 'error');
+    return;
+  }
+  areas
+    .filter(area => area.activa
+      && Number(area.id) !== Number(currentUser.area_id)
+      && !yaAsignadas.has(Number(area.id)))
+    .forEach(area => {
+      const option = document.createElement('option');
+      option.value = area.id;
+      option.textContent = area.nombre;
+      select.appendChild(option);
+    });
+
+  if (!select.options.length) {
+    showToast('No hay otras áreas disponibles para asignar', 'info');
+    return;
+  }
+
+  transferId = id;
+  closeModal('modal-ver');
+  document.getElementById('modal-asignar-areas').classList.add('open');
+}
+
+async function confirmAsignarAreas() {
+  const select = document.getElementById('asignar-areas-select');
+  const areaIds = Array.from(select.selectedOptions).map(option => Number(option.value));
+  if (!areaIds.length) {
+    showToast('Selecciona al menos un área destino', 'error');
+    return;
+  }
+
+  try {
+    const result = await apiAsignarDemandaAreas(transferId, areaIds);
+    const updatedAreas = (result.areas_asignadas || []).map(area => ({
+      id: area.id,
+      nombre: area.nombre || '',
+    }));
+    const demanda = demandas.find(item => String(item.id) === String(transferId));
+    if (demanda) demanda.areasAsignadas = updatedAreas;
+    const consulta = _consultaDemandas.find(item => String(item.id) === String(transferId));
+    if (consulta) consulta.areasAsignadas = updatedAreas;
+
+    filterArchivos();
+    if (selectedArea) filterAreaDetail();
+    if (demanda) _renderViewModal(demanda);
+    closeModal('modal-asignar-areas');
+    showToast('Petición asignada a las áreas seleccionadas', 'success');
+  } catch (err) {
+    showToast(err.message || 'Error al asignar la petición', 'error');
+  }
 }
 
 async function confirmTransfer() {

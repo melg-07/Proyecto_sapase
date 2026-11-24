@@ -21,6 +21,7 @@ pool.getConnection()
     conn.release();
     await ensureRolEnumSubadmin();
     await ensureDemandasSupportTables();
+    await ensureDemandaAreasTable();
     await ensureObservacionesSchema();
   })
   .catch(err => { console.error('✖  MySQL:', err.message); });
@@ -83,6 +84,25 @@ async function ensureDemandasSupportTables() {
     `);
   } catch (err) {
     console.error('⚠  No se pudo crear la tabla historial_ediciones:', err.message);
+  }
+}
+
+async function ensureDemandaAreasTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS demanda_areas (
+        demanda_id   VARCHAR(20) NOT NULL,
+        area_id      INT UNSIGNED NOT NULL,
+        asignado_por INT UNSIGNED,
+        asignado_en  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (demanda_id, area_id),
+        KEY idx_demanda_areas_area (area_id),
+        FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE CASCADE,
+        FOREIGN KEY (asignado_por) REFERENCES usuarios(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB
+    `);
+  } catch (err) {
+    console.error('⚠  No se pudo crear la tabla demanda_areas:', err.message);
   }
 }
 

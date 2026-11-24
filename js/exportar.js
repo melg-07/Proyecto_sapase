@@ -16,7 +16,7 @@ function exportToExcel(list, nombre) {
     'Fecha Demanda':    d.fechaDemanda  || '',
     'Folio Referencia': d.ref           || '',
     'Otro Folio':       d.ref2          || '',
-    'Area':             d.area,
+    'Area':             (d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area,
     'Tipo de petición': d.tipo_peticion || '',
     'Remitente':        d.remitente,
     'Asunto':           d.asunto,
@@ -178,7 +178,7 @@ function getFilteredInformeDemandas(filters, tipo = filters?.tipo || 'semanal') 
 
   return baseList.filter(d => {
     const fecha = getDemandDateForReport(d);
-    const matchArea = !filters.area || d.area === filters.area;
+    const matchArea = !filters.area || demandaPerteneceArea(d, filters.area);
     const matchEstado = !filters.estado || d.estado === filters.estado;
     const matchPrioridad = !filters.prioridad || d.prioridad === filters.prioridad;
 
@@ -409,11 +409,12 @@ function exportInformePDF(tipo) {
       const fechaTexto = getDemandDateForReport(d)
         ? getDemandDateForReport(d).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
         : 'Sin fecha';
+      const areaTexto = (d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area || '-';
       const cells = [
         { value: d.folio || '-', lines: doc.splitTextToSize(String(d.folio || '-'), 14) },
         { value: fechaTexto, lines: doc.splitTextToSize(fechaTexto, 18) },
         { value: d.remitente || '-', lines: doc.splitTextToSize(String(d.remitente || '-'), 23) },
-        { value: d.area || '-', lines: doc.splitTextToSize(String(d.area || '-'), 28) },
+        { value: areaTexto, lines: doc.splitTextToSize(String(areaTexto), 28) },
         { value: d.asunto || '-', lines: doc.splitTextToSize(String(d.asunto || '-'), 61) },
         { value: d.estado || '-', lines: doc.splitTextToSize(String(d.estado || '-'), 18) },
         { value: d.prioridad || '-', lines: doc.splitTextToSize(String(d.prioridad || '-'), 18) }

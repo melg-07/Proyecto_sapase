@@ -304,6 +304,19 @@ async function apiTransferirDemanda(id, area_destino_id, comentario) {
   });
 }
 
+async function apiAsignarDemandaAreas(id, area_ids) {
+  const res = await apiFetch('/demandas/' + id + '/asignar-areas', {
+    method: 'POST',
+    body: JSON.stringify({ area_ids }),
+  });
+  return res.data;
+}
+
+async function apiGetAreasAsignables() {
+  const res = await apiFetch('/demandas/areas-asignables');
+  return res.data;
+}
+
 async function apiEnviarSubarea(id, subarea_id) {
   const res = await apiFetch('/demandas/' + id + '/enviar-subarea', {
     method: 'POST',

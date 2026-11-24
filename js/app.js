@@ -30,7 +30,7 @@ function renderDashboard() {
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
-      <td><small>${d.area}</small></td>
+      <td><small>${(d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area}</small></td>
       <td>${d.asunto}</td>
       <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
     </tr>
@@ -71,7 +71,7 @@ function _updateAreaInfoPanel(areaNombre) {
   const idx = _areasCache.findIndex(a => a.nombre === areaNombre);
   if (idx < 0) return;
   const a          = _areasCache[idx];
-  const lista      = demandas.filter(d => d.area === a.nombre);
+  const lista      = demandas.filter(d => demandaPerteneceArea(d, a.nombre));
   const total      = lista.length;
   const pendientes = lista.filter(d => d.estado === 'Pendiente').length;
   const enProceso  = lista.filter(d => d.estado === 'En proceso').length;
@@ -355,7 +355,7 @@ function filterAreaDetail() {
   const fp      = document.getElementById('area-filter-prioridad')?.value || '';
   const isAdmin = currentUser && isAdminLevel(currentUser.rol);
   const list    = demandas.filter(d =>
-    d.area === selectedArea &&
+    demandaPerteneceArea(d, selectedArea) &&
     (!q  || d.folio.toLowerCase().includes(q) ||
       String(d.ref || '').toLowerCase().includes(q) ||
       String(d.ref2 || '').toLowerCase().includes(q) ||
@@ -402,7 +402,7 @@ function filterAreaDetail() {
 }
 
 function exportAreaExcel() {
-  const list = demandas.filter(d => d.area === selectedArea);
+  const list = demandas.filter(d => demandaPerteneceArea(d, selectedArea));
   exportToExcel(list, selectedArea);
 }
 

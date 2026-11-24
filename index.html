@@ -596,9 +596,29 @@
       <button class="modal-close" onclick="closeModal('modal-ver')">x</button>
     </div>
     <div id="modal-ver-content"></div>
-    <div class="btn-row" style="margin-top:20px;">
+    <div class="btn-row" style="margin-top:20px; flex-wrap:wrap;">
       <button class="btn btn-guinda btn-sm" onclick="exportSinglePDF(currentViewId)">Imprimir</button>
       <button class="btn btn-blue btn-sm" id="btn-transferir-demanda" onclick="openTransferModal(currentViewId)">Enviar a otra Área</button>
+      <button class="btn btn-outline btn-sm" id="btn-asignar-areas" onclick="openAsignarAreasModal(currentViewId)" style="display:none;">Asignar a varias áreas</button>
+    </div>
+  </div>
+</div>
+
+<!-- Asignar a varias áreas sin mover la demanda del área responsable -->
+<div class="modal-overlay" id="modal-asignar-areas">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Asignar a varias áreas</div>
+      <button class="modal-close" onclick="closeModal('modal-asignar-areas')">x</button>
+    </div>
+    <div class="field-group">
+      <label for="asignar-areas-select">Áreas adicionales</label>
+      <select id="asignar-areas-select" multiple size="8" style="min-height:180px;"></select>
+      <small>La petición permanecerá en su área responsable y también aparecerá en las áreas seleccionadas. Mantén Ctrl para elegir varias.</small>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-guinda" onclick="confirmAsignarAreas()">Asignar</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-asignar-areas')">Cancelar</button>
     </div>
   </div>
 </div>

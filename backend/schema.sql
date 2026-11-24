@@ -121,6 +121,19 @@ CREATE TABLE IF NOT EXISTS transferencias (
   FOREIGN KEY (transferido_por) REFERENCES usuarios(id)  ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
+-- Asignaciones adicionales: una demanda puede estar visible en varias areas
+-- sin cambiar su area responsable original.
+CREATE TABLE IF NOT EXISTS demanda_areas (
+  demanda_id   VARCHAR(20) NOT NULL,
+  area_id      INT UNSIGNED NOT NULL,
+  asignado_por INT UNSIGNED,
+  asignado_en  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (demanda_id, area_id),
+  KEY idx_demanda_areas_area (area_id),
+  FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE CASCADE,
+  FOREIGN KEY (asignado_por) REFERENCES usuarios(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
 -- ------------------------------------------------------------
 -- SESIONES (tokens JWT guardados para blacklist/logout)
 -- ------------------------------------------------------------
