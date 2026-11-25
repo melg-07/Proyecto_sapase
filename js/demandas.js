@@ -322,6 +322,13 @@ async function saveDemanda() {
 
 /* ---------- Archivos / listado ---------- */
 async function renderArchivos() {
+  const isJefe = currentUser && isJefeArea(currentUser.rol);
+  const subtitle = document.getElementById('archivos-subtitle');
+  if (subtitle) {
+    subtitle.textContent = isJefe
+      ? `Gestión y exportación de peticiones de ${currentUser.area || 'tu área'}`
+      : 'Gestión y exportación de peticiones';
+  }
   filterArchivos(); // mostrar cache local inmediatamente
   try {
     const raw = await apiGetDemandas();
@@ -350,7 +357,26 @@ function filterArchivos() {
     return matchQ && matchA && matchS && matchP;
   });
 
+  renderJefeArchivosSummary();
   renderArchivosTable(filteredDemandas);
+}
+
+function renderJefeArchivosSummary() {
+  const summary = document.getElementById('archivos-area-summary');
+  if (!summary) return;
+  const isJefe = currentUser && isJefeArea(currentUser.rol);
+  summary.style.display = isJefe ? '' : 'none';
+  if (!isJefe) return;
+
+  const total = demandas.length;
+  const pendientes = demandas.filter(d => d.estado === 'Pendiente').length;
+  const enProceso = demandas.filter(d => d.estado === 'En proceso').length;
+  const atendidas = demandas.filter(d => d.estado === 'Atendida').length;
+  document.getElementById('archivos-area-title').textContent = `Resumen de ${currentUser.area || 'tu área'}`;
+  document.getElementById('archivos-area-total').textContent = total;
+  document.getElementById('archivos-area-pendientes').textContent = pendientes;
+  document.getElementById('archivos-area-proceso').textContent = enProceso;
+  document.getElementById('archivos-area-atendidas').textContent = atendidas;
 }
 
 async function renderConsultaGlobal() {
@@ -419,8 +445,8 @@ function renderArchivosTable(list) {
   const isSubareaUser   = currentUser && isSubareaUsuario(currentUser.rol);
 
   const rowHtml = d => {
-    const puedeCambiarEstado = isSubareaUser
-      && Number(d.subarea_id) === Number(currentUser.subarea_id);
+    const puedeCambiarEstado = isJefeRol || (isSubareaUser
+      && Number(d.subarea_id) === Number(currentUser.subarea_id));
     const puedeEnviarEstaDemanda = isAreaUser || (puedeEnviarDesdeSubarea()
       && Number(d.subarea_id) === Number(currentUser.subarea_id));
     return `
@@ -438,11 +464,10 @@ function renderArchivosTable(list) {
           <option ${d.estado==='En proceso' ?'selected':''}>En proceso</option>
           <option ${d.estado==='Atendida'   ?'selected':''}>Atendida</option>
         </select>` : `<span class="badge ${badgeClass(d.estado)}">${d.estado}</span>`}</td>
-      <td>${isAreaUsuarioRol ? `
+      <td>${isAreaUsuarioRol || isJefeRol ? `
         <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
                 onfocus="this.dataset.prev=this.value"
-                onchange="changePri
-                oridadArea('${d.id}', this.value, this)">
+                onchange="changePrioridadArea('${d.id}', this.value, this)">
           <option ${d.prioridad==='Alta'  ?'selected':''}>Alta</option>
           <option ${d.prioridad==='Media' ?'selected':''}>Media</option>
           <option ${d.prioridad==='Baja'  ?'selected':''}>Baja</option>
@@ -451,7 +476,7 @@ function renderArchivosTable(list) {
         <div style="display:flex; gap:4px; flex-wrap:wrap;">
           <button class="btn btn-outline btn-sm" onclick="viewDemanda('${d.id}')">Ver</button>
           <button class="btn btn-guinda btn-sm"  onclick="exportSinglePDF('${d.id}')">Imprimir</button>
-          ${isAreaUsuarioRol ? `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>` : ''}
+          ${isAreaUsuarioRol || isJefeRol ? `<button class="btn btn-blue btn-sm" onclick="openEditDemanda('${d.id}')">Editar</button>` : ''}
           ${isAreaUsuarioRol ? `<button class="btn btn-outline btn-sm" onclick="openReportarProblema('${d.id}')">Observaciones</button>` : ''}
           ${puedeEnviarEstaDemanda ? `<button class="btn btn-outline btn-sm" onclick="openEnviarSubarea('${d.id}')">Enviar a Subarea</button>` : ''}
           ${isAdmin ? `<button class="btn btn-red btn-sm" onclick="deleteDemanda('${d.id}')">Eliminar</button>` : ''}

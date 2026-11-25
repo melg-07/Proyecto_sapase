@@ -39,7 +39,7 @@ async function bootApp() {
                      : currentUser.rol === 'Consulta'                  ? 'archivos'
                      : isAreaUsuario(currentUser.rol)                  ? 'archivos'
                      : isSubareaUsuario(currentUser.rol)                ? 'archivos'
-                     : isJefeArea(currentUser.rol)                     ? 'areas'
+                     : isJefeArea(currentUser.rol)                     ? 'archivos'
                      : 'formulario';
   await restorePendingNewDemand();
   const savedPage = sessionStorage.getItem('sapase_page');
@@ -151,7 +151,6 @@ function renderSidebar(activePage) {
     html += navItem('archivos', 'Archivos', activePage);
   } else if (isJefe) {
     html += navSection('Gestión');
-    html += navItem('areas',         'Mi Área',       activePage);
     html += navItem('archivos',      'Archivos',      activePage);
     html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
     html += navItem('subareas',      'Subáreas',      activePage);
@@ -198,9 +197,9 @@ function showPage(name) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
     if (['subareas'].includes(name)) name = 'gestion-subareas';
   } else if (isJefe) {
-    const paginasJefe = ['areas', 'archivos', 'observaciones', 'subareas'];
+    const paginasJefe = ['archivos', 'observaciones', 'subareas'];
     if (puedeConsultaGlobal) paginasJefe.push('consulta');
-    if (!paginasJefe.includes(name)) name = 'areas';
+    if (!paginasJefe.includes(name)) name = 'archivos';
   } else if (isAreaUser) {
     if (name !== 'archivos') name = 'archivos';
   } else if (!['formulario', 'archivos'].includes(name)) {
