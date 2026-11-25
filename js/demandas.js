@@ -393,7 +393,7 @@ function filterConsultaGlobal() {
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
-      <td><small>${(d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area}</small></td>
+      <td><small>${formatoAreasAsignadas(d)}</small></td>
       <td>${d.asunto}</td>
       <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
       <td><span class="badge ${prioridadBadgeClass(d.prioridad)}">${d.prioridad}</span></td>
@@ -428,7 +428,7 @@ function renderArchivosTable(list) {
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
-      <td><small>${(d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area}</small></td>
+      <td><small>${formatoAreasAsignadas(d)}</small></td>
       <td>${d.asunto}</td>
       <td>${puedeCambiarEstado ? `
         <select style="font-size:11px; padding:3px 6px; border:1px solid #ddd; border-radius:4px;"
@@ -621,7 +621,7 @@ function _renderViewModal(d) {
       ${field2('Fecha de Captura',  d.fechaHoraCaptura || d.fecha)}
       ${field2('Fecha de Demanda',  d.fechaDemanda || '—')}
       ${field2('Folio Petición', d.ref || '—')}
-      ${field2('Áreas asignadas', (d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area)}
+      ${field2('Áreas asignadas', formatoAreasAsignadas(d))}
       ${field2('Tipo de petición', d.tipo_peticion || '—')}
       ${d.subarea ? field2('Subarea', d.subarea) : ''}
       ${field2col('Remitente',      d.remitente)}
@@ -1063,6 +1063,8 @@ async function confirmAsignarAreas() {
     const updatedAreas = (result.areas_asignadas || []).map(area => ({
       id: area.id,
       nombre: area.nombre || '',
+      subarea_id: area.subarea_id || null,
+      subarea: area.subarea || '',
     }));
     const demanda = demandas.find(item => String(item.id) === String(transferId));
     if (demanda) demanda.areasAsignadas = updatedAreas;

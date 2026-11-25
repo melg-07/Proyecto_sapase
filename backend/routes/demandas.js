@@ -57,6 +57,41 @@ async function demandaDisponibleEnArea(demandaId, areaId) {
   return rows.length > 0;
 }
 
+async function demandaAsignadaASubarea(demandaId, subareaId) {
+  const [rows] = await db.execute(
+    `SELECT 1
+     FROM demandas d
+     WHERE BINARY d.id = BINARY ?
+       AND (
+         d.subarea_id = ?
+         OR EXISTS (
+           SELECT 1 FROM demanda_areas da
+           WHERE BINARY da.demanda_id = BINARY d.id AND da.subarea_id = ?
+         )
+       )
+     LIMIT 1`,
+    [demandaId, subareaId, subareaId]
+  );
+  return rows.length > 0;
+}
+
+function aplicarContextoSubarea(demanda, req) {
+  const areaId = scopeArea(req);
+  const subareaId = scopeSubarea(req);
+  if (!areaId && !subareaId) return demanda;
+
+  const asignacion = demanda.areas_asignadas?.find(area =>
+    (areaId && Number(area.id) === Number(areaId))
+    || (subareaId && Number(area.subarea_id) === Number(subareaId)));
+  if (!asignacion) return demanda;
+
+  return {
+    ...demanda,
+    subarea_id: asignacion.subarea_id || null,
+    subarea: asignacion.subarea || '',
+  };
+}
+
 const destinosCoordinacionOperativa = [
   'SECTOR 1', 'SECTOR 2', 'SECTOR 3', 'SECTOR 4', 'SECTOR 5',
   'COORDINACION DE MAQUINARIA', 'COORDINACIÓN DE MAQUINARIA',
@@ -357,15 +392,17 @@ async function loadDemandaDetails(id) {
   );
 
   const [areasAsignadas] = await db.execute(
-    `SELECT a.id, a.nombre
+    `SELECT a.id, a.nombre, d.subarea_id, sa.nombre AS subarea
      FROM demandas d
      JOIN areas a ON a.id = d.area_id
+     LEFT JOIN subareas sa ON sa.id = d.subarea_id
      WHERE d.id = ?
      UNION
-     SELECT a.id, a.nombre
+     SELECT a.id, a.nombre, da.subarea_id, sa.nombre AS subarea
      FROM demanda_areas da
      JOIN areas a ON a.id = da.area_id
-     WHERE da.demanda_id = ?
+     LEFT JOIN subareas sa ON sa.id = da.subarea_id
+     WHERE BINARY da.demanda_id = BINARY ?
      ORDER BY nombre ASC`,
     [id, id]
   );
@@ -407,6 +444,10 @@ async function listarDemandas(req, res, consultaGlobal = false) {
     if (subScope && perfilEnvio) {
       sql += ` AND (
         v.subarea_id = ?
+        OR EXISTS (
+          SELECT 1 FROM demanda_areas da
+          WHERE BINARY da.demanda_id = BINARY v.id AND da.subarea_id = ?
+        )
         OR (
           v.area_id = ?
           AND EXISTS (
@@ -428,14 +469,30 @@ async function listarDemandas(req, res, consultaGlobal = false) {
         )
       )`;
       params.push(
-        subScope, perfilEnvio.area_id, perfilEnvio.area_id, ...perfilEnvio.destinosSQL,
+        subScope, subScope, perfilEnvio.area_id, perfilEnvio.area_id, ...perfilEnvio.destinosSQL,
         perfilEnvio.subarea_id, '%"Subarea":%',
       );
     } else if (subScope) {
-      sql += ' AND v.subarea_id = ?';
-      params.push(subScope);
+      sql += ` AND (
+        v.subarea_id = ?
+        OR EXISTS (
+          SELECT 1 FROM demanda_areas da
+          WHERE BINARY da.demanda_id = BINARY v.id AND da.subarea_id = ?
+        )
+      )`;
+      params.push(subScope, subScope);
     }
-    if (area)      { sql += ' AND v.area = ?';       params.push(area); }
+    if (area) {
+      sql += ` AND (
+        v.area = ?
+        OR EXISTS (
+          SELECT 1 FROM demanda_areas da
+          JOIN areas asignada ON asignada.id = da.area_id
+          WHERE BINARY da.demanda_id = BINARY v.id AND asignada.nombre = ?
+        )
+      )`;
+      params.push(area, area);
+    }
     if (estado)    { sql += ' AND v.estado = ?';     params.push(estado); }
     if (prioridad) { sql += ' AND v.prioridad = ?';  params.push(prioridad); }
     if (q) {
@@ -446,12 +503,15 @@ async function listarDemandas(req, res, consultaGlobal = false) {
     sql += ' ORDER BY v.creado_en DESC';
 
     const [rows] = await db.execute(sql, params);
-    const data = await Promise.all(rows.map(async row => ({
-      ...row,
-      ref2: row.folio_ref2_actual || row.ref2 || '',
-      tipo_peticion: row.tipo_peticion_actual || row.tipo_peticion || '',
-      ...(await loadDemandaDetails(row.id)),
-    })));
+    const data = await Promise.all(rows.map(async row => {
+      const details = await loadDemandaDetails(row.id);
+      return aplicarContextoSubarea({
+        ...row,
+        ref2: row.folio_ref2_actual || row.ref2 || '',
+        tipo_peticion: row.tipo_peticion_actual || row.tipo_peticion || '',
+        ...details,
+      }, req);
+    }));
     res.json({ ok: true, data });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -491,7 +551,7 @@ async function obtenerDemanda(req, res, consultaGlobal = false) {
       if (scope && !await demandaDisponibleEnArea(req.params.id, scope)) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
-      if (subScope && Number(rows[0].subarea_id) !== Number(subScope)) {
+      if (subScope && !await demandaAsignadaASubarea(req.params.id, subScope)) {
         const perfilEnvio = await getPerfilEnvioSubarea(req);
         if (!await demandaEnviadaPorSubarea(rows[0], perfilEnvio)) {
           return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
@@ -502,12 +562,12 @@ async function obtenerDemanda(req, res, consultaGlobal = false) {
     const details = await loadDemandaDetails(req.params.id);
     res.json({
       ok: true,
-      data: {
+      data: aplicarContextoSubarea({
         ...rows[0],
         ref2: rows[0].folio_ref2_actual || rows[0].ref2 || '',
         tipo_peticion: rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '',
         ...details,
-      },
+      }, req),
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -886,7 +946,7 @@ async function editarDemanda(req, res, consultaGlobal = false) {
     if (scope && !await demandaDisponibleEnArea(req.params.id, scope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
-    if (subScope && Number(before.subarea_id) !== Number(subScope)) {
+    if (subScope && !await demandaAsignadaASubarea(req.params.id, subScope)) {
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
     if ('estado' in body && body.estado !== before.estado) {
@@ -1059,7 +1119,7 @@ router.post('/:id/cambiar-estado', noConsulta, (req, res, next) => {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
-    if (subScope && Number(dem[0].subarea_id) !== Number(subScope)) {
+    if (subScope && !await demandaAsignadaASubarea(req.params.id, subScope)) {
       fs.unlinkSync(req.file.path);
       return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
     }
@@ -1229,15 +1289,17 @@ router.post('/:id/asignar-areas', noConsulta, async (req, res) => {
     }
 
     const [areasAsignadas] = await connection.execute(
-      `SELECT a.id, a.nombre
+      `SELECT a.id, a.nombre, d.subarea_id, sa.nombre AS subarea
        FROM demandas d
        JOIN areas a ON a.id = d.area_id
+       LEFT JOIN subareas sa ON sa.id = d.subarea_id
        WHERE d.id = ?
        UNION
-       SELECT a.id, a.nombre
+       SELECT a.id, a.nombre, da.subarea_id, sa.nombre AS subarea
        FROM demanda_areas da
        JOIN areas a ON a.id = da.area_id
-       WHERE da.demanda_id = ?
+       LEFT JOIN subareas sa ON sa.id = da.subarea_id
+       WHERE BINARY da.demanda_id = BINARY ?
        ORDER BY nombre ASC`,
       [req.params.id, req.params.id]
     );
@@ -1335,21 +1397,22 @@ router.post('/:id/enviar-subarea', async (req, res) => {
     const [dem] = await db.execute('SELECT area_id, subarea_id FROM demandas WHERE id = ?', [req.params.id]);
     if (!dem.length) return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
 
+    const scope = scopeArea(req);
+    let areaDestinoId = scope || Number(dem[0].area_id);
     if (perfilEnvio) {
-      if (Number(dem[0].area_id) !== Number(perfilEnvio.area_id)
-          || Number(dem[0].subarea_id) !== Number(perfilEnvio.subarea_id)) {
+      areaDestinoId = Number(perfilEnvio.area_id);
+      if (!await demandaAsignadaASubarea(req.params.id, perfilEnvio.subarea_id)) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
-    } else {
-      const scope = scopeArea(req);
-      if (scope && Number(dem[0].area_id) !== Number(scope)) {
+    } else if (scope) {
+      if (!await demandaDisponibleEnArea(req.params.id, scope)) {
         return res.status(404).json({ ok: false, error: 'Demanda no encontrada' });
       }
     }
 
     const [sub] = await db.execute('SELECT id, area_id, nombre FROM subareas WHERE id = ?', [subarea_id]);
     if (!sub.length) return res.status(404).json({ ok: false, error: 'Subarea no encontrada' });
-    if (Number(sub[0].area_id) !== Number(dem[0].area_id)) {
+    if (Number(sub[0].area_id) !== Number(areaDestinoId)) {
       return res.status(400).json({ ok: false, error: 'La subarea no pertenece a esta area' });
     }
     if (perfilEnvio && !perfilEnvio.destinosNormalizados.has(normalizeLocationName(sub[0].nombre))) {
@@ -1359,11 +1422,29 @@ router.post('/:id/enviar-subarea', async (req, res) => {
       });
     }
 
-    await db.execute('UPDATE demandas SET subarea_id = ? WHERE id = ?', [subarea_id, req.params.id]);
+    let subareaAnterior = dem[0].subarea_id || '';
+    if (Number(areaDestinoId) === Number(dem[0].area_id)) {
+      await db.execute('UPDATE demandas SET subarea_id = ? WHERE id = ?', [subarea_id, req.params.id]);
+    } else {
+      const [asignacion] = await db.execute(
+        `SELECT subarea_id FROM demanda_areas
+         WHERE BINARY demanda_id = BINARY ? AND area_id = ?`,
+        [req.params.id, areaDestinoId]
+      );
+      if (!asignacion.length) {
+        return res.status(404).json({ ok: false, error: 'La petición no está asignada a esta área' });
+      }
+      subareaAnterior = asignacion[0].subarea_id || '';
+      await db.execute(
+        `UPDATE demanda_areas SET subarea_id = ?
+         WHERE BINARY demanda_id = BINARY ? AND area_id = ?`,
+        [subarea_id, req.params.id, areaDestinoId]
+      );
+    }
 
     await db.execute(
       `INSERT INTO historial_ediciones (demanda_id, editado_por, campos_editados) VALUES (?, ?, ?)`,
-      [req.params.id, req.user.id, JSON.stringify({ Subarea: { antes: dem[0].subarea_id || '', despues: sub[0].nombre } })]
+      [req.params.id, req.user.id, JSON.stringify({ Subarea: { antes: subareaAnterior, despues: sub[0].nombre } })]
     );
 
     const [rows] = await db.execute(
@@ -1374,7 +1455,11 @@ router.post('/:id/enviar-subarea', async (req, res) => {
       [req.params.id]
     );
     if (rows[0]) rows[0].tipo_peticion = rows[0].tipo_peticion_actual || rows[0].tipo_peticion || '';
-    res.json({ ok: true, data: rows[0] });
+    const details = await loadDemandaDetails(req.params.id);
+    res.json({
+      ok: true,
+      data: aplicarContextoSubarea({ ...rows[0], ...details }, req),
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

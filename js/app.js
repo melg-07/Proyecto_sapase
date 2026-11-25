@@ -30,7 +30,7 @@ function renderDashboard() {
       <td><span class="folio-cell">${d.folio}</span></td>
       <td>${d.fechaHoraCaptura || d.fecha}</td>
       <td>${d.remitente}</td>
-      <td><small>${(d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area}</small></td>
+      <td><small>${formatoAreasAsignadas(d)}</small></td>
       <td>${d.asunto}</td>
       <td><span class="badge ${badgeClass(d.estado)}">${d.estado}</span></td>
     </tr>

@@ -133,7 +133,12 @@ function normalizeDemanda(d) {
     area_id:       d.area_id       || null,
     area:          d.area          || '',
     areasAsignadas: Array.isArray(d.areas_asignadas)
-      ? d.areas_asignadas.map(area => ({ id: area.id, nombre: area.nombre || '' }))
+      ? d.areas_asignadas.map(area => ({
+        id: area.id,
+        nombre: area.nombre || '',
+        subarea_id: area.subarea_id || null,
+        subarea: area.subarea || '',
+      }))
       : [],
     tipo_peticion: d.tipo_peticion || d.tipo_peticion_actual || '',
     subarea_id:    d.subarea_id    || null,
@@ -180,6 +185,12 @@ function getAreasActivasParaPeticion() {
 function demandaPerteneceArea(demanda, areaNombre) {
   return demanda.area === areaNombre
     || (demanda.areasAsignadas || []).some(area => area.nombre === areaNombre);
+}
+
+function formatoAreasAsignadas(demanda) {
+  const areas = (demanda.areasAsignadas || []).map(area =>
+    area.subarea ? `${area.nombre} (${area.subarea})` : area.nombre);
+  return areas.join(', ') || demanda.area;
 }
 
 function getAreaId(nombre) {

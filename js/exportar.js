@@ -16,7 +16,7 @@ function exportToExcel(list, nombre) {
     'Fecha Demanda':    d.fechaDemanda  || '',
     'Folio Referencia': d.ref           || '',
     'Otro Folio':       d.ref2          || '',
-    'Area':             (d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area,
+    'Area':             formatoAreasAsignadas(d),
     'Tipo de petición': d.tipo_peticion || '',
     'Remitente':        d.remitente,
     'Asunto':           d.asunto,
@@ -409,7 +409,7 @@ function exportInformePDF(tipo) {
       const fechaTexto = getDemandDateForReport(d)
         ? getDemandDateForReport(d).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' })
         : 'Sin fecha';
-      const areaTexto = (d.areasAsignadas || []).map(area => area.nombre).join(', ') || d.area || '-';
+      const areaTexto = formatoAreasAsignadas(d) || '-';
       const cells = [
         { value: d.folio || '-', lines: doc.splitTextToSize(String(d.folio || '-'), 14) },
         { value: fechaTexto, lines: doc.splitTextToSize(fechaTexto, 18) },

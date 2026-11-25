@@ -93,14 +93,29 @@ async function ensureDemandaAreasTable() {
       CREATE TABLE IF NOT EXISTS demanda_areas (
         demanda_id   VARCHAR(20) NOT NULL,
         area_id      INT UNSIGNED NOT NULL,
+        subarea_id   INT UNSIGNED NULL,
         asignado_por INT UNSIGNED,
         asignado_en  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (demanda_id, area_id),
         KEY idx_demanda_areas_area (area_id),
+        KEY idx_demanda_areas_subarea (subarea_id),
         FOREIGN KEY (area_id) REFERENCES areas(id) ON DELETE CASCADE,
+        FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL,
         FOREIGN KEY (asignado_por) REFERENCES usuarios(id) ON DELETE SET NULL
       ) ENGINE=InnoDB
     `);
+    const [columns] = await pool.execute(
+      `SELECT COUNT(*) AS total
+       FROM information_schema.columns
+       WHERE table_schema = DATABASE()
+         AND table_name = 'demanda_areas'
+         AND column_name = 'subarea_id'`
+    );
+    if (!columns[0].total) {
+      await pool.execute(
+        'ALTER TABLE demanda_areas ADD COLUMN subarea_id INT UNSIGNED NULL AFTER area_id, ADD KEY idx_demanda_areas_subarea (subarea_id), ADD FOREIGN KEY (subarea_id) REFERENCES subareas(id) ON DELETE SET NULL'
+      );
+    }
   } catch (err) {
     console.error('⚠  No se pudo crear la tabla demanda_areas:', err.message);
   }
