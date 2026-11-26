@@ -154,6 +154,9 @@ function renderSidebar(activePage) {
     html += navItem('archivos',      'Archivos',      activePage);
     html += navItem('observaciones', 'Observaciones', activePage, obsBadgeHTML());
     html += navItem('subareas',      'Subáreas',      activePage);
+    if (isDireccionGeneralArea(currentUser.area)) {
+      html += navItem('areas-subareas', 'Áreas y Subáreas', activePage);
+    }
     if (puedeConsultaGlobal) html += navItem('consulta', 'Consulta', activePage);
   } else if (isAreaUser) {
     html += navSection('Gestión');
@@ -196,8 +199,10 @@ function showPage(name) {
   } else if (isAdminLvl) {
     if (!isFullAdmin && ['usuarios', 'configuracion'].includes(name)) name = 'dashboard';
     if (['subareas'].includes(name)) name = 'gestion-subareas';
+    if (name === 'areas-subareas') name = 'dashboard';
   } else if (isJefe) {
     const paginasJefe = ['archivos', 'observaciones', 'subareas'];
+    if (isDireccionGeneralArea(currentUser.area)) paginasJefe.push('areas-subareas');
     if (puedeConsultaGlobal) paginasJefe.push('consulta');
     if (!paginasJefe.includes(name)) name = 'archivos';
   } else if (isAreaUser) {
@@ -248,6 +253,7 @@ function showPage(name) {
   if (name === 'configuracion') { renderConfiguracion(); }
   if (name === 'observaciones') { renderObservaciones(); }
   if (name === 'subareas') { renderSubareasPanel(); }
+  if (name === 'areas-subareas') { renderAreasSubareasPanel(); }
   if (name === 'gestion-subareas') { renderGestionSubareas(); }
 }
 

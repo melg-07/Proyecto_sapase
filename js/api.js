@@ -109,6 +109,11 @@ async function apiGetSubareas(area_id) {
   return res.data;
 }
 
+async function apiGetSubareasConsultaGlobal(area_id) {
+  const res = await apiFetch('/subareas/consulta/global?area_id=' + area_id);
+  return res.data;
+}
+
 async function apiCrearSubarea(area_id, nombre) {
   const res = await apiFetch('/subareas', {
     method: 'POST',

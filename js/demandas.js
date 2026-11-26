@@ -365,18 +365,47 @@ function renderJefeArchivosSummary() {
   const summary = document.getElementById('archivos-area-summary');
   if (!summary) return;
   const isJefe = currentUser && isJefeArea(currentUser.rol);
-  summary.style.display = isJefe ? '' : 'none';
+  summary.style.display = isJefe ? 'flex' : 'none';
   if (!isJefe) return;
 
+  const area = _areasCache.find(item => String(item.id) === String(currentUser.area_id))
+    || _areasCache.find(item => item.nombre === currentUser.area);
+  const areaIndex = area ? _areasCache.indexOf(area) : -1;
   const total = demandas.length;
   const pendientes = demandas.filter(d => d.estado === 'Pendiente').length;
   const enProceso = demandas.filter(d => d.estado === 'En proceso').length;
   const atendidas = demandas.filter(d => d.estado === 'Atendida').length;
-  document.getElementById('archivos-area-title').textContent = `Resumen de ${currentUser.area || 'tu área'}`;
-  document.getElementById('archivos-area-total').textContent = total;
-  document.getElementById('archivos-area-pendientes').textContent = pendientes;
-  document.getElementById('archivos-area-proceso').textContent = enProceso;
-  document.getElementById('archivos-area-atendidas').textContent = atendidas;
+
+  document.getElementById('archivos-area-num').textContent = `AREA ${areaIndex >= 0 ? String(areaIndex + 1).padStart(2, '0') : '—'}`;
+  document.getElementById('archivos-area-title').textContent = area ? area.nombre : (currentUser.area || '—');
+  document.getElementById('archivos-area-jefe').textContent = area?.jefe_area
+    ? `Jefe de Área: ${area.jefe_area}`
+    : 'Jefe de Área: —';
+  document.getElementById('archivos-area-badge').innerHTML = area
+    ? (area.activa ? '<span class="badge badge-green">Activa</span>' : '<span class="badge badge-red">Inactiva</span>')
+    : '';
+  document.getElementById('archivos-area-count').innerHTML = `
+    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:var(--guinda-dark);">${total}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Total</div>
+      </div>
+      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:var(--gold);">${pendientes}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Pendientes</div>
+      </div>
+      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:#1565C0;">${enProceso}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">En Proceso</div>
+      </div>
+      <div style="width:1px; background:#ddd; align-self:stretch;"></div>
+      <div style="text-align:center;">
+        <div style="font-size:18px; font-weight:700; color:#2E7D32;">${atendidas}</div>
+        <div style="font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.5px;">Atendidas</div>
+      </div>
+    </div>`;
 }
 
 async function renderConsultaGlobal() {

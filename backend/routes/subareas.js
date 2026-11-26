@@ -5,6 +5,45 @@ const { authMiddleware, adminOSubadmin, areaUsuarioGuard, scopeArea } = require(
 router.use(authMiddleware);
 router.use(areaUsuarioGuard);
 
+async function jefeDireccionGeneralGuard(req, res, next) {
+  if (req.user?.rol !== 'jefe_area' || !req.user.area_id) {
+    return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar subareas de otras areas' });
+  }
+  try {
+    const [rows] = await db.execute(
+      `SELECT a.nombre
+       FROM usuarios u
+       JOIN areas a ON a.id = u.area_id
+       WHERE u.id = ? AND u.area_id = ? AND u.rol = 'jefe_area'
+         AND u.activo = 1 AND a.activa = 1`,
+      [req.user.id, req.user.area_id]
+    );
+    const area = String(rows[0]?.nombre || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    if (area !== 'DIRECCION GENERAL') {
+      return res.status(403).json({ ok: false, error: 'No tienes permiso para consultar subareas de otras areas' });
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}
+
+router.get('/consulta/global', jefeDireccionGeneralGuard, async (req, res) => {
+  const areaId = Number(req.query.area_id);
+  if (!Number.isInteger(areaId) || areaId <= 0) {
+    return res.status(400).json({ ok: false, error: 'area_id requerido' });
+  }
+  try {
+    const [rows] = await db.execute(
+      'SELECT id, area_id, nombre, activa FROM subareas WHERE area_id = ? ORDER BY id ASC',
+      [areaId]
+    );
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Lista las subareas de un area.
 router.get('/', async (req, res) => {
   try {

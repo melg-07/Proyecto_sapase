@@ -243,6 +243,124 @@ async function renderSubareasPanel() {
   }
 }
 
+// Resumen global de areas y subareas para Direccion General
+let _areasSubareasSelectedId = null;
+let _areasSubareasSelectedSubareas = [];
+let _areasSubareasLoading = false;
+let _areasSubareasError = '';
+
+async function renderAreasSubareasPanel() {
+  const areasBody = document.getElementById('areas-subareas-table');
+  if (!areasBody) return;
+
+  areasBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">Cargando...</td></tr>';
+
+  try {
+    _consultaDemandas = (await apiGetDemandasConsultaGlobal()).map(normalizeDemanda);
+    const otrasAreas = _areasCache.filter(area => String(area.id) !== String(currentUser.area_id));
+    if (_areasSubareasSelectedId && !otrasAreas.some(area => String(area.id) === String(_areasSubareasSelectedId))) {
+      _areasSubareasSelectedId = null;
+    }
+    _areasSubareasSelectedSubareas = [];
+    _areasSubareasLoading = !!_areasSubareasSelectedId;
+    _areasSubareasError = '';
+    renderAreasSubareasRows();
+    if (_areasSubareasSelectedId) await loadSelectedAreaSubareas(_areasSubareasSelectedId);
+  } catch (err) {
+    areasBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">${_escapeFileName(err.message || 'Error al cargar las peticiones')}</td></tr>`;
+  }
+}
+
+function selectAreaSubareas(areaId) {
+  const area = _areasCache.find(item => String(item.id) === String(areaId));
+  if (!area || String(area.id) === String(currentUser.area_id)) return;
+
+  if (String(_areasSubareasSelectedId) === String(area.id)) {
+    _areasSubareasSelectedId = null;
+    _areasSubareasSelectedSubareas = [];
+    _areasSubareasLoading = false;
+    _areasSubareasError = '';
+    renderAreasSubareasRows();
+    return;
+  }
+  _areasSubareasSelectedId = area.id;
+  _areasSubareasSelectedSubareas = [];
+  _areasSubareasLoading = true;
+  _areasSubareasError = '';
+  renderAreasSubareasRows();
+  loadSelectedAreaSubareas(area.id);
+}
+
+async function loadSelectedAreaSubareas(areaId) {
+  const area = _areasCache.find(item => String(item.id) === String(areaId));
+  if (!area) return;
+  try {
+    const subareas = await apiGetSubareasConsultaGlobal(area.id);
+    if (String(_areasSubareasSelectedId) !== String(area.id)) return;
+    _areasSubareasSelectedSubareas = subareas;
+    _areasSubareasLoading = false;
+  } catch (err) {
+    if (String(_areasSubareasSelectedId) !== String(area.id)) return;
+    _areasSubareasError = err.message || 'Error al cargar las subáreas';
+    _areasSubareasLoading = false;
+  }
+  renderAreasSubareasRows();
+}
+
+function renderAreasSubareasRows() {
+  const tbody = document.getElementById('areas-subareas-table');
+  if (!tbody) return;
+  const otrasAreas = _areasCache.filter(area => String(area.id) !== String(currentUser.area_id));
+  tbody.innerHTML = otrasAreas.map(area => {
+    const areaId = Number(area.id);
+    const selected = String(area.id) === String(_areasSubareasSelectedId);
+    const lista = _consultaDemandas.filter(d => demandaPerteneceArea(d, area.nombre));
+    const pendientes = lista.filter(d => d.estado === 'Pendiente').length;
+    const enProceso = lista.filter(d => d.estado === 'En proceso').length;
+    const atendidas = lista.filter(d => d.estado === 'Atendida').length;
+    const nombre = `${area.nombre}${!area.activa ? ' (Inactiva)' : ''}`;
+    const areaRow = `
+      <tr role="button" tabindex="0" aria-expanded="${selected}" style="cursor:pointer;${selected ? ' background:var(--cream);' : ''}"
+          onclick="selectAreaSubareas(${areaId})"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectAreaSubareas(${areaId})}">
+        <td>${_escapeFileName(nombre)}</td>
+        <td>${lista.length}</td>
+        <td>${pendientes}</td>
+        <td>${enProceso}</td>
+        <td>${atendidas}</td>
+      </tr>`;
+    if (!selected) return areaRow;
+
+    let subareasRows = '';
+    if (_areasSubareasLoading) {
+      subareasRows = '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:12px;">Cargando subáreas...</td></tr>';
+    } else if (_areasSubareasError) {
+      subareasRows = `<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:12px;">${_escapeFileName(_areasSubareasError)}</td></tr>`;
+    } else if (!_areasSubareasSelectedSubareas.length) {
+      subareasRows = '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:12px;">Sin subáreas</td></tr>';
+    } else {
+      subareasRows = _areasSubareasSelectedSubareas.map(subarea => {
+        const subareaDemandas = _consultaDemandas.filter(d =>
+          Number(d.subarea_id) === Number(subarea.id)
+          || (d.areasAsignadas || []).some(assigned => Number(assigned.subarea_id) === Number(subarea.id))
+        );
+        const subareaPendientes = subareaDemandas.filter(d => d.estado === 'Pendiente').length;
+        const subareaEnProceso = subareaDemandas.filter(d => d.estado === 'En proceso').length;
+        const subareaAtendidas = subareaDemandas.filter(d => d.estado === 'Atendida').length;
+        return `
+          <tr style="background:#faf8f5;">
+            <td><span style="padding-left:20px;">↳ ${_escapeFileName(subarea.nombre)}</span></td>
+            <td>${subareaDemandas.length}</td>
+            <td>${subareaPendientes}</td>
+            <td>${subareaEnProceso}</td>
+            <td>${subareaAtendidas}</td>
+          </tr>`;
+      }).join('');
+    }
+    return areaRow + subareasRows;
+  }).join('') || '<tr><td colspan="5" style="text-align:center; color:var(--gray); padding:20px;">No hay otras áreas para mostrar</td></tr>';
+}
+
 // Gestion de subareas
 let _gsSelectedAreaId = null;
 
